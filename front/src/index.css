@@ -205,3 +205,65 @@ body {
 .deconnexion-item:hover {
   color: red !important;
 }
+
+.custom-badge {
+  font-size: 10px !important;
+  padding: 4px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-input:focus {
+  border-color: green !important;
+  box-shadow: 0 0 5px rgba(0, 128, 0, 0.5) !important;
+}
+
+.custom-input:hover {
+  border-color: green !important;
+  box-shadow: 0 0 5px rgba(0, 128, 0, 0.5) !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: gray;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.custom-textarea {
+  width: 100%;
+  background-color: #f0f0f0;
+  color: black;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  resize: none;
+}
+
+.bibliotheque-dropdown .p-dropdown {
+  width: 250px;
+}
+
+.custom-tabview .p-tabview-nav {
+  display: flex;
+  justify-content: center;
+}
+
+.custom-tabview .p-tabview-nav li {
+  flex: 0 1 auto;
+}
+
+.rotated-divider {
+  transform: rotate(90deg);
+  margin: 20px 0;
+}

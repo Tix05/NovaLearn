@@ -47,7 +47,7 @@ const LoginEtudiant = () => {
                 </form>
                 <div className='flex flex-col items-center mt-3 space-y-3'>
                     <Link to="/etudiant/forgot-password" className='font-semibold hover:scale-105 duration-500 text-sm text-gray-700'>Mot de passe oublié ?</Link>
-                    <Link to="/etudiant/information" className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'>S'inscrire</Link>
+                    <Link to="/etudiant/inscription-etape-1" className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'>S'inscrire</Link>
                 </div>
             </div>
         </motion.div>

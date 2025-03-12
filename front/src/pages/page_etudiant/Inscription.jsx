@@ -42,7 +42,7 @@ const Inscription = () => {
 
     const handleNext = (e) => {
         e.preventDefault();
-        navigate('/etudiant/registration', {
+        navigate('/etudiant/inscription-etape-2', {
             state: {
                 name,
                 phoneNumber,

@@ -10,6 +10,12 @@ import Inscription from './pages/page_etudiant/Inscription';
 import Inscription2 from './pages/page_etudiant/Inscription2';
 import { AnimatePresence } from 'framer-motion';
 import Enseignant from './pages/page_etudiant/Enseignant';
+import Mention from './pages/page_etudiant/Mention';
+import Bibliotheque from './pages/page_etudiant/Bibliotheque';
+import Agenda from './pages/page_etudiant/Agenda';
+import Message from './pages/page_etudiant/Message';
+import Cours from './pages/page_etudiant/Cours';
+import DescriptionCours from './pages/page_etudiant/DescriptionCours';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -44,9 +50,16 @@ function EtudiantRoutes() {
     <Routes>
       <Route path="login-etudiant" element={<LoginEtudiant />} />
       <Route path="forgot-password" element={<ForgotPassword />} />
-      <Route path="information" element={<Inscription />} />
-      <Route path="registration" element={<Inscription2 />} />
-      <Route path="teacher" element={<Enseignant />} />
+      <Route path="inscription-etape-1" element={<Inscription />} />
+      <Route path="inscription-etape-2" element={<Inscription2 />} />
+      <Route path="enseignant" element={<Enseignant />} />
+      <Route path="bibliotheque" element={<Bibliotheque />} />
+      <Route path="agenda" element={<Agenda />} />
+      <Route path="message" element={<Message />} />
+      <Route path="mention" element={<Mention />} />
+      <Route path="cours/:mentionId" element={<Cours />} />
+      <Route path="cours/:mentionId/:semestreId" element={<Cours />} />
+      <Route path="cours/:mentionId/:semestreId/:coursId" element={<DescriptionCours />} />
     </Routes>
   );
 }
