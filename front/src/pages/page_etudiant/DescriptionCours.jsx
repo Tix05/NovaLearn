@@ -53,7 +53,7 @@ const DescriptionCours = () => {
 
     return (
         <Layout>
-            <div className='w-full text-gray-800'>
+            <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-3xl font-normal p-3'>Détails du cours - {cours?.titre}</h1>
                 <div className='flex flex-col shadow-md m-5 border-[1px] rounded-lg'>
                     <h1 className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg'>{cours?.titre}</h1>
@@ -102,8 +102,6 @@ const DescriptionCours = () => {
                             <Column field="nom" header="Video" sortable style={{ minWidth: '5rem' }} />
                             <Column body={actionBodyTemplate} style={{ minWidth: '5rem' }} />
                         </DataTable>
-
-
                     </div>
                 </div>
             </div>

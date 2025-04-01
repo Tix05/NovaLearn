@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
-import Layout from '../../components/Layout';
+import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
 
-export default function Agenda() {
+export default function AgendaEnseignant() {
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
@@ -84,7 +84,7 @@ export default function Agenda() {
 
 
     return (
-        <Layout>
+        <LayoutEnseignant>
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <TabView className='custom-tabview'>
                     <TabPanel header="Cours" className='flex flex-col items-center'>
@@ -131,6 +131,6 @@ export default function Agenda() {
                     </TabPanel>
                 </TabView>
             </div>
-        </Layout>
+        </LayoutEnseignant>
     );
 }

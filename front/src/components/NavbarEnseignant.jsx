@@ -236,7 +236,7 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
     );
 };
 
-const Navbar = () => {
+const NavbarEnseignant = () => {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
     const [showMessageDropdown, setShowMessageDropdown] = useState(false);
@@ -416,4 +416,4 @@ const Navbar = () => {
     );
 };
 
-export default Navbar;
+export default NavbarEnseignant;

@@ -267,3 +267,12 @@ body {
   transform: rotate(90deg);
   margin: 20px 0;
 }
+
+.custom-fileupload-button .p-button {
+  background-color: #C23B42 !important;
+  border-color: #C23B42 !important;
+}
+
+.custom-fileupload-button .p-button:hover {
+  background-color: #A83238 !important;
+}

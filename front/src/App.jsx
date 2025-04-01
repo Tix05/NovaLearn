@@ -16,6 +16,14 @@ import Agenda from './pages/page_etudiant/Agenda';
 import Message from './pages/page_etudiant/Message';
 import Cours from './pages/page_etudiant/Cours';
 import DescriptionCours from './pages/page_etudiant/DescriptionCours';
+import Dashboard from './pages/page_enseignant/Dashboard';
+import Etudiant from './pages/page_enseignant/Etudiant';
+import MentionEnseignant from './pages/page_enseignant/MentionEnseignant';
+import CoursEnseignant from './pages/page_enseignant/CoursEnseignant';
+import DescriptionCoursEnseignant from './pages/page_enseignant/DescriptionCoursEnseignant';
+import AjoutSupport from './pages/page_enseignant/AjoutSupport';
+import BibliothequeEnseignant from './pages/page_enseignant/BibliothequeEnseignant';
+import AgendaEnseignant from './pages/page_enseignant/AgendaEnseignant';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +77,15 @@ function EnseignantRoutes() {
     <Routes>
       <Route path="login-enseignant" element={<LoginEnseignant />} />
       <Route path="forgot-password-teacher" element={<ForgotPasswordProf />} />
+      <Route path="dashboard" element={<Dashboard />} />
+      <Route path="etudiant" element={<Etudiant />} />
+      <Route path="mention" element={<MentionEnseignant />} />
+      <Route path="bibliotheque" element={<BibliothequeEnseignant />} />
+      <Route path="agenda" element={<AgendaEnseignant />} />
+      <Route path="coursEnseignant/:mentionId" element={<CoursEnseignant />} />
+      <Route path="coursEnseignant/:mentionId/:semestreId" element={<CoursEnseignant />} />
+      <Route path="coursEnseignant/:mentionId/:semestreId/:coursId" element={<DescriptionCoursEnseignant />} />
+      <Route path="coursEnseignant/:mentionId/:semestreId/:coursId/ajouter-support" element={<AjoutSupport />} />
     </Routes>
   );
 }

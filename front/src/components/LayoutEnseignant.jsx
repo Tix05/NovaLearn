@@ -1,8 +1,8 @@
 import React from 'react';
-import Sidebar from '../components/Sidebar';
-import Navbar from '../components/Navbar';
+import Sidebar from '../components/SidebarEnseignant';
+import Navbar from '../components/NavbarEnseignant';
 
-const Layout = ({ children }) => {
+const LayoutEnseignant = ({ children }) => {
     return (
         <div className="flex h-screen">
             <Sidebar />
@@ -16,4 +16,4 @@ const Layout = ({ children }) => {
     );
 };
 
-export default Layout;
+export default LayoutEnseignant;

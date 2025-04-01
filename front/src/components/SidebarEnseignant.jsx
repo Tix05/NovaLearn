@@ -2,41 +2,43 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/images/logo-principale.png';
 import { Avatar } from 'primereact/avatar';
-import { PiChalkboardTeacher } from "react-icons/pi";
-import { MdOutlineLibraryBooks, MdOutlineViewAgenda, MdOutlineMessage } from "react-icons/md";
-import { IoLibraryOutline } from "react-icons/io5";
-import { BiMenuAltLeft } from 'react-icons/bi';
+import { RiDashboard2Line } from "react-icons/ri";
+import { BiMenuAltLeft } from "react-icons/bi";
+import { PiStudent } from 'react-icons/pi';
+import { MdOutlineLibraryBooks, MdOutlineViewAgenda } from 'react-icons/md';
+import { IoLibraryOutline } from 'react-icons/io5';
 
 
 const menuItems = [
     {
-        to: '/etudiant/enseignant',
-        icons: <PiChalkboardTeacher size={25} />,
-        label: 'Mes enseignant'
+        to: '/enseignant/dashboard',
+        icons: <RiDashboard2Line size={25} />,
+        label: 'Tableau de bord'
     },
     {
-        to: ['/etudiant/mention', '/etudiant/cours/:mentionId', '/etudiant/cours/:mentionId/:semestreId', '/etudiant/cours/:mentionId/:semestreId/:coursId'],
+        to: '/enseignant/etudiant',
+        icons: <PiStudent size={25} />,
+        label: 'Mes étudiants'
+    },
+    {
+        to: ['/enseignant/mention', '/enseignant/coursEnseignant/:mentionId', '/enseignant/coursEnseignant/:mentionId/:semestreId', '/enseignant/coursEnseignant/:mentionId/:semestreId/:coursId'],
         icons: <MdOutlineLibraryBooks size={25} />,
         label: 'Mes mentions'
     },
     {
-        to: '/etudiant/bibliotheque',
+        to: '/enseignant/bibliotheque',
         icons: <IoLibraryOutline size={25} />,
         label: 'Bibliothèque'
     },
     {
-        to: '/etudiant/agenda',
+        to: '/enseignant/agenda',
         icons: <MdOutlineViewAgenda size={25} />,
         label: 'Mon agenda'
     },
-    {
-        to: '/etudiant/message',
-        icons: <MdOutlineMessage size={25} />,
-        label: 'Message'
-    }
+
 ];
 
-export default function Sidebar() {
+export default function SidebarEnseignant() {
     const [open, setOpen] = useState(true);
     const location = useLocation();
 

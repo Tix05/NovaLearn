@@ -1,7 +1,6 @@
 import React from 'react';
 import Layout from '../../components/Layout';
 import { Divider } from 'primereact/divider';
-import icon from '../../../public/images/icon-communication.png';
 import { Link } from 'react-router-dom';
 import { FaRegEye } from 'react-icons/fa';
 import { mentions } from '../../../public/constants/data';
@@ -9,7 +8,7 @@ import { mentions } from '../../../public/constants/data';
 const Mention = () => {
     return (
         <Layout>
-            <div className='w-full text-gray-800'>
+            <div className='w-full text-gray-800 overflow-x-hidden custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='p-4 text-3xl font-normal'>Mes mentions</h1>
                 <div className='grid grid-cols-2 gap-5 p-5 justify-center'>
                     {mentions.map((mention) => (
