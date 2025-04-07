@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import LayoutEnseignant from '../../components/LayoutEnseignant';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { Divider } from 'primereact/divider';
 import { IoIosDocument } from 'react-icons/io';
 import { DataTable } from 'primereact/datatable';
@@ -10,18 +10,19 @@ import { InputIcon } from 'primereact/inputicon';
 import { Button } from 'primereact/button';
 import { FaFileAudio, FaFileVideo, FaTrash, FaDownload } from 'react-icons/fa6';
 import { useParams } from 'react-router-dom';
-import { mentions } from '../../../public/constants/data2';
+import { mentions } from '../../../public/constants/data';
 import { Toast } from 'primereact/toast';
 
-const DescriptionCoursEnseignant = () => {
-    const { mentionId, semestreId, coursId } = useParams();
+const DescriptionCoursAdmin = () => {
+    const { mentionId, niveauId, semestreId, coursId } = useParams();
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [description, setDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const toast = useRef(null);
 
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const semestre = mention?.semestres.find((s) => s.id === semestreId);
+    const niveau = mention?.niveaux.find((n) => n.id === niveauId);
+    const semestre = niveau?.semestres.find((s) => s.id === semestreId);
     const cours = semestre?.cours.find((c) => c.id === parseInt(coursId));
 
     useEffect(() => {
@@ -102,13 +103,13 @@ const DescriptionCoursEnseignant = () => {
     };
 
     return (
-        <LayoutEnseignant>
+        <LayoutAdmin>
             <Toast
                 ref={toast}
                 position='bottom-right'
             />
             <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className='text-3xl font-normal p-3'>Détails du cours {cours?.titre}</h1>
+                <h1 className='text-3xl font-semibold p-5'>Détails du cours {cours?.titre}</h1>
 
                 {/* Section description */}
                 <div className='flex flex-col shadow-md m-5 border-[1px] rounded-lg'>
@@ -171,8 +172,8 @@ const DescriptionCoursEnseignant = () => {
                     );
                 })}
             </div>
-        </LayoutEnseignant>
+        </LayoutAdmin>
     );
 };
 
-export default DescriptionCoursEnseignant;
+export default DescriptionCoursAdmin;

@@ -16,6 +16,13 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'documents':
+                return (
+                    <div className="p-4 md:p-6">
+                        <h2 className="text-xl font-semibold mb-4">Mes Documents</h2>
+                        <p className="text-gray-600">Aucun document disponible pour le moment.</p>
+                    </div>
+                );
             case 'password':
                 return (
                     <form className="p-2 md:p-4" onSubmit={(e) => e.preventDefault()}>
@@ -199,6 +206,15 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
                                                 Mes informations
                                             </button>
                                             <button
+                                                onClick={() => setActiveTab('documents')}
+                                                className={`${activeTab === 'documents'
+                                                    ? 'border-red-800 text-red-800'
+                                                    : 'text-gray-500 hover:text-gray-700'
+                                                    } whitespace-nowrap py-4 px-4 sm:px-6 border-b-2 font-medium text-sm sm:text-base`}
+                                            >
+                                                Mes Documents
+                                            </button>
+                                            <button
                                                 onClick={() => setActiveTab('password')}
                                                 className={`${activeTab === 'password'
                                                     ? 'border-red-800 text-red-800'
@@ -220,7 +236,7 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
     );
 };
 
-const NavbarEnseignant = () => {
+const NavbarAdmin = () => {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
     const [showMessageDropdown, setShowMessageDropdown] = useState(false);
@@ -238,12 +254,12 @@ const NavbarEnseignant = () => {
         photo: ''
     });
 
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         setCurrentTime(new Date());
-    //     }, 60000);
-    //     return () => clearInterval(interval);
-    // }, []);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const [messages, setMessages] = useState([
         { id: 1, user: 'Koto', group: 'Gestion L1', content: 'Bonjour à tous', time: new Date(Date.now() - 3 * 60 * 1000) },
@@ -400,4 +416,4 @@ const NavbarEnseignant = () => {
     );
 };
 
-export default NavbarEnseignant;
+export default NavbarAdmin;

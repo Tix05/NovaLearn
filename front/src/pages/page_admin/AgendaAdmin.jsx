@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
-import LayoutEnseignant from '../../components/LayoutEnseignant';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
@@ -9,8 +9,10 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Calendar } from 'primereact/calendar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Toast } from 'primereact/toast';
+import { confirmDialog } from 'primereact/confirmdialog';
 
-export default function AgendaEnseignant() {
+export default function AgendaAdmin() {
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [agendaForm, setAgendaForm] = useState({
@@ -21,6 +23,20 @@ export default function AgendaEnseignant() {
         type: 'cours'
     });
 
+    const [coursData, setCoursData] = useState([
+        { id: 1, titre: 'Cours de Mathématiques', date: '2023-10-24', description: '../../../public/images/icon-esum.png', professeur: 'Prof. Dupont' },
+        { id: 2, titre: 'Cours de Physique', date: '2023-10-25', description: 'Lorem ipsum dolor sit amet...', professeur: 'Prof. Martin' },
+    ]);
+
+    const [examensData, setExamensData] = useState([
+        { id: 1, titre: 'Examen de Mathématiques', date: '2023-11-10', description: 'Examen final', professeur: 'Prof. Dupont' },
+    ]);
+
+    const [evenementsData, setEvenementsData] = useState([
+        { id: 1, titre: 'Conférence sur l\'IA', date: '2023-10-30', description: 'Conférence avec un expert en IA', organisateur: 'Dr. Smith' },
+    ]);
+
+    const toast = useRef(null);
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
         { label: 'Semaine', value: 'Semaine' },
@@ -33,19 +49,6 @@ export default function AgendaEnseignant() {
         { label: 'Cours', value: 'cours' },
         { label: 'Examen', value: 'examen' },
         { label: 'Évènement', value: 'evenement' }
-    ];
-
-    const coursData = [
-        { id: 1, titre: 'Cours de Mathématiques', date: '2023-10-24', description: '../../../public/images/icon-esum.png', professeur: 'Prof. Dupont' },
-        { id: 2, titre: 'Cours de Physique', date: '2023-10-25', description: 'Lorem ipsum dolor sit amet...', professeur: 'Prof. Martin' },
-    ];
-
-    const examensData = [
-        { id: 1, titre: 'Examen de Mathématiques', date: '2023-11-10', description: 'Examen final', professeur: 'Prof. Dupont' },
-    ];
-
-    const evenementsData = [
-        { id: 1, titre: 'Conférence sur l\'IA', date: '2023-10-30', description: 'Conférence avec un expert en IA', organisateur: 'Dr. Smith' },
     ];
 
     const filterData = (data) => {
@@ -86,8 +89,36 @@ export default function AgendaEnseignant() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log('Nouvel agenda:', agendaForm);
-        // Ajouter la logique pour sauvegarder l'agenda
+
+        const newItem = {
+            id: Math.max(...[...coursData, ...examensData, ...evenementsData].map(i => i.id)) + 1,
+            titre: agendaForm.titre,
+            date: agendaForm.date.toISOString().split('T')[0],
+            description: agendaForm.description,
+            ...(agendaForm.lien && { lien: agendaForm.lien }),
+            ...(agendaForm.type === 'cours' && { professeur: 'Nouveau Professeur' }),
+            ...(agendaForm.type === 'evenement' && { organisateur: 'Nouvel Organisateur' })
+        };
+
+        switch (agendaForm.type) {
+            case 'cours':
+                setCoursData([...coursData, newItem]);
+                break;
+            case 'examen':
+                setExamensData([...examensData, newItem]);
+                break;
+            case 'evenement':
+                setEvenementsData([...evenementsData, newItem]);
+                break;
+        }
+
+        toast.current.show({
+            severity: 'success',
+            summary: 'Succès',
+            detail: 'Élément ajouté à l\'agenda',
+            life: 3000
+        });
+
         setShowCreateDialog(false);
         setAgendaForm({
             titre: '',
@@ -98,8 +129,49 @@ export default function AgendaEnseignant() {
         });
     };
 
-    const renderItem = (item) => (
-        <div key={item.id} className='flex border-2 border-gray-400 mb-4 w-[100%] md:w-[80%] rounded-sm'>
+    const confirmDelete = (type, id) => {
+        confirmDialog({
+            message: 'Êtes-vous sûr de vouloir supprimer cet élément ?',
+            header: 'Confirmation de suppression',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Oui',
+            rejectLabel: 'Non',
+            accept: () => deleteItem(type, id),
+            acceptClassName: 'p-button-danger'
+        });
+    };
+
+    const deleteItem = (type, id) => {
+        switch (type) {
+            case 'cours':
+                setCoursData(coursData.filter(item => item.id !== id));
+                break;
+            case 'examen':
+                setExamensData(examensData.filter(item => item.id !== id));
+                break;
+            case 'evenement':
+                setEvenementsData(evenementsData.filter(item => item.id !== id));
+                break;
+        }
+
+        toast.current.show({
+            severity: 'success',
+            summary: 'Succès',
+            detail: 'Élément supprimé de l\'agenda',
+            life: 3000
+        });
+    };
+
+    const renderItem = (item, type) => (
+        <div key={item.id} className='flex border-2 border-gray-400 mb-4 w-[100%] md:w-[80%] rounded-sm relative'>
+            {/* Bouton de suppression */}
+            <button
+                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                onClick={() => confirmDelete(type, item.id)}
+            >
+                <i className="pi pi-trash"></i>
+            </button>
+
             <div className='flex flex-col text-4xl items-center p-5 flex-shrink-0'>
                 <h1 className='font-bold'>{new Date(item.date).getDate()}</h1>
                 <h1 className='font-normal'>{new Date(item.date).toLocaleString('default', { month: 'long' })}</h1>
@@ -144,20 +216,21 @@ export default function AgendaEnseignant() {
     );
 
     return (
-        <LayoutEnseignant>
+        <LayoutAdmin>
+            <Toast ref={toast} />
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <TabView className='custom-tabview'>
                     <TabPanel header="Cours" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(coursData).map(renderItem)}
+                        {filterData(coursData).map(item => renderItem(item, 'cours'))}
                     </TabPanel>
                     <TabPanel header="Examens" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(examensData).map(renderItem)}
+                        {filterData(examensData).map(item => renderItem(item, 'examen'))}
                     </TabPanel>
                     <TabPanel header="Evènements" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(evenementsData).map(renderItem)}
+                        {filterData(evenementsData).map(item => renderItem(item, 'evenement'))}
                     </TabPanel>
                 </TabView>
 
@@ -280,6 +353,6 @@ export default function AgendaEnseignant() {
                     )}
                 </AnimatePresence>
             </div>
-        </LayoutEnseignant >
+        </LayoutAdmin >
     );
 }

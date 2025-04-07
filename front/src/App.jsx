@@ -24,6 +24,19 @@ import DescriptionCoursEnseignant from './pages/page_enseignant/DescriptionCours
 import AjoutSupport from './pages/page_enseignant/AjoutSupport';
 import BibliothequeEnseignant from './pages/page_enseignant/BibliothequeEnseignant';
 import AgendaEnseignant from './pages/page_enseignant/AgendaEnseignant';
+import MessageEnseignant from './pages/page_enseignant/MessageEnseignant';
+import LoginAdmin from './pages/page_admin/LoginAdmin';
+import ForgotPasswordAdmin from './pages/page_admin/ForgotPasswordAdmin';
+import DashboardAdmin from './pages/page_admin/DashboardAdmin';
+import Setting from './pages/page_admin/Setting';
+import MentionAdmin from './pages/page_admin/MentionAdmin';
+import NiveauEtParcour from './pages/page_admin/NiveauEtParcour';
+import CoursAdmin from './pages/page_admin/CoursAdmin';
+import DescriptionCoursAdmin from './pages/page_admin/DescriptionCoursAdmin';
+import GestionUser from './pages/page_admin/GestionUser';
+import BibliothequeAdmin from './pages/page_admin/BibliothequeAdmin';
+import AgendaAdmin from './pages/page_admin/AgendaAdmin';
+import MessageAdmin from './pages/page_admin/MessageAdmin';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +59,7 @@ function App() {
           <Route path="/" element={<Acceuil />} />
           <Route path="/etudiant/*" element={<EtudiantRoutes />} />
           <Route path="/enseignant/*" element={<EnseignantRoutes />} />
+          <Route path="/admin/*" element={<AdminRoutes />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </body>
@@ -82,10 +96,30 @@ function EnseignantRoutes() {
       <Route path="mention" element={<MentionEnseignant />} />
       <Route path="bibliotheque" element={<BibliothequeEnseignant />} />
       <Route path="agenda" element={<AgendaEnseignant />} />
+      <Route path="message" element={<MessageEnseignant />} />
       <Route path="coursEnseignant/:mentionId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId/:coursId" element={<DescriptionCoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId/:coursId/ajouter-support" element={<AjoutSupport />} />
+    </Routes>
+  );
+}
+
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route path="login" element={<LoginAdmin />} />
+      <Route path="dashboard" element={<DashboardAdmin />} />
+      <Route path="forgot-password" element={<ForgotPasswordAdmin />} />
+      <Route path="setting" element={<Setting />} />
+      <Route path="user-management" element={<GestionUser />} />
+      <Route path="bibliotheque" element={<BibliothequeAdmin />} />
+      <Route path="agenda" element={<AgendaAdmin />} />
+      <Route path="message" element={<MessageAdmin />} />
+      <Route path="mentions" element={<MentionAdmin />} />
+      <Route path="mentions/:mentionId/niveaux" element={<NiveauEtParcour />} />
+      <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours" element={<CoursAdmin />} />
+      <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours/:coursId" element={<DescriptionCoursAdmin />} />
     </Routes>
   );
 }

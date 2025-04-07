@@ -3,7 +3,7 @@ import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { Divider } from 'primereact/divider';
 import { Link } from 'react-router-dom';
 import { FaRegEye } from 'react-icons/fa';
-import { mentions } from '../../../public/constants/data';
+import { mentions } from '../../../public/constants/data2';
 
 const MentionEnseignant = () => {
     return (

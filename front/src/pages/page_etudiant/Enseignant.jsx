@@ -5,6 +5,7 @@ import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import Layout from '../../components/Layout';
+import { Button } from 'primereact/button';
 
 
 export default function Enseignant() {
@@ -51,13 +52,21 @@ export default function Enseignant() {
 
     const header = renderHeader();
 
+    const actionBodyTemplate = (rowData) => {
+        return (
+            <Button icon="pi pi-send" rounded severity="success" tooltip="Envoyer message"
+                tooltipOptions={{ position: 'top' }} />
+        );
+    };
+
     return (
         <Layout>
             <div>
-                <DataTable value={data} paginator rows={7} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={header} emptyMessage="Aucune donnée trouvée.">
+                <DataTable value={data} paginator rows={5} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={header} emptyMessage="Aucune donnée trouvée.">
                     <Column field="nom" header="Nom et Prénom" sortable style={{ minWidth: '5rem' }} />
                     <Column field="ec" header="EC" sortable style={{ minWidth: '5rem' }} />
                     <Column field="niveau" header="Niveau" sortable style={{ minWidth: '5rem' }} />
+                    <Column body={actionBodyTemplate} style={{ minWidth: '5rem' }} />
                 </DataTable>
             </div>
         </Layout>

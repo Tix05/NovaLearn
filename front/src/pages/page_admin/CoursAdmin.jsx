@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import Layout from '../../components/Layout';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { Link, useParams } from 'react-router-dom';
 import { Divider } from 'primereact/divider';
-import { mentions } from '../../../public/constants/data2';
+import { mentions } from '../../../public/constants/data';
 
-export default function Cours() {
-    const { mentionId } = useParams();
+export default function CoursAdmin() {
+    const { mentionId, niveauId } = useParams();
     const [selectedSemestre, setSelectedSemestre] = useState(null);
 
+    // Trouver la mention et le niveau correspondant
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const semestres = mention?.semestres || [];
+    const niveau = mention?.niveaux?.find((n) => n.id === niveauId);
+    const semestres = niveau?.semestres || [];
 
     useEffect(() => {
         if (semestres.length > 0) {
@@ -25,22 +26,17 @@ export default function Cours() {
 
     const semestre = semestres.find((s) => s.id === selectedSemestre);
     const data = semestre?.cours || [];
-
     const [globalFilterValue, setGlobalFilterValue] = useState('');
-
-    const onGlobalFilterChange = (e) => {
-        setGlobalFilterValue(e.target.value);
-    };
 
     const renderHeader = () => {
         return (
             <div className="flex flex-col">
-                <h1 className='text-3xl font-normal'>{mention?.nom} - {mention?.niveau}</h1>
+                <h1 className='text-3xl font-normal'>{mention?.nom} - {niveau?.nom}</h1>
                 <div className="flex items-center py-4 space-x-5">
                     {semestres.map((s) => (
                         <Link
                             key={s.id}
-                            to={`/etudiant/cours/${mentionId}/${s.id}`}
+                            to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${s.id}/cours`}
                             className={`pb-2 transition duration-400 ${selectedSemestre === s.id
                                 ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
                                 : "text-gray-600 hover:text-blue-500"
@@ -51,13 +47,16 @@ export default function Cours() {
                         </Link>
                     ))}
                 </div>
-
                 <Divider />
                 <div className='flex justify-between items-center'>
-                    <h1>Parcours : {mention?.parcours}</h1>
+                    <h1>Parcours : {niveau?.parcours}</h1>
                     <IconField iconPosition="left">
                         <InputIcon className="pi pi-search" />
-                        <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
+                        <InputText
+                            value={globalFilterValue}
+                            onChange={(e) => setGlobalFilterValue(e.target.value)}
+                            placeholder="Rechercher..."
+                        />
                     </IconField>
                 </div>
             </div>
@@ -74,23 +73,28 @@ export default function Cours() {
 
     const actionBodyTemplate = (rowData) => {
         return (
-            <Link to={`/etudiant/cours/${mentionId}/${selectedSemestre}/${rowData.id}`} className='bg-[#39B54A] px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'>
-                Suivre le cours
+            <Link
+                to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${selectedSemestre}/cours/${rowData.id}`}
+                className='bg-[#39B54A] px-3 py-2 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
+            >
+                Visualiser le cours
             </Link>
         );
     };
 
-    const header = renderHeader();
-
     return (
-        <Layout>
-            <div>
-                <DataTable value={data} paginator rows={4} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={header} emptyMessage="Aucune donnée trouvée.">
-                    <Column field="titre" header="EC" sortable style={{ minWidth: '5rem' }} />
-                    <Column field="credit" header="Crédit" sortable body={creditBodyTemplate} style={{ minWidth: '5rem' }} />
-                    <Column field="action" header="Action" body={actionBodyTemplate} style={{ minWidth: '5rem' }} />
-                </DataTable>
-            </div>
-        </Layout>
+        <LayoutAdmin>
+            <DataTable
+                value={data}
+                paginator
+                rows={5}
+                header={renderHeader()}
+                emptyMessage="Aucun cours trouvé"
+            >
+                <Column field="titre" header="EC" sortable />
+                <Column field="credit" header="Crédit" body={creditBodyTemplate} />
+                <Column body={actionBodyTemplate} header="Actions" />
+            </DataTable>
+        </LayoutAdmin>
     );
 }

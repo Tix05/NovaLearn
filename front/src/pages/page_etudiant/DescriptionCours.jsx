@@ -10,7 +10,7 @@ import { InputIcon } from 'primereact/inputicon';
 import { Button } from 'primereact/button';
 import { FaFileAudio, FaFileVideo } from 'react-icons/fa6';
 import { useParams } from 'react-router-dom';
-import { mentions } from '../../../public/constants/data';
+import { mentions } from '../../../public/constants/data2';
 
 const DescriptionCours = () => {
     const { mentionId, semestreId, coursId } = useParams();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
@@ -9,12 +9,14 @@ import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { motion, AnimatePresence } from 'framer-motion';
-import LayoutEnseignant from '../../components/LayoutEnseignant';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { X } from 'lucide-react';
 import { InputSwitch } from "primereact/inputswitch";
+import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
 
-export default function BibliothequeEnseignant() {
-    const [data] = useState([
+export default function BibliothequeAdmin() {
+    const [data, setData] = useState([
         { id: 1, titre: 'Livre 1', mention: 'Mathématiques', niveau: 'Licence 1', categorie: 'Science' },
         { id: 2, titre: 'Livre 2', mention: 'Physique', niveau: 'Master 2', categorie: 'Science' },
         { id: 3, titre: 'Livre 3', mention: 'Informatique', niveau: 'Licence 3', categorie: 'Technologie' },
@@ -27,6 +29,9 @@ export default function BibliothequeEnseignant() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [availableSemestres, setAvailableSemestres] = useState([]);
     const [checked, setChecked] = useState(false);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const toast = useRef(null);
 
     // Form data state
     const [formData, setFormData] = useState({
@@ -149,9 +154,73 @@ export default function BibliothequeEnseignant() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log('Form data:', formData);
-        // Handle form submission here
+
+        // Création d'un nouvel élément
+        const newItem = {
+            id: data.length > 0 ? Math.max(...data.map(item => item.id)) + 1 : 1,
+            titre: formData.titre,
+            mention: formData.mention,
+            niveau: formData.niveau,
+            categorie: 'Nouvelle catégorie' // Vous pouvez adapter ceci
+        };
+
+        // Ajout à la liste
+        setData([...data, newItem]);
+
+        // Réinitialisation du formulaire
+        setFormData({
+            mention: '',
+            niveau: '',
+            semestre: '',
+            parcours: '',
+            ec: '',
+            type: '',
+            titre: '',
+            description: '',
+            file: null
+        });
+
+        // Fermeture du dialogue
         setShowCreateDialog(false);
+
+        // Affichage du toast
+        toast.current.show({
+            severity: 'success',
+            summary: 'Succès',
+            detail: 'Le document a été ajouté avec succès',
+            life: 3000
+        });
+    };
+
+    const confirmDelete = (item) => {
+        setSelectedItem(item);
+        setDeleteDialogVisible(true);
+    };
+
+    const deleteItem = () => {
+        setData(data.filter(item => item.id !== selectedItem.id));
+        setDeleteDialogVisible(false);
+
+        toast.current.show({
+            severity: 'success',
+            summary: 'Succès',
+            detail: 'Le document a été supprimé avec succès',
+            life: 3000
+        });
+    };
+
+    const handleDownload = (filename) => {
+        const link = document.createElement('a');
+        link.href = `/path/to/supports/${filename}`;
+        link.download = filename;
+        link.click();
+
+        toast.current.show({
+            severity: 'info',
+            summary: 'Téléchargement',
+            detail: 'Le téléchargement a commencé',
+            life: 3000
+        });
     };
 
     const filteredData = data.filter(item =>
@@ -178,17 +247,11 @@ export default function BibliothequeEnseignant() {
     const actionBodyTemplate = (rowData) => {
         return (
             <div className='flex items-center gap-x-2'>
-                <Button icon="pi pi-download" rounded severity="secondary" onClick={() => handleDownload(rowData.nom)} />
-                <Button icon="pi pi-eye" rounded severity="success" onClick={() => handleDownload(rowData.nom)} />
+                <Button icon="pi pi-download" rounded severity="secondary" onClick={() => handleDownload(rowData.titre)} />
+                <Button icon="pi pi-eye" rounded severity="success" onClick={() => handleDownload(rowData.titre)} />
+                <Button icon="pi pi-trash" rounded severity="danger" onClick={() => confirmDelete(rowData)} />
             </div>
         );
-    };
-
-    const handleDownload = (filename) => {
-        const link = document.createElement('a');
-        link.href = `/path/to/supports/${filename}`;
-        link.download = filename;
-        link.click();
     };
 
     const renderHeader = () => {
@@ -234,8 +297,16 @@ export default function BibliothequeEnseignant() {
         );
     };
 
+    const deleteDialogFooter = (
+        <>
+            <Button label="Non" icon="pi pi-times" onClick={() => setDeleteDialogVisible(false)} className="p-button-text" />
+            <Button label="Oui" icon="pi pi-check" onClick={deleteItem} severity="danger" />
+        </>
+    );
+
     return (
-        <LayoutEnseignant>
+        <LayoutAdmin>
+            <Toast ref={toast} />
             <div className="relative">
                 <DataTable
                     value={filteredData}
@@ -253,6 +324,25 @@ export default function BibliothequeEnseignant() {
                     <Column field="categorie" header="Catégorie" sortable style={{ minWidth: '10rem' }} />
                     <Column body={actionBodyTemplate} header="Action" sortable style={{ minWidth: '10rem' }} />
                 </DataTable>
+
+                {/* Dialog de suppression */}
+                <Dialog
+                    visible={deleteDialogVisible}
+                    style={{ width: '450px' }}
+                    header="Confirmation"
+                    modal
+                    footer={deleteDialogFooter}
+                    onHide={() => setDeleteDialogVisible(false)}
+                >
+                    <div className="flex align-items-center justify-content-center">
+                        <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem', color: '#f8bb86' }} />
+                        {selectedItem && (
+                            <span>
+                                Êtes-vous sûr de vouloir supprimer <b>{selectedItem.titre}</b> ?
+                            </span>
+                        )}
+                    </div>
+                </Dialog>
 
                 {/* Modal de création avec animation Framer Motion */}
                 <AnimatePresence>
@@ -472,6 +562,6 @@ export default function BibliothequeEnseignant() {
                     )}
                 </AnimatePresence>
             </div>
-        </LayoutEnseignant>
+        </LayoutAdmin>
     );
 }

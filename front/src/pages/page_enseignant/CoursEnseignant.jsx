@@ -8,9 +8,9 @@ import { InputIcon } from 'primereact/inputicon';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { Link, useParams } from 'react-router-dom';
 import { Divider } from 'primereact/divider';
-import { mentions } from '../../../public/constants/data';
+import { mentions } from '../../../public/constants/data2';
 
-export default function Cours() {
+export default function CoursEnseignant() {
     const { mentionId } = useParams();
     const [selectedSemestre, setSelectedSemestre] = useState(null);
 

@@ -2,49 +2,56 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/images/logo-principale.png';
 import { Avatar } from 'primereact/avatar';
-import { RiDashboard2Line } from "react-icons/ri";
-import { BiMenuAltLeft } from "react-icons/bi";
+import { BiMenuAltLeft } from 'react-icons/bi';
+import { RiDashboard2Line } from 'react-icons/ri';
+import { MdOutlineSettings, MdOutlineLibraryBooks, MdOutlineViewAgenda, MdOutlineMessage } from "react-icons/md";
 import { PiStudent } from 'react-icons/pi';
-import { MdOutlineLibraryBooks, MdOutlineViewAgenda, MdOutlineMessage } from 'react-icons/md';
 import { IoLibraryOutline } from 'react-icons/io5';
-
 
 const menuItems = [
     {
-        to: '/enseignant/dashboard',
+        to: '/admin/dashboard',
         icons: <RiDashboard2Line size={25} />,
         label: 'Tableau de bord'
     },
     {
-        to: '/enseignant/etudiant',
-        icons: <PiStudent size={25} />,
-        label: 'Mes étudiants'
+        to: '/admin/setting',
+        icons: <MdOutlineSettings size={25} />,
+        label: 'Paramètre'
     },
     {
-        to: ['/enseignant/mention', '/enseignant/coursEnseignant/:mentionId', '/enseignant/coursEnseignant/:mentionId/:semestreId', '/enseignant/coursEnseignant/:mentionId/:semestreId/:coursId'],
+        to: [
+            '/admin/mentions',
+            '/admin/mentions/:mentionId/semestres',
+            '/admin/mentions/:mentionId/semestres/:semestreId/cours',
+            '/admin/mentions/:mentionId/semestres/:semestreId/cours/:coursId'
+        ],
         icons: <MdOutlineLibraryBooks size={25} />,
-        label: 'Mes mentions'
+        label: 'Gestion des mentions',
     },
     {
-        to: '/enseignant/bibliotheque',
+        to: '/admin/user-management',
+        icons: <PiStudent size={25} />,
+        label: 'Gestion des usagers'
+    },
+    {
+        to: '/admin/bibliotheque',
         icons: <IoLibraryOutline size={25} />,
         label: 'Bibliothèque'
     },
     {
-        to: '/enseignant/agenda',
+        to: '/admin/agenda',
         icons: <MdOutlineViewAgenda size={25} />,
         label: 'Mon agenda'
     },
     {
-        to: '/enseignant/message',
+        to: '/admin/message',
         icons: <MdOutlineMessage size={25} />,
         label: 'Message'
     }
+]
 
-
-];
-
-export default function SidebarEnseignant() {
+export default function Sidebar() {
     const [open, setOpen] = useState(true);
     const location = useLocation();
 
