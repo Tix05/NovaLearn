@@ -37,6 +37,7 @@ import GestionUser from './pages/page_admin/GestionUser';
 import BibliothequeAdmin from './pages/page_admin/BibliothequeAdmin';
 import AgendaAdmin from './pages/page_admin/AgendaAdmin';
 import MessageAdmin from './pages/page_admin/MessageAdmin';
+import GestionExamen from './pages/page_admin/GestionExamen';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -113,6 +114,7 @@ function AdminRoutes() {
       <Route path="forgot-password" element={<ForgotPasswordAdmin />} />
       <Route path="setting" element={<Setting />} />
       <Route path="user-management" element={<GestionUser />} />
+      <Route path="exam-management" element={<GestionExamen />} />
       <Route path="bibliotheque" element={<BibliothequeAdmin />} />
       <Route path="agenda" element={<AgendaAdmin />} />
       <Route path="message" element={<MessageAdmin />} />

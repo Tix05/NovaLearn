@@ -5,7 +5,7 @@ import { Avatar } from 'primereact/avatar';
 import { BiMenuAltLeft } from 'react-icons/bi';
 import { RiDashboard2Line } from 'react-icons/ri';
 import { MdOutlineSettings, MdOutlineLibraryBooks, MdOutlineViewAgenda, MdOutlineMessage } from "react-icons/md";
-import { PiStudent } from 'react-icons/pi';
+import { PiStudent, PiExamBold } from 'react-icons/pi';
 import { IoLibraryOutline } from 'react-icons/io5';
 
 const menuItems = [
@@ -33,6 +33,11 @@ const menuItems = [
         to: '/admin/user-management',
         icons: <PiStudent size={25} />,
         label: 'Gestion des usagers'
+    },
+    {
+        to: '/admin/exam-management',
+        icons: <PiExamBold size={25} />,
+        label: 'Gestion des examens'
     },
     {
         to: '/admin/bibliotheque',

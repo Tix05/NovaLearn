@@ -24,6 +24,12 @@ const GestionUser = () => {
     const [activeDialogTab, setActiveDialogTab] = useState(0);
     const toast = React.useRef(null);
 
+    const roleOptions = [
+        { label: 'Administrateur', value: 'admin' },
+        { label: 'Super Administrateur', value: 'super_admin' },
+        { label: 'Gestionnaire', value: 'manager' }
+    ];
+
     // Options pour les dropdowns
     const paymentTypes = [
         { label: 'Espèces', value: 'especes' },
@@ -146,8 +152,17 @@ const GestionUser = () => {
         { id: 10, photo: 'https://randomuser.me/api/portraits/women/10.jpg', nom: 'Faure', prenom: 'Sandrine', email: 'sandrine.faure@email.com', telephone: '06 01 23 45 67', centreRegional: 'kaolack', statut: true }
     ];
 
+    const initialAdmins = [
+        { id: 1, photo: 'https://randomuser.me/api/portraits/men/11.jpg', nom: 'Admin', prenom: 'Super', email: 'super.admin@email.com', telephone: '06 11 22 33 44', centreRegional: 'dakar', role: 'super_admin', statut: true },
+        { id: 2, photo: 'https://randomuser.me/api/portraits/women/11.jpg', nom: 'Admin', prenom: 'Principal', email: 'admin.principal@email.com', telephone: '06 22 33 44 55', centreRegional: 'thies', role: 'admin', statut: true },
+        { id: 3, photo: 'https://randomuser.me/api/portraits/men/12.jpg', nom: 'Gestionnaire', prenom: 'Campus', email: 'gestion.campus@email.com', telephone: '06 33 44 55 66', centreRegional: 'saint_louis', role: 'manager', statut: true },
+        { id: 4, photo: 'https://randomuser.me/api/portraits/women/12.jpg', nom: 'Responsable', prenom: 'Finances', email: 'finances@email.com', telephone: '06 44 55 66 77', centreRegional: 'ziguinchor', role: 'manager', statut: false },
+        { id: 5, photo: 'https://randomuser.me/api/portraits/men/13.jpg', nom: 'Coordinateur', prenom: 'Regional', email: 'coord.regional@email.com', telephone: '06 55 66 77 88', centreRegional: 'kaolack', role: 'manager', statut: true }
+    ];
+
     const [dataStudent, setDataStudent] = useState(initialStudents);
     const [dataTeacher, setDataTeacher] = useState(initialTeachers);
+    const [dataAdmin, setDataAdmin] = useState(initialAdmins);
     const [user, setUser] = useState({
         photo: '',
         matricule: '',
@@ -268,9 +283,11 @@ const GestionUser = () => {
             };
 
             if (activeTab === 0) {
-                setDataStudent(dataStudent.map(u => u.id === user.id ? updatedUser : u));
+                setDataStudent([...dataStudent, newUser]);
+            } else if (activeTab === 1) {
+                setDataTeacher([...dataTeacher, newUser]);
             } else {
-                setDataTeacher(dataTeacher.map(u => u.id === user.id ? updatedUser : u));
+                setDataAdmin([...dataAdmin, newUser]);
             }
 
             toast.current.show({
@@ -292,8 +309,10 @@ const GestionUser = () => {
     const deleteUser = () => {
         if (activeTab === 0) {
             setDataStudent(dataStudent.filter(u => u.id !== selectedUser.id));
-        } else {
+        } else if (activeTab === 1) {
             setDataTeacher(dataTeacher.filter(u => u.id !== selectedUser.id));
+        } else {
+            setDataAdmin(dataAdmin.filter(u => u.id !== selectedUser.id));
         }
 
         toast.current.show({
@@ -311,8 +330,12 @@ const GestionUser = () => {
             setDataStudent(dataStudent.map(u =>
                 u.id === user.id ? { ...u, statut: newStatus } : u
             ));
-        } else {
+        } else if (activeTab === 1) {
             setDataTeacher(dataTeacher.map(u =>
+                u.id === user.id ? { ...u, statut: newStatus } : u
+            ));
+        } else {
+            setDataAdmin(dataAdmin.map(u =>
                 u.id === user.id ? { ...u, statut: newStatus } : u
             ));
         }
@@ -352,6 +375,23 @@ const GestionUser = () => {
         );
     };
 
+    const renderHeaderAdmin = () => {
+        return (
+            <div className="flex justify-between items-center">
+                <h1 className='text-3xl font-normal text-gray-800'>Administrateurs</h1>
+                <div className='flex items-center justify-center space-x-5'>
+                    <Button icon="pi pi-plus" rounded onClick={openNew}
+                        tooltip="Ajouter un administrateur" tooltipOptions={{ position: 'top' }} />
+                    <IconField iconPosition="left">
+                        <InputIcon className="pi pi-search" />
+                        <InputText value={globalFilterValue} onChange={onGlobalFilterChange}
+                            placeholder="Rechercher..." className='custom-input' />
+                    </IconField>
+                </div>
+            </div>
+        );
+    };
+
     const statusBodyTemplate = (rowData) => {
         return (
             <InputSwitch
@@ -360,6 +400,11 @@ const GestionUser = () => {
                 disabled
             />
         );
+    };
+
+    const roleTemplate = (rowData) => {
+        const role = roleOptions.find(r => r.value === rowData.role);
+        return <span>{role ? role.label : rowData.role}</span>;
     };
 
     const actionBodyTemplate = (rowData) => {
@@ -420,6 +465,7 @@ const GestionUser = () => {
 
     const headerStudent = renderHeaderStudent();
     const headerTeacher = renderHeaderTeacher();
+    const headerAdmin = renderHeaderAdmin();
 
     const onInputChange = (e, name) => {
         const val = (e.target && e.target.value) || '';
@@ -475,41 +521,78 @@ const GestionUser = () => {
                     {renderPhotoUpload()}
                 </div>
 
+                {/* Champ matricule visible seulement pour les étudiants */}
                 {activeTab === 0 && (
                     <div className="col-12">
                         <div className="field">
                             <label htmlFor="matricule">Matricule</label>
-                            <InputText id="matricule" value={user.matricule} onChange={(e) => onInputChange(e, 'matricule')} className='custom-input' required />
+                            <InputText
+                                id="matricule"
+                                value={user.matricule}
+                                onChange={(e) => onInputChange(e, 'matricule')}
+                                className='custom-input'
+                                required
+                            />
                         </div>
                     </div>
                 )}
 
+                {/* Champs communs à tous les utilisateurs */}
                 <div className="col-12">
                     <div className="field">
                         <label htmlFor="nom">Nom</label>
-                        <InputText id="nom" value={user.nom} onChange={(e) => onInputChange(e, 'nom')} className='custom-input' required autoFocus />
-                    </div>
-                </div>
-                <div className="col-12">
-                    <div className="field">
-                        <label htmlFor="prenom">Prénom</label>
-                        <InputText id="prenom" value={user.prenom} onChange={(e) => onInputChange(e, 'prenom')} className='custom-input' required />
-                    </div>
-                </div>
-                <div className="col-12">
-                    <div className="field">
-                        <label htmlFor="email">Email</label>
-                        <InputText id="email" value={user.email} onChange={(e) => onInputChange(e, 'email')} className='custom-input' required />
-                    </div>
-                </div>
-                <div className="col-12">
-                    <div className="field">
-                        <label htmlFor="telephone">Téléphone</label>
-                        <InputText id="telephone" value={user.telephone} onChange={(e) => onInputChange(e, 'telephone')} className='custom-input' required />
+                        <InputText
+                            id="nom"
+                            value={user.nom}
+                            onChange={(e) => onInputChange(e, 'nom')}
+                            className='custom-input'
+                            required
+                            autoFocus
+                        />
                     </div>
                 </div>
 
-                {activeTab === 0 ? (
+                <div className="col-12">
+                    <div className="field">
+                        <label htmlFor="prenom">Prénom</label>
+                        <InputText
+                            id="prenom"
+                            value={user.prenom}
+                            onChange={(e) => onInputChange(e, 'prenom')}
+                            className='custom-input'
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="col-12">
+                    <div className="field">
+                        <label htmlFor="email">Email</label>
+                        <InputText
+                            id="email"
+                            value={user.email}
+                            onChange={(e) => onInputChange(e, 'email')}
+                            className='custom-input'
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="col-12">
+                    <div className="field">
+                        <label htmlFor="telephone">Téléphone</label>
+                        <InputText
+                            id="telephone"
+                            value={user.telephone}
+                            onChange={(e) => onInputChange(e, 'telephone')}
+                            className='custom-input'
+                            required
+                        />
+                    </div>
+                </div>
+
+                {/* Champs spécifiques aux étudiants */}
+                {activeTab === 0 && (
                     <>
                         <div className="col-12 md:col-6">
                             <div className="field">
@@ -524,6 +607,7 @@ const GestionUser = () => {
                                 />
                             </div>
                         </div>
+
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="mention">Mention</label>
@@ -537,6 +621,7 @@ const GestionUser = () => {
                                 />
                             </div>
                         </div>
+
                         <div className="col-12">
                             <div className="field">
                                 <label htmlFor="parcours">Parcours</label>
@@ -551,35 +636,78 @@ const GestionUser = () => {
                                 />
                             </div>
                         </div>
+
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="typePaiement">Type de paiement</label>
-                                <Dropdown id="typePaiement" value={user.typePaiement} options={paymentTypes} optionLabel="label"
-                                    onChange={(e) => onDropdownChange(e, 'typePaiement')} placeholder="Sélectionner" className="w-full" />
+                                <Dropdown
+                                    id="typePaiement"
+                                    value={user.typePaiement}
+                                    options={paymentTypes}
+                                    optionLabel="label"
+                                    onChange={(e) => onDropdownChange(e, 'typePaiement')}
+                                    placeholder="Sélectionner"
+                                    className="w-full"
+                                />
                             </div>
                         </div>
+
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="referencePaiement">Référence paiement</label>
-                                <InputText id="referencePaiement" value={user.referencePaiement}
-                                    onChange={(e) => onInputChange(e, 'referencePaiement')} className='custom-input' />
+                                <InputText
+                                    id="referencePaiement"
+                                    value={user.referencePaiement}
+                                    onChange={(e) => onInputChange(e, 'referencePaiement')}
+                                    className='custom-input'
+                                />
                             </div>
                         </div>
                     </>
-                ) : null}
+                )}
 
+                {/* Champ spécifique aux administrateurs */}
+                {activeTab === 2 && (
+                    <div className="col-12">
+                        <div className="field">
+                            <label htmlFor="role">Rôle</label>
+                            <Dropdown
+                                id="role"
+                                value={user.role}
+                                options={roleOptions}
+                                optionLabel="label"
+                                onChange={(e) => onDropdownChange(e, 'role')}
+                                placeholder="Sélectionner un rôle"
+                                className="w-full"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Champ centre régional commun à tous */}
                 <div className="col-12">
                     <div className="field">
                         <label htmlFor="centreRegional">Centre régional</label>
-                        <Dropdown id="centreRegional" value={user.centreRegional} options={regionalCenters} optionLabel="label"
-                            onChange={(e) => onDropdownChange(e, 'centreRegional')} placeholder="Sélectionner" className="w-full" />
+                        <Dropdown
+                            id="centreRegional"
+                            value={user.centreRegional}
+                            options={regionalCenters}
+                            optionLabel="label"
+                            onChange={(e) => onDropdownChange(e, 'centreRegional')}
+                            placeholder="Sélectionner"
+                            className="w-full"
+                        />
                     </div>
                 </div>
 
+                {/* Champ statut commun à tous */}
                 <div className="col-12">
                     <div className="field flex items-center justify-start space-x-5">
                         <label htmlFor="statut">Statut</label>
-                        <InputSwitch checked={user.statut} onChange={(e) => setUser({ ...user, statut: e.value })} />
+                        <InputSwitch
+                            checked={user.statut}
+                            onChange={(e) => setUser({ ...user, statut: e.value })}
+                        />
                     </div>
                 </div>
             </div>
@@ -648,6 +776,18 @@ const GestionUser = () => {
                                 <Column field="nom" header="Nom et Prénom" body={nameBodyTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="email" header="Email" sortable style={{ minWidth: '5rem' }} />
                                 <Column field="telephone" header="Téléphone" sortable style={{ minWidth: '5rem' }} />
+                                <Column field="centreRegional" header="Centre" body={centerTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="statut" header="Statut" body={statusBodyTemplate} style={{ minWidth: '5rem' }} />
+                                <Column body={actionBodyTemplate} style={{ minWidth: '8rem' }} />
+                            </DataTable>
+                        </TabPanel>
+                        <TabPanel header="Liste des administrateurs" className='flex flex-col items-center'>
+                            <DataTable value={dataAdmin} paginator rows={7} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={headerAdmin} emptyMessage="Aucune donnée trouvée." className='w-full'>
+                                <Column field="photo" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
+                                <Column field="nom" header="Nom et Prénom" body={nameBodyTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="email" header="Email" sortable style={{ minWidth: '5rem' }} />
+                                <Column field="telephone" header="Téléphone" sortable style={{ minWidth: '5rem' }} />
+                                <Column field="role" header="Rôle" body={roleTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="centreRegional" header="Centre" body={centerTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="statut" header="Statut" body={statusBodyTemplate} style={{ minWidth: '5rem' }} />
                                 <Column body={actionBodyTemplate} style={{ minWidth: '8rem' }} />

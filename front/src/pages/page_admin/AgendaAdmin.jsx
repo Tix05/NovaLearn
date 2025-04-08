@@ -1,42 +1,212 @@
 import React, { useState, useRef } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
-import LayoutAdmin from '../../components/LayoutAdmin';
+import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Calendar } from 'primereact/calendar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toast } from 'primereact/toast';
-import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { FileUpload } from 'primereact/fileupload';
 
-export default function AgendaAdmin() {
+
+const DEMO_IMAGES = {
+    maths: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+    physique: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+    conference: 'https://images.unsplash.com/photo-1579353977828-2a4eab540b9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+    chimie: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+    informatique: 'https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
+};
+
+const DEMO_VIDEOS = {
+    cours: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+    conference: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
+    examen: 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4'
+};
+
+export default function AgendaEnseignant() {
+
+    const generateTestDate = (daysFromNow) => {
+        const date = new Date();
+        date.setDate(date.getDate() + daysFromNow);
+        return date.toISOString().split('T')[0];
+    };
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentItemId, setCurrentItemId] = useState(null);
     const [agendaForm, setAgendaForm] = useState({
         titre: '',
         date: null,
         description: '',
         lien: '',
-        type: 'cours'
+        type: 'cours',
+        media: null
     });
 
     const [coursData, setCoursData] = useState([
-        { id: 1, titre: 'Cours de Mathématiques', date: '2023-10-24', description: '../../../public/images/icon-esum.png', professeur: 'Prof. Dupont' },
-        { id: 2, titre: 'Cours de Physique', date: '2023-10-25', description: 'Lorem ipsum dolor sit amet...', professeur: 'Prof. Martin' },
+        {
+            id: 1,
+            titre: 'Cours de Mathématiques',
+            date: generateTestDate(1),
+            description: 'Introduction aux équations différentielles',
+            professeur: 'Prof. Dupont',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.maths,
+                name: 'maths.jpg'
+            }
+        },
+        {
+            id: 2,
+            titre: 'Cours de Physique',
+            date: generateTestDate(3),
+            description: 'Mécanique quantique avancée',
+            professeur: 'Prof. Martin',
+            media: {
+                type: 'video',
+                url: DEMO_VIDEOS.cours,
+                thumbnail: DEMO_IMAGES.physique,
+                name: 'physique.mp4'
+            }
+        },
+        {
+            id: 3,
+            titre: 'Cours de Chimie',
+            date: generateTestDate(10),
+            description: 'Chimie organique - Les alcènes',
+            professeur: 'Prof. Legrand',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.chimie,
+                name: 'chimie.jpg'
+            }
+        },
+        {
+            id: 4,
+            titre: 'Cours d\'Informatique',
+            date: generateTestDate(30),
+            description: 'Algorithmes avancés',
+            professeur: 'Prof. Dubois',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.informatique,
+                name: 'informatique.jpg'
+            }
+        },
+        {
+            id: 5,
+            titre: 'Cours de Biologie',
+            date: generateTestDate(90),
+            description: 'Génétique moléculaire',
+            professeur: 'Prof. Bernard',
+            media: {
+                type: 'video',
+                url: DEMO_VIDEOS.cours,
+                thumbnail: DEMO_IMAGES.physique,
+                name: 'biologie.mp4'
+            }
+        }
     ]);
 
     const [examensData, setExamensData] = useState([
-        { id: 1, titre: 'Examen de Mathématiques', date: '2023-11-10', description: 'Examen final', professeur: 'Prof. Dupont' },
+        {
+            id: 1,
+            titre: 'Examen de Mathématiques',
+            date: generateTestDate(5),
+            description: 'Examen final - Partie 1',
+            professeur: 'Prof. Dupont',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.maths,
+                name: 'examen_maths.jpg'
+            }
+        },
+        {
+            id: 2,
+            titre: 'Examen de Physique',
+            date: generateTestDate(8),
+            description: 'Examen pratique',
+            professeur: 'Prof. Martin',
+            media: {
+                type: 'video',
+                url: DEMO_VIDEOS.examen,
+                thumbnail: DEMO_IMAGES.physique,
+                name: 'examen_physique.mp4'
+            }
+        },
+        {
+            id: 3,
+            titre: 'Examen de Chimie',
+            date: generateTestDate(60),
+            description: 'Examen théorique',
+            professeur: 'Prof. Legrand',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.chimie,
+                name: 'examen_chimie.jpg'
+            }
+        }
     ]);
 
     const [evenementsData, setEvenementsData] = useState([
-        { id: 1, titre: 'Conférence sur l\'IA', date: '2023-10-30', description: 'Conférence avec un expert en IA', organisateur: 'Dr. Smith' },
+        {
+            id: 1,
+            titre: 'Conférence sur l\'IA',
+            date: generateTestDate(2),
+            description: 'Conférence avec un expert en IA',
+            organisateur: 'Dr. Smith',
+            media: {
+                type: 'video',
+                url: DEMO_VIDEOS.conference,
+                thumbnail: DEMO_IMAGES.conference,
+                name: 'conference_ia.mp4'
+            }
+        },
+        {
+            id: 2,
+            titre: 'Journée portes ouvertes',
+            date: generateTestDate(15),
+            description: 'Découverte des laboratoires de recherche',
+            organisateur: 'Dr. Johnson',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.conference,
+                name: 'portes_ouvertes.jpg'
+            }
+        },
+        {
+            id: 3,
+            titre: 'Séminaire de recherche',
+            date: generateTestDate(45),
+            description: 'Avancées récentes en physique quantique',
+            organisateur: 'Prof. Einstein',
+            media: {
+                type: 'video',
+                url: DEMO_VIDEOS.conference,
+                thumbnail: DEMO_IMAGES.physique,
+                name: 'seminaire_physique.mp4'
+            }
+        },
+        {
+            id: 4,
+            titre: 'Remise des diplômes',
+            date: generateTestDate(120),
+            description: 'Cérémonie annuelle de remise des diplômes',
+            organisateur: 'Directeur Université',
+            media: {
+                type: 'image',
+                url: DEMO_IMAGES.conference,
+                name: 'remise_diplomes.jpg'
+            }
+        }
     ]);
 
     const toast = useRef(null);
+    const fileUploadRef = useRef(null);
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
         { label: 'Semaine', value: 'Semaine' },
@@ -52,21 +222,26 @@ export default function AgendaAdmin() {
     ];
 
     const filterData = (data) => {
+        if (periodeFilter === 'Tout') {
+            return data;
+        }
+
         const today = new Date();
-        const selectedDate = new Date(today);
+        today.setHours(0, 0, 0, 0); // Normaliser l'heure à minuit
+        const endDate = new Date(today);
 
         switch (periodeFilter) {
             case 'Semaine':
-                selectedDate.setDate(today.getDate() + 7);
+                endDate.setDate(today.getDate() + 7);
                 break;
             case 'Mois':
-                selectedDate.setMonth(today.getMonth() + 1);
+                endDate.setMonth(today.getMonth() + 1);
                 break;
             case 'Trimestre':
-                selectedDate.setMonth(today.getMonth() + 3);
+                endDate.setMonth(today.getMonth() + 3);
                 break;
             case 'Semestre':
-                selectedDate.setMonth(today.getMonth() + 6);
+                endDate.setMonth(today.getMonth() + 6);
                 break;
             default:
                 return data;
@@ -74,9 +249,11 @@ export default function AgendaAdmin() {
 
         return data.filter(item => {
             const itemDate = new Date(item.date);
-            return itemDate <= selectedDate && itemDate >= today;
+            itemDate.setHours(0, 0, 0, 0); // Normaliser l'heure à minuit
+            return itemDate >= today && itemDate <= endDate;
         });
     };
+
 
     const handleFormChange = (e) => {
         const { name, value } = e.target;
@@ -87,49 +264,143 @@ export default function AgendaAdmin() {
         setAgendaForm(prev => ({ ...prev, date: e.value }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        const newItem = {
-            id: Math.max(...[...coursData, ...examensData, ...evenementsData].map(i => i.id)) + 1,
-            titre: agendaForm.titre,
-            date: agendaForm.date.toISOString().split('T')[0],
-            description: agendaForm.description,
-            ...(agendaForm.lien && { lien: agendaForm.lien }),
-            ...(agendaForm.type === 'cours' && { professeur: 'Nouveau Professeur' }),
-            ...(agendaForm.type === 'evenement' && { organisateur: 'Nouvel Organisateur' })
-        };
-
-        switch (agendaForm.type) {
-            case 'cours':
-                setCoursData([...coursData, newItem]);
-                break;
-            case 'examen':
-                setExamensData([...examensData, newItem]);
-                break;
-            case 'evenement':
-                setEvenementsData([...evenementsData, newItem]);
-                break;
+    const handleFileUpload = (e) => {
+        const file = e.files[0];
+        if (file) {
+            // Crée une URL d'objet pour la prévisualisation
+            const fileUrl = URL.createObjectURL(file);
+            setAgendaForm(prev => ({
+                ...prev,
+                media: {
+                    file, // conserve le fichier original
+                    url: fileUrl,
+                    name: file.name,
+                    type: file.type.startsWith('image') ? 'image' : 'video',
+                    ...(file.type.startsWith('video') && {
+                        thumbnail: DEMO_IMAGES.conference // ou générer une miniature
+                    })
+                }
+            }));
+            if (fileUploadRef.current) {
+                fileUploadRef.current.clear();
+            }
         }
+    };
 
-        toast.current.show({
-            severity: 'success',
-            summary: 'Succès',
-            detail: 'Élément ajouté à l\'agenda',
-            life: 3000
-        });
-
-        setShowCreateDialog(false);
+    const resetForm = () => {
         setAgendaForm({
             titre: '',
             date: null,
             description: '',
             lien: '',
-            type: 'cours'
+            type: 'cours',
+            media: null
         });
+        setIsEditing(false);
+        setCurrentItemId(null);
+        if (fileUploadRef.current) {
+            fileUploadRef.current.clear();
+        }
     };
 
-    const confirmDelete = (type, id) => {
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        const newItem = {
+            id: isEditing ? currentItemId : Math.max(...[...coursData, ...examensData, ...evenementsData].map(i => i.id), 0) + 1,
+            titre: agendaForm.titre,
+            date: agendaForm.date.toISOString().split('T')[0],
+            description: agendaForm.description,
+            ...(agendaForm.lien && { lien: agendaForm.lien }),
+            // Utilise le nouveau média si un fichier a été sélectionné, sinon conserve l'ancien en mode édition
+            media: agendaForm.media?.file ? {
+                type: agendaForm.media.type,
+                name: agendaForm.media.name,
+                url: agendaForm.media.url,
+                ...(agendaForm.media.type === 'video' && {
+                    thumbnail: agendaForm.media.thumbnail
+                })
+            } : isEditing ? agendaForm.media : null,
+            ...(agendaForm.type === 'cours' && { professeur: 'Professeur' }),
+            ...(agendaForm.type === 'evenement' && { organisateur: 'Organisateur' })
+        };
+
+        if (isEditing) {
+            switch (agendaForm.type) {
+                case 'cours':
+                    setCoursData(coursData.map(item => item.id === currentItemId ? newItem : item));
+                    break;
+                case 'examen':
+                    setExamensData(examensData.map(item => item.id === currentItemId ? newItem : item));
+                    break;
+                case 'evenement':
+                    setEvenementsData(evenementsData.map(item => item.id === currentItemId ? newItem : item));
+                    break;
+            }
+
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: 'Élément modifié avec succès',
+                life: 3000
+            });
+        } else {
+            switch (agendaForm.type) {
+                case 'cours':
+                    setCoursData([...coursData, newItem]);
+                    break;
+                case 'examen':
+                    setExamensData([...examensData, newItem]);
+                    break;
+                case 'evenement':
+                    setEvenementsData([...evenementsData, newItem]);
+                    break;
+            }
+
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: 'Élément ajouté à l\'agenda',
+                life: 3000
+            });
+        }
+
+        setShowCreateDialog(false);
+        resetForm();
+    };
+
+    const handleEdit = (type, id) => {
+        let itemToEdit;
+
+        switch (type) {
+            case 'cours':
+                itemToEdit = coursData.find(item => item.id === id);
+                break;
+            case 'examen':
+                itemToEdit = examensData.find(item => item.id === id);
+                break;
+            case 'evenement':
+                itemToEdit = evenementsData.find(item => item.id === id);
+                break;
+        }
+
+        if (itemToEdit) {
+            setAgendaForm({
+                titre: itemToEdit.titre,
+                date: new Date(itemToEdit.date),
+                description: itemToEdit.description,
+                lien: itemToEdit.lien || '',
+                type: type,
+                media: itemToEdit.media || null // conserve l'URL originale
+            });
+            setIsEditing(true);
+            setCurrentItemId(id);
+            setShowCreateDialog(true);
+        }
+    };
+
+    const confirmDelete = (type, id, event) => {
+        event.stopPropagation();
         confirmDialog({
             message: 'Êtes-vous sûr de vouloir supprimer cet élément ?',
             header: 'Confirmation de suppression',
@@ -137,7 +408,8 @@ export default function AgendaAdmin() {
             acceptLabel: 'Oui',
             rejectLabel: 'Non',
             accept: () => deleteItem(type, id),
-            acceptClassName: 'p-button-danger'
+            acceptClassName: 'p-button-danger',
+            rejectClassName: 'p-button-secondary'
         });
     };
 
@@ -163,34 +435,109 @@ export default function AgendaAdmin() {
     };
 
     const renderItem = (item, type) => (
-        <div key={item.id} className='flex border-2 border-gray-400 mb-4 w-[100%] md:w-[80%] rounded-sm relative'>
-            {/* Bouton de suppression */}
-            <button
-                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                onClick={() => confirmDelete(type, item.id)}
-            >
-                <i className="pi pi-trash"></i>
-            </button>
-
-            <div className='flex flex-col text-4xl items-center p-5 flex-shrink-0'>
-                <h1 className='font-bold'>{new Date(item.date).getDate()}</h1>
-                <h1 className='font-normal'>{new Date(item.date).toLocaleString('default', { month: 'long' })}</h1>
+        <div
+            key={item.id}
+            className="flex flex-col md:flex-row border-[1px] mb-4 w-full md:w-4/5 rounded-lg bg-white shadow-md"
+        >
+            <div className="flex flex-col p-4 text-center md:w-28 flex-shrink-0">
+                <h1 className="text-5xl font-bold text-gray-800">{new Date(item.date).getDate()}</h1>
+                <h2 className="text-lg font-semibold text-gray-700 uppercase">
+                    {new Date(item.date).toLocaleString('default', { month: 'short' })}
+                </h2>
             </div>
-            <Divider layout="vertical" />
-            <div className='flex flex-col p-3 space-y-5 overflow-hidden w-full items-center justify-center'>
-                <h1 className='text-2xl font-semibold text-blue-600 overflow-wrap break-word'>
-                    {item.titre}
-                </h1>
 
-                {typeof item.description === 'string' && item.description.endsWith('.png' || '.jpg') ? (
-                    <img src={item.description} alt={item.titre} className="w-32 h-32 object-cover rounded-lg" />
-                ) : (
-                    <p className='overflow-wrap break-word'>{item.description}</p>
+            <Divider layout="vertical" className="hidden md:block h-auto" />
+
+            <div className="flex flex-col p-4 flex-1 min-h-[180px]">
+                <div className="flex justify-between items-start mb-2">
+                    <h1 className="text-xl font-semibold text-gray-800 truncate flex-1">
+                        {item.titre}
+                    </h1>
+                    <div className="flex gap-2 ml-3">
+                        <button
+                            className="text-blue-500 hover:text-blue-700"
+                            onClick={() => handleEdit(type, item.id)}
+                        >
+                            <i className="pi pi-pencil"></i>
+                        </button>
+                        <button
+                            className="text-red-500 hover:text-red-700"
+                            onClick={(e) => confirmDelete(type, item.id, e)}
+                        >
+                            <i className="pi pi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mb-3">
+                    <p className="text-gray-600 whitespace-pre-wrap break-words">
+                        {item.description}
+                    </p>
+                </div>
+
+                {item.lien && (
+                    <div className="mb-3">
+                        <a
+                            href={item.lien}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-blue-600 hover:underline break-all"
+                        >
+                            <i className="pi pi-link mr-2"></i>
+                            Lien vers la ressource
+                        </a>
+                    </div>
                 )}
 
-                <h1 className='font-semibold text-xl overflow-wrap break-word'>
-                    {item.professeur || item.organisateur}
-                </h1>
+                {item.media && (
+                    <div className="mt-auto">
+                        {item.media.type === 'image' ? (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <img
+                                    src={item.media.url}
+                                    alt={item.media.name || 'Image'}
+                                    className="w-full h-auto"
+                                />
+                                {item.media.name && (
+                                    <div className="p-2 bg-gray-50 text-sm text-gray-600 truncate">
+                                        {item.media.name}
+                                    </div>
+                                )}
+                            </div>
+                        ) : item.media.type === 'video' ? (
+                            <div className="mt-3">
+                                <div className="relative pt-[56.25%] bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
+                                    <video
+                                        controls
+                                        className="absolute inset-0 w-full h-full"
+                                        poster={item.media.thumbnail}
+                                    >
+                                        <source src={item.media.url} type="video/mp4" />
+                                        Votre navigateur ne supporte pas la lecture de vidéos.
+                                    </video>
+                                </div>
+                                {item.media.name && (
+                                    <div className="mt-1 text-sm text-gray-600 truncate">
+                                        {item.media.name}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center">
+                                <i className="pi pi-file text-gray-500 text-xl mr-3"></i>
+                                <span className="text-gray-700">
+                                    {item.media.name || 'Fichier joint'}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                    <p className="text-sm font-medium text-gray-700">
+                        {item.professeur || item.organisateur || 'Non spécifié'}
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -210,27 +557,49 @@ export default function AgendaAdmin() {
                 label="Créer un agenda"
                 icon="pi pi-calendar-plus"
                 className="p-button-success w-80"
-                onClick={() => setShowCreateDialog(true)}
+                onClick={() => {
+                    resetForm();
+                    setShowCreateDialog(true);
+                }}
             />
         </div>
     );
 
     return (
-        <LayoutAdmin>
-            <Toast ref={toast} />
-            <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+        <LayoutEnseignant>
+            <Toast ref={toast} position="top-right" />
+            <ConfirmDialog />
+            <div className="card custom-scrollbar h-[90vh] overflow-y-auto">
                 <TabView className='custom-tabview'>
                     <TabPanel header="Cours" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(coursData).map(item => renderItem(item, 'cours'))}
+                        <div className="w-full flex flex-col items-center">
+                            {filterData(coursData).length > 0 ? (
+                                filterData(coursData).map(item => renderItem(item, 'cours'))
+                            ) : (
+                                <p className="text-gray-500">Aucun cours prévu pour cette période</p>
+                            )}
+                        </div>
                     </TabPanel>
                     <TabPanel header="Examens" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(examensData).map(item => renderItem(item, 'examen'))}
+                        <div className="w-full flex flex-col items-center">
+                            {filterData(examensData).length > 0 ? (
+                                filterData(examensData).map(item => renderItem(item, 'examen'))
+                            ) : (
+                                <p className="text-gray-500">Aucun examen prévu pour cette période</p>
+                            )}
+                        </div>
                     </TabPanel>
                     <TabPanel header="Evènements" className='flex flex-col items-center'>
                         {renderFilterSection()}
-                        {filterData(evenementsData).map(item => renderItem(item, 'evenement'))}
+                        <div className="w-full flex flex-col items-center">
+                            {filterData(evenementsData).length > 0 ? (
+                                filterData(evenementsData).map(item => renderItem(item, 'evenement'))
+                            ) : (
+                                <p className="text-gray-500">Aucun évènement prévu pour cette période</p>
+                            )}
+                        </div>
                     </TabPanel>
                 </TabView>
 
@@ -242,7 +611,10 @@ export default function AgendaAdmin() {
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2 }}
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-                            onClick={() => setShowCreateDialog(false)}
+                            onClick={() => {
+                                setShowCreateDialog(false);
+                                resetForm();
+                            }}
                         >
                             <motion.div
                                 initial={{ y: 20 }}
@@ -251,17 +623,22 @@ export default function AgendaAdmin() {
                                 className="bg-white rounded-lg shadow-xl w-full max-w-3xl"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="bg-blue-500 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
-                                    <h1 className="text-xl font-semibold">Créer un nouvel agenda</h1>
+                                <div className="bg-blue-500 text-white px-6 py-4 rounded-t-lg flex justify-between items-center sticky top-0 z-10">
+                                    <h1 className="text-xl font-semibold">
+                                        {isEditing ? 'Modifier un agenda' : 'Créer un nouvel agenda'}
+                                    </h1>
                                     <button
                                         className="text-white hover:bg-blue-600 rounded-full px-2 py-1 items-center justify-center"
-                                        onClick={() => setShowCreateDialog(false)}
+                                        onClick={() => {
+                                            setShowCreateDialog(false);
+                                            resetForm();
+                                        }}
                                     >
                                         <i className="pi pi-times"></i>
                                     </button>
                                 </div>
 
-                                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto h-[85vh] custom-scrollbar">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
                                         <div className='w-60'>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -274,6 +651,7 @@ export default function AgendaAdmin() {
                                                 options={typeOptions}
                                                 optionLabel="label"
                                                 className="w-full"
+                                                disabled={isEditing}
                                             />
                                         </div>
 
@@ -305,20 +683,7 @@ export default function AgendaAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-80'>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Lien (URL)
-                                            </label>
-                                            <InputText
-                                                name="lien"
-                                                value={agendaForm.lien}
-                                                onChange={handleFormChange}
-                                                className="w-full"
-                                                placeholder="https://example.com"
-                                            />
-                                        </div>
-
-                                        <div className="w-full">
+                                        <div className="w-full md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Description*
                                             </label>
@@ -332,18 +697,65 @@ export default function AgendaAdmin() {
                                                 required
                                             />
                                         </div>
+
+                                        <div className='w-80'>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Lien (URL)
+                                            </label>
+                                            <InputText
+                                                name="lien"
+                                                value={agendaForm.lien}
+                                                onChange={handleFormChange}
+                                                className="w-full"
+                                                placeholder="https://example.com"
+                                            />
+                                        </div>
+
+                                        <div className="w-full md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Fichier (Image/Video)
+                                            </label>
+                                            <FileUpload
+                                                ref={fileUploadRef}
+                                                name="media"
+                                                mode="basic"
+                                                accept="image/*,video/*"
+                                                maxFileSize={10000000}
+                                                chooseLabel="Choisir un fichier"
+                                                onSelect={handleFileUpload}
+                                                auto
+                                                className="w-full"
+                                            />
+                                            {agendaForm.media && (
+                                                <div className="mt-2 text-sm text-gray-500">
+                                                    Fichier sélectionné: {agendaForm.media.name}
+                                                    {agendaForm.media.url && agendaForm.media.type === 'image' && (
+                                                        <div className="mt-2">
+                                                            <img
+                                                                src={agendaForm.media.url}
+                                                                alt="Preview"
+                                                                className="max-h-40 border rounded"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="flex justify-end pt-4 gap-2">
+                                    <div className="flex justify-end pt-4 gap-2 bg-white pb-4">
                                         <Button
                                             type="button"
                                             label="Annuler"
                                             severity="secondary"
-                                            onClick={() => setShowCreateDialog(false)}
+                                            onClick={() => {
+                                                setShowCreateDialog(false);
+                                                resetForm();
+                                            }}
                                         />
                                         <Button
                                             type="submit"
-                                            label="Enregistrer"
+                                            label={isEditing ? 'Modifier' : 'Enregistrer'}
                                             severity="success"
                                         />
                                     </div>
@@ -353,6 +765,6 @@ export default function AgendaAdmin() {
                     )}
                 </AnimatePresence>
             </div>
-        </LayoutAdmin >
+        </LayoutEnseignant>
     );
 }

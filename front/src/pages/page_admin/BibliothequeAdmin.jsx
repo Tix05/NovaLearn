@@ -257,14 +257,14 @@ export default function BibliothequeAdmin() {
     const renderHeader = () => {
         return (
             <div className="flex flex-col space-y-4">
-                <h1 className='text-3xl font-normal'>Bibliothèque</h1>
-                <div className='flex justify-center space-x-4 items-center'>
+                <h1 className='text-3xl p-5 font-semibold'>Bibliothèque</h1>
+                <div className='grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center'>
                     <IconField iconPosition="left">
                         <InputIcon className="pi pi-search" />
                         <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
                     </IconField>
 
-                    <div className="flex space-x-2 bibliotheque-dropdown">
+                    <div className="flex flex-wrap items-center justify-center gap-3 bibliotheque-dropdown">
                         <Dropdown value={mentionFilter} onChange={(e) => setMentionFilter(e.value)} options={mentions}
                             optionLabel="label" placeholder="Mention"
                             filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
@@ -285,13 +285,13 @@ export default function BibliothequeAdmin() {
                             panelClassName="font-poppins text-sm"
                             className="rounded font-poppins text-sm bg-white"
                         />
-                        <Button
-                            label="Créer"
-                            icon="pi pi-file-plus"
-                            severity='success'
-                            onClick={() => setShowCreateDialog(true)}
-                        />
                     </div>
+                    <Button
+                        label="Créer"
+                        icon="pi pi-file-plus"
+                        severity='success'
+                        onClick={() => setShowCreateDialog(true)}
+                    />
                 </div>
             </div>
         );
