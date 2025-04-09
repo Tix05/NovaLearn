@@ -9,10 +9,8 @@ import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { Button } from 'primereact/button';
-import { Tooltip } from 'primereact/tooltip';
 
 const DashboardAdmin = () => {
-    // Données des étudiants (10 exemples)
     const dataStudent = [
         {
             id: 1,

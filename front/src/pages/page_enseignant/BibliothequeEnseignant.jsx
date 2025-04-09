@@ -77,7 +77,6 @@ export default function BibliothequeEnseignant() {
     const niveaux = [{ label: 'Niveau', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.niveau))).map(n => ({ label: n, value: n }))];
     const categories = [{ label: 'Catégorie', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.categorie))).map(c => ({ label: c, value: c }))];
 
-    // Options for form dropdowns
     const formMentions = [
         { label: 'Veuillez choisir la mention', value: '' },
         { label: 'Informatique', value: 'informatique' },

@@ -35,18 +35,15 @@ const DescriptionCoursEnseignant = () => {
     };
 
     const handleDownload = (filename) => {
-        // Logique de téléchargement
         showToast('success', 'Succès', 'Téléchargement commencé');
     };
 
     const handleDelete = (support) => {
-        // Logique de suppression
         showToast('success', 'Succès', 'Support supprimé avec succès');
     };
 
     const handleSaveDescription = () => {
         setIsSaving(true);
-        // Logique de sauvegarde
         setTimeout(() => {
             setIsSaving(false);
             showToast('success', 'Succès', 'Description enregistrée');

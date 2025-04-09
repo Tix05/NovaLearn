@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
-import LayoutEnseignant from '../../components/LayoutEnseignant';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
@@ -27,7 +27,7 @@ const DEMO_VIDEOS = {
     examen: 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4'
 };
 
-export default function AgendaEnseignant() {
+export default function AgendaAdmin() {
 
     const generateTestDate = (daysFromNow) => {
         const date = new Date();
@@ -566,7 +566,7 @@ export default function AgendaEnseignant() {
     );
 
     return (
-        <LayoutEnseignant>
+        <LayoutAdmin>
             <Toast ref={toast} position="top-right" />
             <ConfirmDialog />
             <div className="card custom-scrollbar h-[90vh] overflow-y-auto">
@@ -765,6 +765,6 @@ export default function AgendaEnseignant() {
                     )}
                 </AnimatePresence>
             </div>
-        </LayoutEnseignant>
+        </LayoutAdmin>
     );
 }

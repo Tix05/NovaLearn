@@ -69,7 +69,6 @@ const GestionUser = () => {
         { label: 'Philosophie', value: 'Philosophie' }
     ];
 
-    // Options pour les parcours (groupés par mention)
     const parcoursOptions = {
         'Informatique': [
             { label: 'Développement Web', value: 'Développement Web' },
@@ -124,7 +123,6 @@ const GestionUser = () => {
     };
 
 
-    // Données initiales des étudiants (10 éléments)
     const initialStudents = [
         { id: 1, photo: 'https://randomuser.me/api/portraits/women/1.jpg', matricule: 'ET2023001', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.com', telephone: '06 12 34 56 78', niveau: 'L3', mention: 'Informatique', parcours: 'Développement Web', typePaiement: 'especes', referencePaiement: 'REF001', centreRegional: 'dakar', statut: true },
         { id: 2, photo: 'https://randomuser.me/api/portraits/men/1.jpg', matricule: 'ET2023002', nom: 'Martin', prenom: 'Jean', email: 'jean.martin@email.com', telephone: '06 23 45 67 89', niveau: 'M1', mention: 'Mathématiques', parcours: 'Analyse', typePaiement: 'virement', referencePaiement: 'REF002', centreRegional: 'thies', statut: false },
@@ -138,7 +136,6 @@ const GestionUser = () => {
         { id: 10, photo: 'https://randomuser.me/api/portraits/men/5.jpg', matricule: 'ET2023010', nom: 'Michel', prenom: 'François', email: 'francois.michel@email.com', telephone: '06 01 23 45 67', niveau: 'L1', mention: 'Philosophie', parcours: 'Philosophie Politique', typePaiement: 'virement', referencePaiement: 'REF010', centreRegional: 'kaolack', statut: true }
     ];
 
-    // Données initiales des enseignants (10 éléments)
     const initialTeachers = [
         { id: 1, photo: 'https://randomuser.me/api/portraits/men/6.jpg', nom: 'Roux', prenom: 'Michel', email: 'michel.roux@email.com', telephone: '06 12 34 56 78', centreRegional: 'dakar', statut: true },
         { id: 2, photo: 'https://randomuser.me/api/portraits/women/6.jpg', nom: 'Fournier', prenom: 'Isabelle', email: 'isabelle.fournier@email.com', telephone: '06 23 45 67 89', centreRegional: 'thies', statut: true },
