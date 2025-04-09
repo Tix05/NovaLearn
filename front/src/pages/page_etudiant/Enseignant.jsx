@@ -177,7 +177,7 @@ export default function Enseignant() {
     const renderHeader = () => {
         return (
             <div className="flex justify-between items-center">
-                <h1 className='text-3xl font-normal'>Mes enseignant</h1>
+                <h1 className='md:text-3xl text-xl font-normal'>Mes enseignant</h1>
                 <IconField iconPosition="left">
                     <InputIcon className="pi pi-search" />
                     <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />

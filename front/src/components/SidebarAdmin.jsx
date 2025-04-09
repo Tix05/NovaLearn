@@ -56,16 +56,33 @@ const menuItems = [
     }
 ]
 
-export default function Sidebar() {
+export default function SidebarAdmin({ isMobile, isSidebarVisible, toggleSidebar }) {
     const [open, setOpen] = useState(true);
     const location = useLocation();
 
+    useEffect(() => {
+        if (isMobile) {
+            setOpen(true);
+        }
+    }, [isMobile]);
+
     return (
-        <nav className={`h-screen p-2 flex flex-col justify-between duration-300 bg-white text-gray-700 shadow-2xl border-r-[1px] border-gray-500 ${open ? 'w-60' : 'w-14'}`}>
+        <nav className={`
+            h-screen p-2 flex flex-col justify-between duration-300 bg-white text-gray-700 shadow-2xl border-r-[1px] border-gray-500
+            ${open ? 'w-60' : 'w-14'}
+            ${isMobile ? 'fixed z-50 transition-transform duration-300' : 'relative w-0'}
+            ${isMobile && !isSidebarVisible ? '-translate-x-full' : 'translate-x-0'}
+        `}>
             <div className="px-2 h-20 space-y-5 flex flex-col justify-between items-center">
                 <div
                     className={`duration-500 cursor-pointer ${!open ? 'mx-auto' : 'ml-auto'}`}
-                    onClick={() => setOpen(!open)}
+                    onClick={() => {
+                        if (isMobile) {
+                            toggleSidebar();
+                        } else {
+                            setOpen(!open);
+                        }
+                    }}
                 >
                     <BiMenuAltLeft
                         size={34}

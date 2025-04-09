@@ -9,7 +9,7 @@ const Mention = () => {
     return (
         <Layout>
             <div className='w-full text-gray-800 overflow-x-hidden custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className='p-4 text-3xl font-normal'>Mes mentions</h1>
+                <h1 className='p-4 md:text-3xl text-xl font-normal'>Mes mentions</h1>
                 <div className='grid grid-cols-2 gap-5 p-5 justify-center'>
                     {mentions.map((mention) => (
                         <div key={mention.id} className='bg-white shadow-md rounded-lg border-[1px] w-[500px] flex flex-col'>
