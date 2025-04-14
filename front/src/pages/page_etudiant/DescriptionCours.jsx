@@ -15,9 +15,20 @@ import { mentions } from '../../../public/constants/data2';
 const DescriptionCours = () => {
     const { mentionId, semestreId, coursId } = useParams();
 
+    // Trouver le cours dans la structure avec UE
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const semestre = mention?.semestres.find((s) => s.id === semestreId);
-    const cours = semestre?.cours.find((c) => c.id === parseInt(coursId));
+
+    let cours = null;
+    if (semestre) {
+        for (const ue of semestre.ues) {
+            const foundCours = ue.cours.find((c) => c.id === parseInt(coursId));
+            if (foundCours) {
+                cours = foundCours;
+                break;
+            }
+        }
+    }
 
     const [globalFilterValue, setGlobalFilterValue] = useState('');
 

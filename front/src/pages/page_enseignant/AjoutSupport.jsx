@@ -7,12 +7,12 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { useParams } from 'react-router-dom';
 import { IoIosDocument } from 'react-icons/io';
-import { FaFileAudio, FaFileVideo, FaTrash, FaTimes } from 'react-icons/fa';
+import { FaFileAudio, FaFileVideo } from 'react-icons/fa';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import { mentions } from '../../../public/constants/data';
+import { mentions } from '../../../public/constants/data2';
 
 const AjoutSupport = () => {
     const { mentionId, semestreId, coursId } = useParams();
@@ -23,12 +23,20 @@ const AjoutSupport = () => {
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
 
-    // Récupération des données
+    // Trouver le cours dans la structure avec UE
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const semestre = mention?.semestres.find((s) => s.id === semestreId);
-    const cours = semestre?.cours.find((c) => c.id === parseInt(coursId));
 
-    // Types de supports
+    let cours = null;
+    if (semestre) {
+        for (const ue of semestre.ues) {
+            const foundCours = ue.cours.find((c) => c.id === parseInt(coursId));
+            if (foundCours) {
+                cours = foundCours;
+                break;
+            }
+        }
+    }
     const supportTypes = [
         {
             name: 'document',

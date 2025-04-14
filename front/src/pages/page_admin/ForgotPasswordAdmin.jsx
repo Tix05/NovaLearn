@@ -27,7 +27,7 @@ const ForgotPasswordAdmin = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="peer w-full border-b-2 border-gray-300 focus:border-[#DD646E] rounded-none bg-transparent outline-none placeholder-transparent"
-                            placeholder=" "
+                            placeholder=""
                         />
                         <label
                             htmlFor="email"

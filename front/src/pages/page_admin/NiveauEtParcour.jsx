@@ -26,7 +26,10 @@ const NiveauEtParcour = () => {
                                 <p className='text-sm font-semibold text-gray-700 mb-6'>{niveau.parcours}</p>
                                 <Divider />
                                 <div className='flex justify-center'>
-                                    <Link to={`/admin/mentions/${mentionId}/niveaux/${niveau.id}/semestres/${premierSemestre}/cours`} className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'>
+                                    <Link
+                                        to={`/admin/mentions/${mentionId}/niveaux/${niveau.id}/semestres/${premierSemestre}/cours`}
+                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'
+                                    >
                                         <FaRegEye />
                                         <p>Voir les cours</p>
                                     </Link>

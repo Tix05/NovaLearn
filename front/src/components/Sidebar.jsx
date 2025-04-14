@@ -44,7 +44,7 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
         if (isMobile) {
             setOpen(true);
         }
-    }, [isMobile]);
+    }, [isMobile, location]);
 
     return (
         <>

@@ -12,6 +12,8 @@ import { FaFileAudio, FaFileVideo, FaTrash, FaDownload } from 'react-icons/fa6';
 import { useParams } from 'react-router-dom';
 import { mentions } from '../../../public/constants/data';
 import { Toast } from 'primereact/toast';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const DescriptionCoursAdmin = () => {
     const { mentionId, niveauId, semestreId, coursId } = useParams();
@@ -21,9 +23,25 @@ const DescriptionCoursAdmin = () => {
     const toast = useRef(null);
 
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const niveau = mention?.niveaux.find((n) => n.id === niveauId);
-    const semestre = niveau?.semestres.find((s) => s.id === semestreId);
-    const cours = semestre?.cours.find((c) => c.id === parseInt(coursId));
+    const niveau = mention?.niveaux?.find((n) => n.id === niveauId);
+    const semestre = niveau?.semestres?.find((s) => s.id === semestreId);
+
+    let cours = null;
+    if (semestre?.ues) {
+        for (const ue of semestre.ues) {
+            const foundCours = ue.cours?.find((c) => c.id === parseInt(coursId));
+            if (foundCours) {
+                cours = foundCours;
+                break;
+            }
+        }
+    }
+
+    // // Fallback pour l'ancienne structure sans UE
+    // if (!cours && semestre?.cours) {
+    //     cours = semestre.cours.find((c) => c.id === parseInt(coursId));
+    // }
+
 
     useEffect(() => {
         if (cours?.description) {
@@ -36,7 +54,6 @@ const DescriptionCoursAdmin = () => {
     };
 
     const handleDownload = (filename) => {
-        // Logique de téléchargement
         showToast('success', 'Succès', 'Téléchargement commencé');
     };
 
@@ -111,19 +128,28 @@ const DescriptionCoursAdmin = () => {
             <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-3xl font-semibold p-5'>Détails du cours {cours?.titre}</h1>
 
-                {/* Section description */}
                 <div className='flex flex-col shadow-md m-5 border-[1px] rounded-lg'>
                     <h1 className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg'>{cours?.titre}</h1>
                     <div className='p-3'>
                         <p className='font-semibold text-xl'>Description du cours :</p>
                         <Divider />
                         <div className='p-10'>
-                            <textarea
+                            <ReactQuill
                                 value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg p-3 font-semibold text-gray-800 focus:outline-none"
-                                rows="5"
-                                placeholder="Ajouter ou modifier la description ici..."
+                                onChange={setDescription}
+                                modules={{
+                                    toolbar: [
+                                        ['bold', 'italic', 'underline', 'strike'],
+                                        ['blockquote'],
+                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                        [{ 'indent': '-1' }, { 'indent': '+1' }],
+                                        [{ 'header': [1, 2, 3, false] }],
+                                        [{ 'color': [] }, { 'background': [] }],
+                                        [{ 'align': [] }],
+                                        ['clean']
+                                    ]
+                                }}
+                                style={{ height: '250px', marginBottom: '50px' }}
                             />
                         </div>
                         <div className='flex justify-end'>

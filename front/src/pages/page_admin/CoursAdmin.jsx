@@ -1,38 +1,36 @@
+// CoursAdmin.js
 import React, { useState, useEffect } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { InputText } from 'primereact/inputtext';
-import { IconField } from 'primereact/iconfield';
-import { InputIcon } from 'primereact/inputicon';
 import LayoutAdmin from '../../components/LayoutAdmin';
 import { Link, useParams } from 'react-router-dom';
 import { Divider } from 'primereact/divider';
 import { mentions } from '../../../public/constants/data';
+import AccordionUE from '../../components/AccordionUE';
 
 export default function CoursAdmin() {
-    const { mentionId, niveauId } = useParams();
+    const { mentionId, niveauId, semestreId } = useParams();
     const [selectedSemestre, setSelectedSemestre] = useState(null);
 
-    // Trouver la mention et le niveau correspondant
+    // Trouver la mention, le niveau et le semestre correspondant
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const niveau = mention?.niveaux?.find((n) => n.id === niveauId);
     const semestres = niveau?.semestres || [];
 
     useEffect(() => {
-        if (semestres.length > 0) {
+        if (semestres.length > 0 && !semestreId) {
             setSelectedSemestre(semestres[0].id);
+        } else if (semestreId) {
+            setSelectedSemestre(semestreId);
         }
-    }, [semestres]);
+    }, [semestres, semestreId]);
 
     const semestre = semestres.find((s) => s.id === selectedSemestre);
-    const data = semestre?.cours || [];
-    const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const ues = semestre?.ues || [];
 
     const renderHeader = () => {
         return (
             <div className="flex flex-col">
-                <h1 className='text-3xl font-normal'>{mention?.nom} - {niveau?.nom}</h1>
-                <div className="flex items-center py-4 space-x-5">
+                <h1 className='text-3xl text-gray-800 font-semibold p-5'>{mention?.nom} - {niveau?.nom}</h1>
+                <div className="flex items-center py-4 space-x-5 p-5">
                     {semestres.map((s) => (
                         <Link
                             key={s.id}
@@ -48,53 +46,24 @@ export default function CoursAdmin() {
                     ))}
                 </div>
                 <Divider />
-                <div className='flex justify-between items-center'>
-                    <h1>Parcours : {niveau?.parcours}</h1>
-                    <IconField iconPosition="left">
-                        <InputIcon className="pi pi-search" />
-                        <InputText
-                            value={globalFilterValue}
-                            onChange={(e) => setGlobalFilterValue(e.target.value)}
-                            placeholder="Rechercher..."
-                        />
-                    </IconField>
+                <div className='flex justify-between items-center p-3'>
+                    <h1 className='text-lg font-semibold text-gray-800'>Parcours : {niveau?.parcours}</h1>
                 </div>
             </div>
         );
     };
 
-    const creditBodyTemplate = (rowData) => {
-        return (
-            <span className="px-2 py-1 rounded-xl font-semibold bg-[#C23B42] text-white text-xs">
-                {rowData.credit}
-            </span>
-        );
-    };
-
-    const actionBodyTemplate = (rowData) => {
-        return (
-            <Link
-                to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${selectedSemestre}/cours/${rowData.id}`}
-                className='bg-[#39B54A] px-3 py-2 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
-            >
-                Visualiser le cours
-            </Link>
-        );
-    };
-
     return (
         <LayoutAdmin>
-            <DataTable
-                value={data}
-                paginator
-                rows={5}
-                header={renderHeader()}
-                emptyMessage="Aucun cours trouvé"
-            >
-                <Column field="titre" header="EC" sortable />
-                <Column field="credit" header="Crédit" body={creditBodyTemplate} />
-                <Column body={actionBodyTemplate} header="Actions" />
-            </DataTable>
+            <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+                {renderHeader()}
+                <AccordionUE
+                    ues={ues}
+                    mentionId={mentionId}
+                    niveauId={niveauId}
+                    semestreId={selectedSemestre}
+                />
+            </div>
         </LayoutAdmin>
     );
 }

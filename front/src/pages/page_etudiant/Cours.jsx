@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { InputText } from 'primereact/inputtext';
-import { IconField } from 'primereact/iconfield';
-import { InputIcon } from 'primereact/inputicon';
-import Layout from '../../components/Layout';
 import { Link, useParams } from 'react-router-dom';
 import { Divider } from 'primereact/divider';
 import { mentions } from '../../../public/constants/data2';
+import Layout from '../../components/Layout';
+import AccordionUE from '../../components/AccordionUEEtudiant';
 
 export default function Cours() {
-    const { mentionId } = useParams();
+    const { mentionId, niveauId } = useParams();
     const [selectedSemestre, setSelectedSemestre] = useState(null);
+
 
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const semestres = mention?.semestres || [];
@@ -24,26 +21,21 @@ export default function Cours() {
     }, [semestres]);
 
     const semestre = semestres.find((s) => s.id === selectedSemestre);
-    const data = semestre?.cours || [];
+    const ues = semestre?.ues || [];
 
-    const [globalFilterValue, setGlobalFilterValue] = useState('');
-
-    const onGlobalFilterChange = (e) => {
-        setGlobalFilterValue(e.target.value);
-    };
 
     const renderHeader = () => {
         return (
             <div className="flex flex-col">
-                <h1 className='text-3xl font-normal'>{mention?.nom} - {mention?.niveau}</h1>
-                <div className="flex items-center py-4 space-x-5">
+                <h1 className='text-3xl font-semibold text-gray-800 p-5 '>{mention?.nom} - {mention?.niveau}</h1>
+                <div className="flex items-center py-4 space-x-5 p-5">
                     {semestres.map((s) => (
                         <Link
                             key={s.id}
-                            to={`/etudiant/cours/${mentionId}/${s.id}`}
+                            to={`/enseignant/coursEnseignant/${mentionId}/${s.id}`}
                             className={`pb-2 transition duration-400 ${selectedSemestre === s.id
                                 ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
-                                : "text-gray-600 hover:text-blue-500"
+                                : "text-gray-600 hover:text-blue-500 font-semibold"
                                 }`}
                             onClick={() => setSelectedSemestre(s.id)}
                         >
@@ -53,43 +45,23 @@ export default function Cours() {
                 </div>
 
                 <Divider />
-                <div className='flex justify-between items-center'>
-                    <h1>Parcours : {mention?.parcours}</h1>
-                    <IconField iconPosition="left">
-                        <InputIcon className="pi pi-search" />
-                        <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
-                    </IconField>
+                <div className='flex justify-between items-center p-3'>
+                    <h1 className='text-lg font-semibold text-gray-800'>Parcours : {mention?.parcours}</h1>
                 </div>
             </div>
         );
     };
 
-    const creditBodyTemplate = (rowData) => {
-        return (
-            <span className="px-2 py-1 rounded-xl font-semibold bg-[#C23B42] text-white text-xs">
-                {rowData.credit}
-            </span>
-        );
-    };
-
-    const actionBodyTemplate = (rowData) => {
-        return (
-            <Link to={`/etudiant/cours/${mentionId}/${selectedSemestre}/${rowData.id}`} className='bg-[#39B54A] px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'>
-                Suivre le cours
-            </Link>
-        );
-    };
-
-    const header = renderHeader();
-
     return (
         <Layout>
-            <div>
-                <DataTable value={data} paginator rows={4} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={header} emptyMessage="Aucune donnée trouvée.">
-                    <Column field="titre" header="EC" sortable style={{ minWidth: '5rem' }} />
-                    <Column field="credit" header="Crédit" sortable body={creditBodyTemplate} style={{ minWidth: '5rem' }} />
-                    <Column field="action" header="Action" body={actionBodyTemplate} style={{ minWidth: '5rem' }} />
-                </DataTable>
+            <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+                {renderHeader()}
+                <AccordionUE
+                    ues={ues}
+                    mentionId={mentionId}
+                    niveauId={niveauId}
+                    semestreId={selectedSemestre}
+                />
             </div>
         </Layout>
     );

@@ -12,6 +12,8 @@ import { FaFileAudio, FaFileVideo, FaTrash, FaDownload } from 'react-icons/fa6';
 import { useParams } from 'react-router-dom';
 import { mentions } from '../../../public/constants/data2';
 import { Toast } from 'primereact/toast';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 const DescriptionCoursEnseignant = () => {
     const { mentionId, semestreId, coursId } = useParams();
@@ -20,9 +22,20 @@ const DescriptionCoursEnseignant = () => {
     const [isSaving, setIsSaving] = useState(false);
     const toast = useRef(null);
 
+    // Trouver le cours dans la structure avec UE
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const semestre = mention?.semestres.find((s) => s.id === semestreId);
-    const cours = semestre?.cours.find((c) => c.id === parseInt(coursId));
+
+    let cours = null;
+    if (semestre) {
+        for (const ue of semestre.ues) {
+            const foundCours = ue.cours.find((c) => c.id === parseInt(coursId));
+            if (foundCours) {
+                cours = foundCours;
+                break;
+            }
+        }
+    }
 
     useEffect(() => {
         if (cours?.description) {
@@ -98,28 +111,44 @@ const DescriptionCoursEnseignant = () => {
         );
     };
 
+    if (!cours) {
+        return (
+            <LayoutEnseignant>
+                <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+                    <h1 className='text-3xl font-normal p-3'>Cours non trouvé</h1>
+                </div>
+            </LayoutEnseignant>
+        );
+    }
+
     return (
         <LayoutEnseignant>
-            <Toast
-                ref={toast}
-                position='bottom-right'
-            />
+            <Toast ref={toast} position='bottom-right' />
             <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className='text-3xl font-normal p-3'>Détails du cours {cours?.titre}</h1>
+                <h1 className='text-3xl font-normal p-3'>Détails du cours {cours.titre}</h1>
 
-                {/* Section description */}
                 <div className='flex flex-col shadow-md m-5 border-[1px] rounded-lg'>
-                    <h1 className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg'>{cours?.titre}</h1>
+                    <h1 className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg'>{cours.titre}</h1>
                     <div className='p-3'>
                         <p className='font-semibold text-xl'>Description du cours :</p>
                         <Divider />
                         <div className='p-10'>
-                            <textarea
+                            <ReactQuill
                                 value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg p-3 font-semibold text-gray-800 focus:outline-none"
-                                rows="5"
-                                placeholder="Ajouter ou modifier la description ici..."
+                                onChange={setDescription}
+                                modules={{
+                                    toolbar: [
+                                        ['bold', 'italic', 'underline', 'strike'],
+                                        ['blockquote'],
+                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                        [{ 'indent': '-1' }, { 'indent': '+1' }],
+                                        [{ 'header': [1, 2, 3, false] }],
+                                        [{ 'color': [] }, { 'background': [] }],
+                                        [{ 'align': [] }],
+                                        ['clean']
+                                    ]
+                                }}
+                                style={{ height: '250px', marginBottom: '50px' }}
                             />
                         </div>
                         <div className='flex justify-end'>
@@ -133,9 +162,8 @@ const DescriptionCoursEnseignant = () => {
                     </div>
                 </div>
 
-                {/* Sections supports */}
                 {['document', 'audio', 'video'].map((type) => {
-                    const supports = cours?.supports?.filter((s) => s.type === type) || [];
+                    const supports = cours.supports?.filter((s) => s.type === type) || [];
                     const typeConfig = {
                         document: { icon: <IoIosDocument className='text-2xl' />, label: 'Document' },
                         audio: { icon: <FaFileAudio className='text-2xl' />, label: 'Audio' },
