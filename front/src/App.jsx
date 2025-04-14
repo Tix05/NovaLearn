@@ -38,6 +38,7 @@ import BibliothequeAdmin from './pages/page_admin/BibliothequeAdmin';
 import AgendaAdmin from './pages/page_admin/AgendaAdmin';
 import MessageAdmin from './pages/page_admin/MessageAdmin';
 import GestionExamen from './pages/page_admin/GestionExamen';
+import Examen from './pages/page_enseignant/Examen';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +99,7 @@ function EnseignantRoutes() {
       <Route path="bibliotheque" element={<BibliothequeEnseignant />} />
       <Route path="agenda" element={<AgendaEnseignant />} />
       <Route path="message" element={<MessageEnseignant />} />
+      <Route path="examen" element={<Examen />} />
       <Route path="coursEnseignant/:mentionId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId/:coursId" element={<DescriptionCoursEnseignant />} />

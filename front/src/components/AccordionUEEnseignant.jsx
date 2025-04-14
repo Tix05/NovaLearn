@@ -42,6 +42,12 @@ const AccordionUEEnseignant = ({ ues, mentionId, semestreId }) => {
                 >
                     Ajouter support
                 </Link>
+                <Link
+                    to={`/enseignant/examen`}
+                    className='bg-blue-700 px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-blue-800 duration-300'
+                >
+                    Créer un examen
+                </Link>
             </div>
         );
     };
@@ -89,7 +95,7 @@ const AccordionUEEnseignant = ({ ues, mentionId, semestreId }) => {
                             >
                                 <Column field="titre" header="EC" sortable />
                                 <Column field="credit" header="Crédit" body={creditBodyTemplate} />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} />
                             </DataTable>
                         </div>
                     </AccordionTab>

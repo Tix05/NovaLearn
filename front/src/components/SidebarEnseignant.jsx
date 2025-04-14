@@ -21,7 +21,7 @@ const menuItems = [
         label: 'Mes étudiants'
     },
     {
-        to: ['/enseignant/mention', '/enseignant/coursEnseignant/:mentionId', '/enseignant/coursEnseignant/:mentionId/:semestreId', '/enseignant/coursEnseignant/:mentionId/:semestreId/:coursId'],
+        to: ['/enseignant/mention', '/enseignant/examen', '/enseignant/coursEnseignant/:mentionId', '/enseignant/coursEnseignant/:mentionId/:semestreId', '/enseignant/coursEnseignant/:mentionId/:semestreId/:coursId'],
         icons: <MdOutlineLibraryBooks size={25} />,
         label: 'Mes mentions'
     },

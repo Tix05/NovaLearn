@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import LayoutAdmin from '../../components/LayoutAdmin';
 import { PiStudentFill, PiChalkboardTeacher } from "react-icons/pi";
 import { RiUserSettingsLine } from "react-icons/ri";
@@ -9,6 +9,7 @@ import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { Button } from 'primereact/button';
+import { Chart } from 'primereact/chart';
 
 const DashboardAdmin = () => {
     const dataStudent = [
@@ -221,6 +222,8 @@ const DashboardAdmin = () => {
     ];
 
     const [globalFilterValue, setGlobalFilterValue] = React.useState('');
+    const [chartData, setChartData] = useState({});
+    const [chartOptions, setChartOptions] = useState({});
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
@@ -277,12 +280,70 @@ const DashboardAdmin = () => {
         return <span>{rowData.nom} {rowData.prenom}</span>;
     };
 
+    useEffect(() => {
+        const documentStyle = getComputedStyle(document.documentElement);
+        const textColor = documentStyle.getPropertyValue('--text-color');
+        const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
+        const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+        const data = {
+            labels: ['Jan', 'Fev', 'Mar', 'Avr', 'May', 'Jun', 'Jul'],
+            datasets: [
+                {
+                    label: 'Etudiant',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--red-600'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Enseignant',
+                    data: [28, 48, 40, 19, 86, 27, 90],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--green-500'),
+                    tension: 0.4
+                }
+            ]
+        };
+        const options = {
+            maintainAspectRatio: false,
+            aspectRatio: 0.6,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                }
+            }
+        };
+
+        setChartData(data);
+        setChartOptions(options);
+    }, []);
+
     return (
         <LayoutAdmin>
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-4xl font-semibold text-gray-800 p-5'>Tableau de bord</h1>
                 <div className='flex items-center justify-center gap-5 p-5'>
-                    <div className='flex bg-white border-[1px] shadow-xl p-2 rounded-lg w-full'>
+                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
                         <div className='p-3 rounded-md bg-blue-500 text-white'>
                             <PiStudentFill size={30} />
                         </div>
@@ -295,7 +356,7 @@ const DashboardAdmin = () => {
                             </p>
                         </div>
                     </div>
-                    <div className='flex bg-white border-[1px] shadow-xl p-2 rounded-lg w-full'>
+                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
                         <div className='p-3 rounded-md bg-red-800 text-white'>
                             <PiChalkboardTeacher size={30} />
                         </div>
@@ -308,7 +369,7 @@ const DashboardAdmin = () => {
                             </p>
                         </div>
                     </div>
-                    <div className='flex bg-white border-[1px] shadow-xl p-2 rounded-lg w-full'>
+                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
                         <div className='p-3 rounded-md bg-yellow-600 text-white'>
                             <RiUserSettingsLine size={30} />
                         </div>
@@ -321,6 +382,9 @@ const DashboardAdmin = () => {
                             </p>
                         </div>
                     </div>
+                </div>
+                <div className='px-28 py-10'>
+                    <Chart type="line" data={chartData} options={chartOptions} />
                 </div>
                 <div>
                     <TabView className='custom-tabview'>

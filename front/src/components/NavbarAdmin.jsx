@@ -303,7 +303,7 @@ const NavbarAdmin = ({ isMobile, toggleSidebar }) => {
 
     return (
         <>
-            <header className="w-full h-14 border-b-[1px] border-gray-500 shadow-xl flex items-center justify-between md:justify-end px-4 sm:px-6 lg:px-8 bg-white sticky top-0 z-40">
+            <header className="w-full h-14 border-b-[1px] border-gray-500 shadow-lg flex items-center justify-between md:justify-end px-4 sm:px-6 lg:px-8 bg-white sticky top-0 z-40">
 
                 {isMobile && (
                     <button
