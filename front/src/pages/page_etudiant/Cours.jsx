@@ -32,7 +32,7 @@ export default function Cours() {
                     {semestres.map((s) => (
                         <Link
                             key={s.id}
-                            to={`/enseignant/coursEnseignant/${mentionId}/${s.id}`}
+                            to={`/etudiant/cours/${mentionId}/${s.id}`}
                             className={`pb-2 transition duration-400 ${selectedSemestre === s.id
                                 ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
                                 : "text-gray-600 hover:text-blue-500 font-semibold"

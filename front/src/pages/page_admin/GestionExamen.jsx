@@ -308,9 +308,8 @@ export default function GestionExamen() {
         <LayoutAdmin>
             <Toast ref={toast} position="top-right" />
             <div className="relative custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <div className="p-4">
-                    <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
-                        {/* Onglet 1: Examens des étudiants */}
+                <div>
+                    <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className='custom-tabview'>
                         <TabPanel header="Examens des étudiants">
                             <DataTable
                                 value={filteredStudentExams}
@@ -340,7 +339,6 @@ export default function GestionExamen() {
                             </DataTable>
                         </TabPanel>
 
-                        {/* Onglet 2: Sujets des professeurs */}
                         <TabPanel header="Sujets des professeurs">
                             <DataTable
                                 value={filteredTeacherExams}
@@ -377,7 +375,6 @@ export default function GestionExamen() {
                     </TabView>
                 </div>
 
-                {/* Dialogue de suppression */}
                 <Dialog
                     visible={deleteDialogVisible}
                     style={{ width: '450px' }}
@@ -416,7 +413,6 @@ export default function GestionExamen() {
                     </div>
                 </Dialog>
 
-                {/* Dialogue de publication */}
                 <Dialog
                     visible={publishDialogVisible}
                     style={{ width: '450px' }}

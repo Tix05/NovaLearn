@@ -39,6 +39,7 @@ import AgendaAdmin from './pages/page_admin/AgendaAdmin';
 import MessageAdmin from './pages/page_admin/MessageAdmin';
 import GestionExamen from './pages/page_admin/GestionExamen';
 import Examen from './pages/page_enseignant/Examen';
+import AjoutSupportAdmin from './pages/page_admin/AjoutSupportAdmin';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -124,6 +125,7 @@ function AdminRoutes() {
       <Route path="mentions/:mentionId/niveaux" element={<NiveauEtParcour />} />
       <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours" element={<CoursAdmin />} />
       <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours/:coursId" element={<DescriptionCoursAdmin />} />
+      <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours/:coursId/ajout-support" element={<AjoutSupportAdmin />} />
     </Routes>
   );
 }
