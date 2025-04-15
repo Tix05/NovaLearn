@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -53,6 +55,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Prof::class)]
+    private $profs;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Etudiant::class)]
+    private $etudiants;
+
+    #[ORM\OneToMany(mappedBy: 'auteur', targetEntity: Agenda::class)]
+    private $agendas;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Commentaire::class)]
+    private $commentaires;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Document::class)]
+    private $documents;
+
+    #[ORM\OneToMany(mappedBy: 'auteur', targetEntity: FichierSupport::class)]
+    private $fichierSupports;
+
+    public function __construct()
+    {
+        $this->profs = new ArrayCollection();
+        $this->etudiants = new ArrayCollection();
+        $this->agendas = new ArrayCollection();
+        $this->commentaires = new ArrayCollection();
+        $this->documents = new ArrayCollection();
+        $this->fichierSupports = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -259,6 +289,186 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Prof>
+     */
+    public function getProfs(): Collection
+    {
+        return $this->profs;
+    }
+
+    public function addProf(Prof $prof): self
+    {
+        if (!$this->profs->contains($prof)) {
+            $this->profs[] = $prof;
+            $prof->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProf(Prof $prof): self
+    {
+        if ($this->profs->removeElement($prof)) {
+            // set the owning side to null (unless already changed)
+            if ($prof->getUser() === $this) {
+                $prof->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Etudiant>
+     */
+    public function getEtudiants(): Collection
+    {
+        return $this->etudiants;
+    }
+
+    public function addEtudiant(Etudiant $etudiant): self
+    {
+        if (!$this->etudiants->contains($etudiant)) {
+            $this->etudiants[] = $etudiant;
+            $etudiant->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEtudiant(Etudiant $etudiant): self
+    {
+        if ($this->etudiants->removeElement($etudiant)) {
+            // set the owning side to null (unless already changed)
+            if ($etudiant->getUser() === $this) {
+                $etudiant->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Agenda>
+     */
+    public function getAgendas(): Collection
+    {
+        return $this->agendas;
+    }
+
+    public function addAgenda(Agenda $agenda): self
+    {
+        if (!$this->agendas->contains($agenda)) {
+            $this->agendas[] = $agenda;
+            $agenda->setAuteur($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAgenda(Agenda $agenda): self
+    {
+        if ($this->agendas->removeElement($agenda)) {
+            // set the owning side to null (unless already changed)
+            if ($agenda->getAuteur() === $this) {
+                $agenda->setAuteur(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Commentaire>
+     */
+    public function getCommentaires(): Collection
+    {
+        return $this->commentaires;
+    }
+
+    public function addCommentaire(Commentaire $commentaire): self
+    {
+        if (!$this->commentaires->contains($commentaire)) {
+            $this->commentaires[] = $commentaire;
+            $commentaire->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCommentaire(Commentaire $commentaire): self
+    {
+        if ($this->commentaires->removeElement($commentaire)) {
+            // set the owning side to null (unless already changed)
+            if ($commentaire->getUser() === $this) {
+                $commentaire->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Document>
+     */
+    public function getDocuments(): Collection
+    {
+        return $this->documents;
+    }
+
+    public function addDocument(Document $document): self
+    {
+        if (!$this->documents->contains($document)) {
+            $this->documents[] = $document;
+            $document->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeDocument(Document $document): self
+    {
+        if ($this->documents->removeElement($document)) {
+            // set the owning side to null (unless already changed)
+            if ($document->getUser() === $this) {
+                $document->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, FichierSupport>
+     */
+    public function getFichierSupports(): Collection
+    {
+        return $this->fichierSupports;
+    }
+
+    public function addFichierSupport(FichierSupport $fichierSupport): self
+    {
+        if (!$this->fichierSupports->contains($fichierSupport)) {
+            $this->fichierSupports[] = $fichierSupport;
+            $fichierSupport->setAuteur($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFichierSupport(FichierSupport $fichierSupport): self
+    {
+        if ($this->fichierSupports->removeElement($fichierSupport)) {
+            // set the owning side to null (unless already changed)
+            if ($fichierSupport->getAuteur() === $this) {
+                $fichierSupport->setAuteur(null);
+            }
+        }
 
         return $this;
     }

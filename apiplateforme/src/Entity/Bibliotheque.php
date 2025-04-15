@@ -40,6 +40,15 @@ class Bibliotheque
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
+    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'bibliotheques')]
+    private $mention;
+
+    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'bibliotheques')]
+    private $parcours;
+
+    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'bibliotheques')]
+    private $ec;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -149,6 +158,42 @@ class Bibliotheque
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getMention(): ?mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?mention $mention): self
+    {
+        $this->mention = $mention;
+
+        return $this;
+    }
+
+    public function getParcours(): ?parcours
+    {
+        return $this->parcours;
+    }
+
+    public function setParcours(?parcours $parcours): self
+    {
+        $this->parcours = $parcours;
+
+        return $this;
+    }
+
+    public function getEc(): ?ec
+    {
+        return $this->ec;
+    }
+
+    public function setEc(?ec $ec): self
+    {
+        $this->ec = $ec;
 
         return $this;
     }

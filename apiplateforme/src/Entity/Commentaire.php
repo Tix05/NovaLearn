@@ -31,6 +31,12 @@ class Commentaire
     #[ORM\Column(type: 'datetime_immutable')]
     private $created_at;
 
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'commentaires')]
+    private $user;
+
+    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'commentaires')]
+    private $ec;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -104,6 +110,30 @@ class Commentaire
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
+
+        return $this;
+    }
+
+    public function getUser(): ?user
+    {
+        return $this->user;
+    }
+
+    public function setUser(?user $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getEc(): ?ec
+    {
+        return $this->ec;
+    }
+
+    public function setEc(?ec $ec): self
+    {
+        $this->ec = $ec;
 
         return $this;
     }

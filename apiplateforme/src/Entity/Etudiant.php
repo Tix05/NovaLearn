@@ -52,6 +52,21 @@ class Etudiant
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'etudiants')]
+    private $user;
+
+    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'etudiants')]
+    private $mention;
+
+    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'etudiants')]
+    private $parcours;
+
+    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'etudiants')]
+    private $niveau;
+
+    #[ORM\ManyToOne(targetEntity: years::class, inversedBy: 'etudiants')]
+    private $year;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -209,6 +224,66 @@ class Etudiant
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getUser(): ?user
+    {
+        return $this->user;
+    }
+
+    public function setUser(?user $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getMention(): ?mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?mention $mention): self
+    {
+        $this->mention = $mention;
+
+        return $this;
+    }
+
+    public function getParcours(): ?parcours
+    {
+        return $this->parcours;
+    }
+
+    public function setParcours(?parcours $parcours): self
+    {
+        $this->parcours = $parcours;
+
+        return $this;
+    }
+
+    public function getNiveau(): ?niveau
+    {
+        return $this->niveau;
+    }
+
+    public function setNiveau(?niveau $niveau): self
+    {
+        $this->niveau = $niveau;
+
+        return $this;
+    }
+
+    public function getYear(): ?years
+    {
+        return $this->year;
+    }
+
+    public function setYear(?years $year): self
+    {
+        $this->year = $year;
 
         return $this;
     }

@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\NiveauRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: NiveauRepository::class)]
@@ -30,6 +32,22 @@ class Niveau
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
+
+    #[ORM\OneToMany(mappedBy: 'niveau', targetEntity: Etudiant::class)]
+    private $etudiants;
+
+    #[ORM\OneToMany(mappedBy: 'niveau', targetEntity: Ue::class)]
+    private $ues;
+
+    #[ORM\OneToMany(mappedBy: 'niveau', targetEntity: Agenda::class)]
+    private $agendas;
+
+    public function __construct()
+    {
+        $this->etudiants = new ArrayCollection();
+        $this->ues = new ArrayCollection();
+        $this->agendas = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -104,6 +122,96 @@ class Niveau
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Etudiant>
+     */
+    public function getEtudiants(): Collection
+    {
+        return $this->etudiants;
+    }
+
+    public function addEtudiant(Etudiant $etudiant): self
+    {
+        if (!$this->etudiants->contains($etudiant)) {
+            $this->etudiants[] = $etudiant;
+            $etudiant->setNiveau($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEtudiant(Etudiant $etudiant): self
+    {
+        if ($this->etudiants->removeElement($etudiant)) {
+            // set the owning side to null (unless already changed)
+            if ($etudiant->getNiveau() === $this) {
+                $etudiant->setNiveau(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Ue>
+     */
+    public function getUes(): Collection
+    {
+        return $this->ues;
+    }
+
+    public function addUe(Ue $ue): self
+    {
+        if (!$this->ues->contains($ue)) {
+            $this->ues[] = $ue;
+            $ue->setNiveau($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUe(Ue $ue): self
+    {
+        if ($this->ues->removeElement($ue)) {
+            // set the owning side to null (unless already changed)
+            if ($ue->getNiveau() === $this) {
+                $ue->setNiveau(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Agenda>
+     */
+    public function getAgendas(): Collection
+    {
+        return $this->agendas;
+    }
+
+    public function addAgenda(Agenda $agenda): self
+    {
+        if (!$this->agendas->contains($agenda)) {
+            $this->agendas[] = $agenda;
+            $agenda->setNiveau($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAgenda(Agenda $agenda): self
+    {
+        if ($this->agendas->removeElement($agenda)) {
+            // set the owning side to null (unless already changed)
+            if ($agenda->getNiveau() === $this) {
+                $agenda->setNiveau(null);
+            }
+        }
 
         return $this;
     }

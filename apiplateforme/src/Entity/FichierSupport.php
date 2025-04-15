@@ -46,6 +46,12 @@ class FichierSupport
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
+    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'fichierSupports')]
+    private $ec;
+
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'fichierSupports')]
+    private $auteur;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -179,6 +185,30 @@ class FichierSupport
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getEc(): ?ec
+    {
+        return $this->ec;
+    }
+
+    public function setEc(?ec $ec): self
+    {
+        $this->ec = $ec;
+
+        return $this;
+    }
+
+    public function getAuteur(): ?user
+    {
+        return $this->auteur;
+    }
+
+    public function setAuteur(?user $auteur): self
+    {
+        $this->auteur = $auteur;
 
         return $this;
     }

@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UeRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: UeRepository::class)]
@@ -33,6 +35,23 @@ class Ue
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
+
+    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'ues')]
+    private $mention;
+
+    #[ORM\ManyToOne(targetEntity: semestre::class, inversedBy: 'ues')]
+    private $semestre;
+
+    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'ues')]
+    private $niveau;
+
+    #[ORM\OneToMany(mappedBy: 'ue', targetEntity: Ec::class)]
+    private $ecs;
+
+    public function __construct()
+    {
+        $this->ecs = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -119,6 +138,72 @@ class Ue
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getMention(): ?mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?mention $mention): self
+    {
+        $this->mention = $mention;
+
+        return $this;
+    }
+
+    public function getSemestre(): ?semestre
+    {
+        return $this->semestre;
+    }
+
+    public function setSemestre(?semestre $semestre): self
+    {
+        $this->semestre = $semestre;
+
+        return $this;
+    }
+
+    public function getNiveau(): ?niveau
+    {
+        return $this->niveau;
+    }
+
+    public function setNiveau(?niveau $niveau): self
+    {
+        $this->niveau = $niveau;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Ec>
+     */
+    public function getEcs(): Collection
+    {
+        return $this->ecs;
+    }
+
+    public function addEc(Ec $ec): self
+    {
+        if (!$this->ecs->contains($ec)) {
+            $this->ecs[] = $ec;
+            $ec->setUe($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEc(Ec $ec): self
+    {
+        if ($this->ecs->removeElement($ec)) {
+            // set the owning side to null (unless already changed)
+            if ($ec->getUe() === $this) {
+                $ec->setUe(null);
+            }
+        }
 
         return $this;
     }

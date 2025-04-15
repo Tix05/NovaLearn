@@ -34,6 +34,9 @@ class Document
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'documents')]
+    private $user;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -119,6 +122,18 @@ class Document
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getUser(): ?user
+    {
+        return $this->user;
+    }
+
+    public function setUser(?user $user): self
+    {
+        $this->user = $user;
 
         return $this;
     }

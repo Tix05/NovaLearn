@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\ProfRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProfRepository::class)]
@@ -33,6 +35,26 @@ class Prof
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
+
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'profs')]
+    private $user;
+
+    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'profs')]
+    private $mention;
+
+    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'profs')]
+    private $ec;
+
+    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'profs')]
+    private $parcours;
+
+    #[ORM\OneToMany(mappedBy: 'prof', targetEntity: Ec::class)]
+    private $ecs;
+
+    public function __construct()
+    {
+        $this->ecs = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -119,6 +141,84 @@ class Prof
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getUser(): ?user
+    {
+        return $this->user;
+    }
+
+    public function setUser(?user $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getMention(): ?mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?mention $mention): self
+    {
+        $this->mention = $mention;
+
+        return $this;
+    }
+
+    public function getEc(): ?ec
+    {
+        return $this->ec;
+    }
+
+    public function setEc(?ec $ec): self
+    {
+        $this->ec = $ec;
+
+        return $this;
+    }
+
+    public function getParcours(): ?parcours
+    {
+        return $this->parcours;
+    }
+
+    public function setParcours(?parcours $parcours): self
+    {
+        $this->parcours = $parcours;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Ec>
+     */
+    public function getEcs(): Collection
+    {
+        return $this->ecs;
+    }
+
+    public function addEc(Ec $ec): self
+    {
+        if (!$this->ecs->contains($ec)) {
+            $this->ecs[] = $ec;
+            $ec->setProf($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEc(Ec $ec): self
+    {
+        if ($this->ecs->removeElement($ec)) {
+            // set the owning side to null (unless already changed)
+            if ($ec->getProf() === $this) {
+                $ec->setProf(null);
+            }
+        }
 
         return $this;
     }

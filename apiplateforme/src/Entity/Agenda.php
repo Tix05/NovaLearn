@@ -55,6 +55,18 @@ class Agenda
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
+    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'agendas')]
+    private $auteur;
+
+    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'agendas')]
+    private $mention;
+
+    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'agendas')]
+    private $parcours;
+
+    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'agendas')]
+    private $niveau;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -224,6 +236,54 @@ class Agenda
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    public function getAuteur(): ?user
+    {
+        return $this->auteur;
+    }
+
+    public function setAuteur(?user $auteur): self
+    {
+        $this->auteur = $auteur;
+
+        return $this;
+    }
+
+    public function getMention(): ?mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?mention $mention): self
+    {
+        $this->mention = $mention;
+
+        return $this;
+    }
+
+    public function getParcours(): ?parcours
+    {
+        return $this->parcours;
+    }
+
+    public function setParcours(?parcours $parcours): self
+    {
+        $this->parcours = $parcours;
+
+        return $this;
+    }
+
+    public function getNiveau(): ?niveau
+    {
+        return $this->niveau;
+    }
+
+    public function setNiveau(?niveau $niveau): self
+    {
+        $this->niveau = $niveau;
 
         return $this;
     }
