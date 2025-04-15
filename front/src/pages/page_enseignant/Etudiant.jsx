@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
+import { Dropdown } from 'primereact/dropdown';
 
 export default function Etudiant() {
     const [data] = useState([
@@ -99,7 +100,29 @@ export default function Etudiant() {
             profil: 'https://randomuser.me/api/portraits/men/8.jpg'
         }
     ]);
+
+    const [mentionFilter, setMentionFilter] = useState('Tous');
+    const [niveauFilter, setNiveauFilter] = useState('Tous');
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => setGlobalFilterValue(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const mentions = [{ label: 'Mention', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.mention))).map(m => ({ label: m, value: m }))];
+    const niveaux = [{ label: 'Niveau', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.niveau))).map(n => ({ label: n, value: n }))];
+
+    const filteredData = data.filter(item =>
+        (mentionFilter === 'Tous' || item.mention === mentionFilter) &&
+        (niveauFilter === 'Tous' || item.niveau === niveauFilter) &&
+        (globalFilterValue === '' ||
+            item.nom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.email.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()))
+    );
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
@@ -107,14 +130,44 @@ export default function Etudiant() {
 
     const renderHeader = () => {
         return (
-            <div className="flex justify-between items-center">
-                <h1 className='text-3xl font-normal'>Mes étudiants</h1>
-                <IconField iconPosition="left">
-                    <InputIcon className="pi pi-search" />
-                    <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
-                </IconField>
+            <div className="flex flex-col space-y-4">
+                <h1 className='text-3xl p-5 font-semibold'>Mes Etudiants</h1>
+                <div className='grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center'>
+                    <IconField iconPosition="left">
+                        <InputIcon className="pi pi-search" />
+                        <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
+                    </IconField>
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 bibliotheque-dropdown">
+                        <Dropdown value={mentionFilter} onChange={(e) => setMentionFilter(e.value)} options={mentions}
+                            optionLabel="label" placeholder="Mention"
+                            filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
+                            panelClassName="font-poppins text-sm"
+                            className="rounded font-poppins text-sm bg-white"
+                        />
+
+                        <Dropdown value={niveauFilter} onChange={(e) => setNiveauFilter(e.value)} options={niveaux}
+                            optionLabel="label" placeholder="Niveau"
+                            filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
+                            panelClassName="font-poppins text-sm"
+                            className="rounded font-poppins text-sm bg-white"
+                        />
+                    </div>
+                </div>
             </div>
         );
+    };
+
+    const dropdownTemplate = (option, props) => {
+        if (option) {
+            return (
+                <div className="flex align-items-center">
+                    <div>{option.label}</div>
+                </div>
+            );
+        }
+
+        return <span>{props.placeholder}</span>;
     };
 
     const imageBodyTemplate = (rowData) => {
@@ -138,7 +191,7 @@ export default function Etudiant() {
     return (
         <LayoutEnseignant>
             <div className='custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <DataTable value={data} paginator rows={10} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={header} emptyMessage="Aucune donnée trouvée.">
+                <DataTable value={filteredData} paginator rows={10} dataKey="id" sortField="nom" sortOrder={1} header={header} emptyMessage="Aucune donnée trouvée.">
                     <Column field="numero" header="Numéro" sortable style={{ minwidth: '5rem' }} />
                     <Column field="profil" header="Photo" body={imageBodyTemplate} style={{ width: '5rem' }} />
                     <Column field="nom" header="Nom et Prénom" sortable style={{ minWidth: '5rem' }} />

@@ -27,14 +27,33 @@ const AccordionUE = ({ ues, mentionId, niveauId, semestreId }) => {
         );
     };
 
+    // const actionBodyTemplate = (rowData) => {
+    //     return (
+    //         <Link
+    //             to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${semestreId}/cours/${rowData.id}`}
+    //             className='bg-[#39B54A] px-3 py-2 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
+    //         >
+    //             Visualiser le cours
+    //         </Link>
+    //     );
+    // };
+
     const actionBodyTemplate = (rowData) => {
         return (
-            <Link
-                to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${semestreId}/cours/${rowData.id}`}
-                className='bg-[#39B54A] px-3 py-2 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
-            >
-                Visualiser le cours
-            </Link>
+            <div className='flex space-x-2 items-center justify-center'>
+                <Link
+                    to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${semestreId}/cours/${rowData.id}`}
+                    className='bg-[#39B54A] px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
+                >
+                    Visualiser le cours
+                </Link>
+                <Link
+                    to={`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${semestreId}/cours/${rowData.id}/ajout-support`}
+                    className='bg-[#DC3545] px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-[#822a33] duration-300'
+                >
+                    Ajouter support
+                </Link>
+            </div>
         );
     };
 

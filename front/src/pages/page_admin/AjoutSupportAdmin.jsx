@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import LayoutEnseignant from '../../components/LayoutEnseignant';
+import LayoutAdmin from '../../components/LayoutAdmin';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { InputText } from "primereact/inputtext";
 import { FileUpload } from 'primereact/fileupload';
@@ -12,10 +12,10 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import { mentions } from '../../../public/constants/data2';
+import { mentions } from '../../../public/constants/data';
 
-const AjoutSupport = () => {
-    const { mentionId, semestreId, coursId } = useParams();
+const AjoutSupportAdmin = () => {
+    const { mentionId, semestreId, coursId, niveauId } = useParams();
     const [activeIndex, setActiveIndex] = useState(0);
     const [titre, setTitre] = useState('');
     const [selectedFiles, setSelectedFiles] = useState({});
@@ -24,7 +24,9 @@ const AjoutSupport = () => {
     const fileUploadRefs = useRef({});
 
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const semestre = mention?.semestres.find((s) => s.id === semestreId);
+    const niveau = mention?.niveaux?.find((n) => n.id === niveauId);
+    const semestre = niveau?.semestres?.find((s) => s.id === semestreId);
+
 
     let cours = null;
     if (semestre) {
@@ -135,7 +137,7 @@ const AjoutSupport = () => {
     };
 
     return (
-        <LayoutEnseignant>
+        <LayoutAdmin>
             <Toast ref={toast} position="bottom-right" className="mb-5 mr-5" />
 
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
@@ -257,8 +259,8 @@ const AjoutSupport = () => {
                     })}
                 </TabView>
             </div>
-        </LayoutEnseignant>
+        </LayoutAdmin>
     );
 };
 
-export default AjoutSupport;
+export default AjoutSupportAdmin;
