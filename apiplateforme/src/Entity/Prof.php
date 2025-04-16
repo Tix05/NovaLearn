@@ -7,7 +7,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: ProfRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()  U
+ * @ORM\Entity(repositoryClass="App\Repository\ProfRepository")
+ */
 class Prof
 {
     #[ORM\Id]
@@ -36,16 +41,16 @@ class Prof
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'profs')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'profs')]
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'profs')]
+    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'profs')]
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'profs')]
+    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'profs')]
     private $ec;
 
-    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'profs')]
+    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'profs')]
     private $parcours;
 
     #[ORM\OneToMany(mappedBy: 'prof', targetEntity: Ec::class)]
@@ -145,48 +150,48 @@ class Prof
         return $this;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
 
         return $this;
     }
 
-    public function getMention(): ?mention
+    public function getMention(): ?Mention
     {
         return $this->mention;
     }
 
-    public function setMention(?mention $mention): self
+    public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
 
         return $this;
     }
 
-    public function getEc(): ?ec
+    public function getEc(): ?Ec
     {
         return $this->ec;
     }
 
-    public function setEc(?ec $ec): self
+    public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
 
         return $this;
     }
 
-    public function getParcours(): ?parcours
+    public function getParcours(): ?Parcours
     {
         return $this->parcours;
     }
 
-    public function setParcours(?parcours $parcours): self
+    public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
 

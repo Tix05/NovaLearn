@@ -7,7 +7,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: UeRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\UeRepository")
+ */
 class Ue
 {
     #[ORM\Id]
@@ -36,13 +41,13 @@ class Ue
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'ues')]
+    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'ues')]
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: semestre::class, inversedBy: 'ues')]
+    #[ORM\ManyToOne(targetEntity: Semestre::class, inversedBy: 'ues')]
     private $semestre;
 
-    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'ues')]
+    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'ues')]
     private $niveau;
 
     #[ORM\OneToMany(mappedBy: 'ue', targetEntity: Ec::class)]
@@ -142,36 +147,36 @@ class Ue
         return $this;
     }
 
-    public function getMention(): ?mention
+    public function getMention(): ?Mention
     {
         return $this->mention;
     }
 
-    public function setMention(?mention $mention): self
+    public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
 
         return $this;
     }
 
-    public function getSemestre(): ?semestre
+    public function getSemestre(): ?Semestre
     {
         return $this->semestre;
     }
 
-    public function setSemestre(?semestre $semestre): self
+    public function setSemestre(?Semestre $semestre): self
     {
         $this->semestre = $semestre;
 
         return $this;
     }
 
-    public function getNiveau(): ?niveau
+    public function getNiveau(): ?Niveau
     {
         return $this->niveau;
     }
 
-    public function setNiveau(?niveau $niveau): self
+    public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
 

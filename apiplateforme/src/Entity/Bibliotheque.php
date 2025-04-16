@@ -4,8 +4,13 @@ namespace App\Entity;
 
 use App\Repository\BibliothequeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Core\Annotation\ApiResource;
 
-#[ORM\Entity(repositoryClass: BibliothequeRepository::class)]
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\BibliothequeRepository")
+ */
+
 class Bibliotheque
 {
     #[ORM\Id]
@@ -40,13 +45,13 @@ class Bibliotheque
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'bibliotheques')]
+    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'bibliotheques')]
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'bibliotheques')]
+    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'bibliotheques')]
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'bibliotheques')]
+    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'bibliotheques')]
     private $ec;
 
     public function getId(): ?int
@@ -162,36 +167,36 @@ class Bibliotheque
         return $this;
     }
 
-    public function getMention(): ?mention
+    public function getMention(): ?Mention
     {
         return $this->mention;
     }
 
-    public function setMention(?mention $mention): self
+    public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
 
         return $this;
     }
 
-    public function getParcours(): ?parcours
+    public function getParcours(): ?Parcours
     {
         return $this->parcours;
     }
 
-    public function setParcours(?parcours $parcours): self
+    public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
 
         return $this;
     }
 
-    public function getEc(): ?ec
+    public function getEc(): ?Ec
     {
         return $this->ec;
     }
 
-    public function setEc(?ec $ec): self
+    public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
 

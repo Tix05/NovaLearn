@@ -4,8 +4,12 @@ namespace App\Entity;
 
 use App\Repository\AgendaRepository;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Core\Annotation\ApiResource;
 
-#[ORM\Entity(repositoryClass: AgendaRepository::class)]
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\AgendaRepository")
+ */
 class Agenda
 {
     #[ORM\Id]
@@ -55,16 +59,16 @@ class Agenda
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'agendas')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'agendas')]
     private $auteur;
 
-    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'agendas')]
+    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'agendas')]
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'agendas')]
+    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'agendas')]
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'agendas')]
+    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'agendas')]
     private $niveau;
 
     public function getId(): ?int
@@ -240,48 +244,48 @@ class Agenda
         return $this;
     }
 
-    public function getAuteur(): ?user
+    public function getAuteur(): ?User
     {
         return $this->auteur;
     }
 
-    public function setAuteur(?user $auteur): self
+    public function setAuteur(?User $auteur): self
     {
         $this->auteur = $auteur;
 
         return $this;
     }
 
-    public function getMention(): ?mention
+    public function getMention(): ?Mention
     {
         return $this->mention;
     }
 
-    public function setMention(?mention $mention): self
+    public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
 
         return $this;
     }
 
-    public function getParcours(): ?parcours
+    public function getParcours(): ?Parcours
     {
         return $this->parcours;
     }
 
-    public function setParcours(?parcours $parcours): self
+    public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
 
         return $this;
     }
 
-    public function getNiveau(): ?niveau
+    public function getNiveau(): ?Niveau
     {
         return $this->niveau;
     }
 
-    public function setNiveau(?niveau $niveau): self
+    public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
 

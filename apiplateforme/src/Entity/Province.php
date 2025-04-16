@@ -5,7 +5,12 @@ namespace App\Entity;
 use App\Repository\ProvinceRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: ProvinceRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\ProvinceRepository")
+ */
 class Province
 {
     #[ORM\Id]

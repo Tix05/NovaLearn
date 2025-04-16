@@ -5,7 +5,12 @@ namespace App\Entity;
 use App\Repository\FichierSupportRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: FichierSupportRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\FichierSupportRepository")
+ */
 class FichierSupport
 {
     #[ORM\Id]
@@ -46,10 +51,10 @@ class FichierSupport
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'fichierSupports')]
+    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'fichierSupports')]
     private $ec;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'fichierSupports')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'fichierSupports')]
     private $auteur;
 
     public function getId(): ?int
@@ -189,24 +194,24 @@ class FichierSupport
         return $this;
     }
 
-    public function getEc(): ?ec
+    public function getEc(): ?Ec
     {
         return $this->ec;
     }
 
-    public function setEc(?ec $ec): self
+    public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
 
         return $this;
     }
 
-    public function getAuteur(): ?user
+    public function getAuteur(): ?User
     {
         return $this->auteur;
     }
 
-    public function setAuteur(?user $auteur): self
+    public function setAuteur(?User $auteur): self
     {
         $this->auteur = $auteur;
 

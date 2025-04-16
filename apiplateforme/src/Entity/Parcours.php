@@ -7,7 +7,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: ParcoursRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\ParcoursRepository")
+ */
 class Parcours
 {
     #[ORM\Id]

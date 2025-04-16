@@ -4,8 +4,13 @@ namespace App\Entity;
 
 use App\Repository\CommentaireRepository;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Core\Annotation\ApiResource;
 
-#[ORM\Entity(repositoryClass: CommentaireRepository::class)]
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\CommentaireRepository")
+ */
+
 class Commentaire
 {
     #[ORM\Id]
@@ -31,10 +36,10 @@ class Commentaire
     #[ORM\Column(type: 'datetime_immutable')]
     private $created_at;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'commentaires')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'commentaires')]
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: ec::class, inversedBy: 'commentaires')]
+    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'commentaires')]
     private $ec;
 
     public function getId(): ?int
@@ -114,24 +119,24 @@ class Commentaire
         return $this;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
 
         return $this;
     }
 
-    public function getEc(): ?ec
+    public function getEc(): ?Ec
     {
         return $this->ec;
     }
 
-    public function setEc(?ec $ec): self
+    public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
 

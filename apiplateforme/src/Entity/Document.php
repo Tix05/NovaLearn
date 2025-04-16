@@ -5,7 +5,12 @@ namespace App\Entity;
 use App\Repository\DocumentRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: DocumentRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\DocumentRepository")
+ */
 class Document
 {
     #[ORM\Id]
@@ -34,7 +39,7 @@ class Document
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'documents')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'documents')]
     private $user;
 
     public function getId(): ?int
@@ -126,12 +131,12 @@ class Document
         return $this;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
 

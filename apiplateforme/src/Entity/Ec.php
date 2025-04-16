@@ -6,8 +6,12 @@ use App\Repository\EcRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Core\Annotation\ApiResource;
 
-#[ORM\Entity(repositoryClass: EcRepository::class)]
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\EcRepository")
+ */
 class Ec
 {
     #[ORM\Id]
@@ -42,10 +46,10 @@ class Ec
     #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Prof::class)]
     private $profs;
 
-    #[ORM\ManyToOne(targetEntity: ue::class, inversedBy: 'ecs')]
+    #[ORM\ManyToOne(targetEntity: Ue::class, inversedBy: 'ecs')]
     private $ue;
 
-    #[ORM\ManyToOne(targetEntity: prof::class, inversedBy: 'ecs')]
+    #[ORM\ManyToOne(targetEntity: Prof::class, inversedBy: 'ecs')]
     private $prof;
 
     #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Bibliotheque::class)]
@@ -196,24 +200,24 @@ class Ec
         return $this;
     }
 
-    public function getUe(): ?ue
+    public function getUe(): ?Ue
     {
         return $this->ue;
     }
 
-    public function setUe(?ue $ue): self
+    public function setUe(?Ue $ue): self
     {
         $this->ue = $ue;
 
         return $this;
     }
 
-    public function getProf(): ?prof
+    public function getProf(): ?Prof
     {
         return $this->prof;
     }
 
-    public function setProf(?prof $prof): self
+    public function setProf(?Prof $prof): self
     {
         $this->prof = $prof;
 

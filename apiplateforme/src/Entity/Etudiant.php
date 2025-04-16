@@ -5,7 +5,12 @@ namespace App\Entity;
 use App\Repository\EtudiantRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: EtudiantRepository::class)]
+use ApiPlatform\Core\Annotation\ApiResource;
+
+/**
+ * @ApiResource()   
+ * @ORM\Entity(repositoryClass="App\Repository\EtudiantRepository")
+ */
 class Etudiant
 {
     #[ORM\Id]
@@ -52,19 +57,19 @@ class Etudiant
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: user::class, inversedBy: 'etudiants')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'etudiants')]
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: mention::class, inversedBy: 'etudiants')]
+    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'etudiants')]
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: parcours::class, inversedBy: 'etudiants')]
+    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'etudiants')]
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: niveau::class, inversedBy: 'etudiants')]
+    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'etudiants')]
     private $niveau;
 
-    #[ORM\ManyToOne(targetEntity: years::class, inversedBy: 'etudiants')]
+    #[ORM\ManyToOne(targetEntity: Years::class, inversedBy: 'etudiants')]
     private $year;
 
     public function getId(): ?int
@@ -228,60 +233,60 @@ class Etudiant
         return $this;
     }
 
-    public function getUser(): ?user
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?user $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
 
         return $this;
     }
 
-    public function getMention(): ?mention
+    public function getMention(): ?Mention
     {
         return $this->mention;
     }
 
-    public function setMention(?mention $mention): self
+    public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
 
         return $this;
     }
 
-    public function getParcours(): ?parcours
+    public function getParcours(): ?Parcours
     {
         return $this->parcours;
     }
 
-    public function setParcours(?parcours $parcours): self
+    public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
 
         return $this;
     }
 
-    public function getNiveau(): ?niveau
+    public function getNiveau(): ?Niveau
     {
         return $this->niveau;
     }
 
-    public function setNiveau(?niveau $niveau): self
+    public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
 
         return $this;
     }
 
-    public function getYear(): ?years
+    public function getYear(): ?Years
     {
         return $this->year;
     }
 
-    public function setYear(?years $year): self
+    public function setYear(?Years $year): self
     {
         $this->year = $year;
 
