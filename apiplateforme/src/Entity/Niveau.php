@@ -47,11 +47,15 @@ class Niveau
     #[ORM\OneToMany(mappedBy: 'niveau', targetEntity: Agenda::class)]
     private $agendas;
 
+    #[ORM\OneToMany(mappedBy: 'niveau', targetEntity: NotificationGroupe::class)]
+    private Collection $notificationGroupes;
+
     public function __construct()
     {
         $this->etudiants = new ArrayCollection();
         $this->ues = new ArrayCollection();
         $this->agendas = new ArrayCollection();
+        $this->notificationGroupes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -215,6 +219,36 @@ class Niveau
             // set the owning side to null (unless already changed)
             if ($agenda->getNiveau() === $this) {
                 $agenda->setNiveau(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, NotificationGroupe>
+     */
+    public function getNotificationGroupes(): Collection
+    {
+        return $this->notificationGroupes;
+    }
+
+    public function addNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if (!$this->notificationGroupes->contains($notificationGroupe)) {
+            $this->notificationGroupes->add($notificationGroupe);
+            $notificationGroupe->setNiveau($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if ($this->notificationGroupes->removeElement($notificationGroupe)) {
+            // set the owning side to null (unless already changed)
+            if ($notificationGroupe->getNiveau() === $this) {
+                $notificationGroupe->setNiveau(null);
             }
         }
 

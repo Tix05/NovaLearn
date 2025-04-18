@@ -79,6 +79,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'auteur', targetEntity: FichierSupport::class)]
     private $fichierSupports;
 
+    #[ORM\OneToMany(mappedBy: 'createdBy', targetEntity: Conversation::class)]
+    private Collection $conversations;
+
+    #[ORM\OneToMany(mappedBy: 'expediteur', targetEntity: Message::class)]
+    private Collection $messages;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Notification::class)]
+    private Collection $notifications;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: AbonnementNotification::class)]
+    private Collection $abonnementNotifications;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -87,6 +99,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->commentaires = new ArrayCollection();
         $this->documents = new ArrayCollection();
         $this->fichierSupports = new ArrayCollection();
+        $this->conversations = new ArrayCollection();
+        $this->messages = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
+        $this->abonnementNotifications = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -472,6 +488,126 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($fichierSupport->getAuteur() === $this) {
                 $fichierSupport->setAuteur(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
+
+    public function addConversation(Conversation $conversation): static
+    {
+        if (!$this->conversations->contains($conversation)) {
+            $this->conversations->add($conversation);
+            $conversation->setCreatedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConversation(Conversation $conversation): static
+    {
+        if ($this->conversations->removeElement($conversation)) {
+            // set the owning side to null (unless already changed)
+            if ($conversation->getCreatedBy() === $this) {
+                $conversation->setCreatedBy(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Message>
+     */
+    public function getMessages(): Collection
+    {
+        return $this->messages;
+    }
+
+    public function addMessage(Message $message): static
+    {
+        if (!$this->messages->contains($message)) {
+            $this->messages->add($message);
+            $message->setExpediteur($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMessage(Message $message): static
+    {
+        if ($this->messages->removeElement($message)) {
+            // set the owning side to null (unless already changed)
+            if ($message->getExpediteur() === $this) {
+                $message->setExpediteur(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification)) {
+            // set the owning side to null (unless already changed)
+            if ($notification->getUser() === $this) {
+                $notification->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, AbonnementNotification>
+     */
+    public function getAbonnementNotifications(): Collection
+    {
+        return $this->abonnementNotifications;
+    }
+
+    public function addAbonnementNotification(AbonnementNotification $abonnementNotification): static
+    {
+        if (!$this->abonnementNotifications->contains($abonnementNotification)) {
+            $this->abonnementNotifications->add($abonnementNotification);
+            $abonnementNotification->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAbonnementNotification(AbonnementNotification $abonnementNotification): static
+    {
+        if ($this->abonnementNotifications->removeElement($abonnementNotification)) {
+            // set the owning side to null (unless already changed)
+            if ($abonnementNotification->getUser() === $this) {
+                $abonnementNotification->setUser(null);
             }
         }
 

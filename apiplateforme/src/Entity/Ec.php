@@ -61,12 +61,20 @@ class Ec
     #[ORM\OneToMany(mappedBy: 'ec', targetEntity: FichierSupport::class)]
     private $fichierSupports;
 
+    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Conversation::class)]
+    private Collection $conversations;
+
+    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: NotificationGroupe::class)]
+    private Collection $notificationGroupes;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
         $this->bibliotheques = new ArrayCollection();
         $this->commentaires = new ArrayCollection();
         $this->fichierSupports = new ArrayCollection();
+        $this->conversations = new ArrayCollection();
+        $this->notificationGroupes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -308,6 +316,66 @@ class Ec
             // set the owning side to null (unless already changed)
             if ($fichierSupport->getEc() === $this) {
                 $fichierSupport->setEc(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
+
+    public function addConversation(Conversation $conversation): static
+    {
+        if (!$this->conversations->contains($conversation)) {
+            $this->conversations->add($conversation);
+            $conversation->setEc($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConversation(Conversation $conversation): static
+    {
+        if ($this->conversations->removeElement($conversation)) {
+            // set the owning side to null (unless already changed)
+            if ($conversation->getEc() === $this) {
+                $conversation->setEc(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, NotificationGroupe>
+     */
+    public function getNotificationGroupes(): Collection
+    {
+        return $this->notificationGroupes;
+    }
+
+    public function addNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if (!$this->notificationGroupes->contains($notificationGroupe)) {
+            $this->notificationGroupes->add($notificationGroupe);
+            $notificationGroupe->setEc($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if ($this->notificationGroupes->removeElement($notificationGroupe)) {
+            // set the owning side to null (unless already changed)
+            if ($notificationGroupe->getEc() === $this) {
+                $notificationGroupe->setEc(null);
             }
         }
 

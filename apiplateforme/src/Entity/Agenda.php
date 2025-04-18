@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\AgendaRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Annotation\ApiFilter;
@@ -175,9 +177,13 @@ class Agenda
      */
     private $niveau;
 
+    #[ORM\OneToMany(mappedBy: 'agenda', targetEntity: Notification::class)]
+    private Collection $notifications;
+
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
+        $this->notifications = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -359,5 +365,35 @@ class Agenda
     public function setUpdatedAtValue(): void
     {
         $this->updated_at = new \DateTimeImmutable();
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setAgenda($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification)) {
+            // set the owning side to null (unless already changed)
+            if ($notification->getAgenda() === $this) {
+                $notification->setAgenda(null);
+            }
+        }
+
+        return $this;
     }
 }

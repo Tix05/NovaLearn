@@ -47,6 +47,9 @@ class Mention
     #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Bibliotheque::class)]
     private $bibliotheques;
 
+    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: NotificationGroupe::class)]
+    private Collection $notificationGroupes;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -54,6 +57,7 @@ class Mention
         $this->ues = new ArrayCollection();
         $this->agendas = new ArrayCollection();
         $this->bibliotheques = new ArrayCollection();
+        $this->notificationGroupes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -253,6 +257,36 @@ class Mention
             // set the owning side to null (unless already changed)
             if ($bibliotheque->getMention() === $this) {
                 $bibliotheque->setMention(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, NotificationGroupe>
+     */
+    public function getNotificationGroupes(): Collection
+    {
+        return $this->notificationGroupes;
+    }
+
+    public function addNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if (!$this->notificationGroupes->contains($notificationGroupe)) {
+            $this->notificationGroupes->add($notificationGroupe);
+            $notificationGroupe->setMention($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    {
+        if ($this->notificationGroupes->removeElement($notificationGroupe)) {
+            // set the owning side to null (unless already changed)
+            if ($notificationGroupe->getMention() === $this) {
+                $notificationGroupe->setMention(null);
             }
         }
 
