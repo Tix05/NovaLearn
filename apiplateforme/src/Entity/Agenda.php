@@ -5,71 +5,180 @@ namespace App\Entity;
 use App\Repository\AgendaRepository;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\AgendaRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"date": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"agenda:read"}},
+ *     denormalizationContext={"groups"={"agenda:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "titre": "partial",
+ *     "description": "partial",
+ *     "type": "exact",
+ *     "auteur.id": "exact",
+ *     "mention.id": "exact",
+ *     "niveau.id": "exact",
+ *     "parcours.id": "exact"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "titre", "date", "date_expiration"})
+ * @ApiFilter(DateFilter::class, properties={"date", "date_expiration"})
+ * @ORM\Entity(repositoryClass=AgendaRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Agenda
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    public const TYPE_COURS = 'COURS';
+    public const TYPE_EVENEMENT = 'EVENEMENT';
+    public const TYPE_EXAMEN = 'EXAMEN';
+
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"agenda:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $titre;
 
-    #[ORM\Column(type: 'integer')]
-    private $auteur_id;
-
-    #[ORM\Column(type: 'date')]
+    /**
+     * @ORM\Column(type="date")
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     * @Assert\Type("\DateTimeInterface")
+     */
     private $date;
 
-    #[ORM\Column(type: 'date')]
+    /**
+     * @ORM\Column(type="date")
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     * @Assert\Type("\DateTimeInterface")
+     * @Assert\Expression(
+     *     "this.getDate() <= this.getDateExpiration()",
+     *     message="La date d'expiration doit être postérieure ou égale à la date de début"
+     * )
+     */
     private $date_expiration;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="text")
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     */
     private $description;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\Url
+     * @Assert\Length(max=255)
+     */
     private $image;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\Url
+     * @Assert\Length(max=255)
+     */
     private $video;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\Url
+     * @Assert\Length(max=255)
+     */
     private $url;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=20)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     * @Assert\Choice(
+     *     choices={Agenda::TYPE_COURS, Agenda::TYPE_EVENEMENT, Agenda::TYPE_EXAMEN},
+     *     message="Choisissez un type valide: COURS, EVENEMENT ou EXAMEN"
+     * )
+     */
     private $type;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $mention_id;
-
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $niveau_id;
-
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $parcours_id;
-
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"agenda:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"agenda:read"})
+     */
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'agendas')]
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="agendas")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"agenda:read"})
+     * @Assert\NotNull
+     */
     private $auteur;
 
-    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'agendas')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="agendas")
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\Expression(
+     *     "this.getType() in ['COURS', 'EXAMEN'] ? this.getMention() != null : true",
+     *     message="La mention est requise pour les types COURS et EXAMEN"
+     * )
+     */
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'agendas')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="agendas")
+     * @Groups({"agenda:read", "agenda:write"})
+     */
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'agendas')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="agendas")
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\Expression(
+     *     "this.getType() in ['COURS', 'EXAMEN'] ? this.getNiveau() != null : true",
+     *     message="Le niveau est requis pour les types COURS et EXAMEN"
+     * )
+     */
     private $niveau;
+
+    public function __construct()
+    {
+        $this->created_at = new \DateTimeImmutable();
+    }
 
     public function getId(): ?int
     {
@@ -84,18 +193,6 @@ class Agenda
     public function setTitre(string $titre): self
     {
         $this->titre = $titre;
-
-        return $this;
-    }
-
-    public function getAuteurId(): ?int
-    {
-        return $this->auteur_id;
-    }
-
-    public function setAuteurId(int $auteur_id): self
-    {
-        $this->auteur_id = $auteur_id;
 
         return $this;
     }
@@ -184,42 +281,6 @@ class Agenda
         return $this;
     }
 
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(?int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
-    }
-
-    public function getNiveauId(): ?int
-    {
-        return $this->niveau_id;
-    }
-
-    public function setNiveauId(int $niveau_id): self
-    {
-        $this->niveau_id = $niveau_id;
-
-        return $this;
-    }
-
-    public function getParcoursId(): ?int
-    {
-        return $this->parcours_id;
-    }
-
-    public function setParcoursId(?int $parcours_id): self
-    {
-        $this->parcours_id = $parcours_id;
-
-        return $this;
-    }
-
     public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->created_at;
@@ -290,5 +351,13 @@ class Agenda
         $this->niveau = $niveau;
 
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function setUpdatedAtValue(): void
+    {
+        $this->updated_at = new \DateTimeImmutable();
     }
 }

@@ -5,82 +5,133 @@ namespace App\Entity;
 use App\Repository\BibliothequeRepository;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
+use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\BibliothequeRepository")
+ * @ApiResource(
+ *     normalizationContext={"groups"={"bibliotheque:read"}},
+ *     denormalizationContext={"groups"={"bibliotheque:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={
+ *             "controller"=App\Controller\BibliothequeUploadController::class,
+ *             "deserialize"=false,
+ *             "openapi_context"={
+ *                 "requestBody"={
+ *                     "content"={
+ *                         "multipart/form-data"={
+ *                             "schema"={
+ *                                 "type"="object",
+ *                                 "properties"={
+ *                                     "file"={"type"="string", "format"="binary"},
+ *                                     "titre"={"type"="string"},
+ *                                     "type"={"type"="string"},
+ *                                     "ec"={"type"="integer"}
+ *                                 }
+ *                             }
+ *                         }
+ *                     }
+ *                 }
+ *             }
+ *         }
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "titre": "partial",
+ *     "type": "exact",
+ *     "ec.nom": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "titre", "createdAt"})
+ * @ORM\Entity(repositoryClass=BibliothequeRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
-
 class Bibliotheque
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"bibliotheque:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $mention_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $ec_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     * @Assert\NotBlank
+     */
     private $titre;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"bibliotheque:read"})
+     */
     private $fichier;
 
-    #[ORM\Column(type: 'boolean')]
-    private $status;
+    /**
+     * @Assert\File(maxSize="10M")
+     * @Groups({"bibliotheque:write"})
+     */
+    private $file;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="boolean")
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     */
+    private $status = true;
+
+    /**
+     * @ORM\Column(type="string", length=50)
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     * @Assert\NotBlank
+     */
     private $type;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $parcours_id;
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"bibliotheque:read"})
+     */
+    private $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private $created_at;
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"bibliotheque:read"})
+     */
+    private $updatedAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private $updated_at;
-
-    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'bibliotheques')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="bibliotheques")
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     */
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'bibliotheques')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="bibliotheques")
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     */
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'bibliotheques')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="bibliotheques")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     * @Assert\NotNull
+     */
     private $ec;
+
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+    }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(?int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
-    }
-
-    public function getEcId(): ?int
-    {
-        return $this->ec_id;
-    }
-
-    public function setEcId(int $ec_id): self
-    {
-        $this->ec_id = $ec_id;
-
-        return $this;
     }
 
     public function getTitre(): ?string
@@ -91,7 +142,6 @@ class Bibliotheque
     public function setTitre(string $titre): self
     {
         $this->titre = $titre;
-
         return $this;
     }
 
@@ -103,7 +153,20 @@ class Bibliotheque
     public function setFichier(string $fichier): self
     {
         $this->fichier = $fichier;
+        return $this;
+    }
 
+    public function getFile(): ?File
+    {
+        return $this->file;
+    }
+
+    public function setFile(?File $file): self
+    {
+        $this->file = $file;
+        if ($file) {
+            $this->updatedAt = new \DateTimeImmutable();
+        }
         return $this;
     }
 
@@ -115,7 +178,6 @@ class Bibliotheque
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
@@ -127,43 +189,28 @@ class Bibliotheque
     public function setType(string $type): self
     {
         $this->type = $type;
-
-        return $this;
-    }
-
-    public function getParcoursId(): ?int
-    {
-        return $this->parcours_id;
-    }
-
-    public function setParcoursId(?int $parcours_id): self
-    {
-        $this->parcours_id = $parcours_id;
-
         return $this;
     }
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
-        return $this->created_at;
+        return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
-        $this->created_at = $created_at;
-
+        $this->createdAt = $createdAt;
         return $this;
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
-        return $this->updated_at;
+        return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): self
     {
-        $this->updated_at = $updated_at;
-
+        $this->updatedAt = $updatedAt;
         return $this;
     }
 
@@ -175,7 +222,6 @@ class Bibliotheque
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-
         return $this;
     }
 
@@ -187,7 +233,6 @@ class Bibliotheque
     public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-
         return $this;
     }
 
@@ -199,7 +244,14 @@ class Bibliotheque
     public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
-
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 }
