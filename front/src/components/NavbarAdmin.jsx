@@ -17,13 +17,6 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'documents':
-                return (
-                    <div className="p-4 md:p-6">
-                        <h2 className="text-xl font-semibold mb-4">Mes Documents</h2>
-                        <p className="text-gray-600">Aucun document disponible pour le moment.</p>
-                    </div>
-                );
             case 'password':
                 return (
                     <form className="p-2 md:p-4" onSubmit={(e) => e.preventDefault()}>
@@ -205,15 +198,6 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
                                                     } whitespace-nowrap py-4 px-4 sm:px-6 border-b-2 font-medium text-sm sm:text-base`}
                                             >
                                                 Mes informations
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTab('documents')}
-                                                className={`${activeTab === 'documents'
-                                                    ? 'border-red-800 text-red-800'
-                                                    : 'text-gray-500 hover:text-gray-700'
-                                                    } whitespace-nowrap py-4 px-4 sm:px-6 border-b-2 font-medium text-sm sm:text-base`}
-                                            >
-                                                Mes Documents
                                             </button>
                                             <button
                                                 onClick={() => setActiveTab('password')}
