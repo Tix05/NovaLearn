@@ -7,103 +7,147 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\EcRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"name": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"ec:read"}},
+ *     denormalizationContext={"groups"={"ec:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "code": "exact",
+ *     "name": "partial",
+ *     "ue.id": "exact",
+ *     "prof.id": "exact"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "code", "name", "coeff", "created_at"})
+ * @ApiFilter(BooleanFilter::class, properties={"status"})
+ * @ORM\Entity(repositoryClass=EcRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Ec
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"ec:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $ue_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $prof_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"ec:read", "ec:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $code;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"ec:read", "ec:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $name;
 
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Column(type="integer")
+     * @Groups({"ec:read", "ec:write"})
+     * @Assert\NotBlank
+     * @Assert\Positive
+     */
     private $coeff;
 
-    #[ORM\Column(type: 'boolean')]
-    private $status;
+    /**
+     * @ORM\Column(type="boolean")
+     * @Groups({"ec:read", "ec:write"})
+     */
+    private $status = true;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"ec:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"ec:read"})
+     */
     private $updated_at;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Prof::class)]
-    private $profs;
-
-    #[ORM\ManyToOne(targetEntity: Ue::class, inversedBy: 'ecs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Ue::class, inversedBy="ecs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"ec:read", "ec:write"})
+     * @Assert\NotNull
+     */
     private $ue;
 
-    #[ORM\ManyToOne(targetEntity: Prof::class, inversedBy: 'ecs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Prof::class, inversedBy="ecs")
+     * @Groups({"ec:read", "ec:write"})
+     */
     private $prof;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Bibliotheque::class)]
+    /**
+     * @ORM\OneToMany(mappedBy="ec", targetEntity=Bibliotheque::class)
+     */
     private $bibliotheques;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Commentaire::class)]
+    /**
+     * @ORM\OneToMany(mappedBy="ec", targetEntity=Commentaire::class)
+     */
     private $commentaires;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: FichierSupport::class)]
+    /**
+     * @ORM\OneToMany(mappedBy="ec", targetEntity=FichierSupport::class)
+     */
     private $fichierSupports;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: Conversation::class)]
-    private Collection $conversations;
+    /**
+     * @ORM\OneToMany(mappedBy="ec", targetEntity=Conversation::class)
+     */
+    private $conversations;
 
-    #[ORM\OneToMany(mappedBy: 'ec', targetEntity: NotificationGroupe::class)]
-    private Collection $notificationGroupes;
+    /**
+     * @ORM\OneToMany(mappedBy="ec", targetEntity=NotificationGroupe::class)
+     */
+    private $notificationGroupes;
 
     public function __construct()
     {
-        $this->profs = new ArrayCollection();
         $this->bibliotheques = new ArrayCollection();
         $this->commentaires = new ArrayCollection();
         $this->fichierSupports = new ArrayCollection();
         $this->conversations = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
+        $this->created_at = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getUeId(): ?int
-    {
-        return $this->ue_id;
-    }
-
-    public function setUeId(int $ue_id): self
-    {
-        $this->ue_id = $ue_id;
-
-        return $this;
-    }
-
-    public function getProfId(): ?int
-    {
-        return $this->prof_id;
-    }
-
-    public function setProfId(int $prof_id): self
-    {
-        $this->prof_id = $prof_id;
-
-        return $this;
     }
 
     public function getCode(): ?string
@@ -114,7 +158,6 @@ class Ec
     public function setCode(string $code): self
     {
         $this->code = $code;
-
         return $this;
     }
 
@@ -126,7 +169,6 @@ class Ec
     public function setName(string $name): self
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -138,7 +180,6 @@ class Ec
     public function setCoeff(int $coeff): self
     {
         $this->coeff = $coeff;
-
         return $this;
     }
 
@@ -150,7 +191,6 @@ class Ec
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
@@ -162,7 +202,6 @@ class Ec
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
@@ -174,37 +213,6 @@ class Ec
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Prof>
-     */
-    public function getProfs(): Collection
-    {
-        return $this->profs;
-    }
-
-    public function addProf(Prof $prof): self
-    {
-        if (!$this->profs->contains($prof)) {
-            $this->profs[] = $prof;
-            $prof->setEc($this);
-        }
-
-        return $this;
-    }
-
-    public function removeProf(Prof $prof): self
-    {
-        if ($this->profs->removeElement($prof)) {
-            // set the owning side to null (unless already changed)
-            if ($prof->getEc() === $this) {
-                $prof->setEc(null);
-            }
-        }
-
         return $this;
     }
 
@@ -216,7 +224,6 @@ class Ec
     public function setUe(?Ue $ue): self
     {
         $this->ue = $ue;
-
         return $this;
     }
 
@@ -228,7 +235,6 @@ class Ec
     public function setProf(?Prof $prof): self
     {
         $this->prof = $prof;
-
         return $this;
     }
 
@@ -381,4 +387,13 @@ class Ec
 
         return $this;
     }
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new \DateTimeImmutable();
+    }
 }
+
+

@@ -5,70 +5,114 @@ namespace App\Entity;
 use App\Repository\CommentaireRepository;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\CommentaireRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"time": "DESC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"commentaire:read"}},
+ *     denormalizationContext={"groups"={"commentaire:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={
+ *             "security"="is_granted('ROLE_USER')",
+ *             "validation_groups"={"Default", "commentaire:create"}
+ *         }
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "contenu": "partial",
+ *     "user.id": "exact",
+ *     "ec.id": "exact",
+ *     "user.nom": "partial",
+ *     "user.prenom": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "time", "createdAt"})
+ * @ApiFilter(DateFilter::class, properties={"time", "createdAt"})
+ * @ApiFilter(BooleanFilter::class, properties={"status"})
+ * @ORM\Entity(repositoryClass=CommentaireRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
-
 class Commentaire
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"commentaire:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer')]
-    private $user_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $ec_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="text")
+     * @Groups({"commentaire:read", "commentaire:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(
+     *     min=2,
+     *     max=5000,
+     *     minMessage="Le commentaire doit contenir au moins {{ limit }} caractères",
+     *     maxMessage="Le commentaire ne peut pas dépasser {{ limit }} caractères"
+     * )
+     */
     private $contenu;
 
-    #[ORM\Column(type: 'datetime')]
+    /**
+     * @ORM\Column(type="datetime")
+     * @Groups({"commentaire:read"})
+     */
     private $time;
 
-    #[ORM\Column(type: 'boolean')]
-    private $status;
+    /**
+     * @ORM\Column(type="boolean")
+     * @Groups({"commentaire:read", "commentaire:write"})
+     */
+    private $status = true;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private $created_at;
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"commentaire:read"})
+     */
+    private $createdAt;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'commentaires')]
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="commentaires")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"commentaire:read"})
+     */
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'commentaires')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="commentaires")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"commentaire:read", "commentaire:write"})
+     * @Assert\NotNull
+     */
     private $ec;
+
+    public function __construct()
+    {
+        $this->time = new \DateTime();
+        $this->createdAt = new \DateTimeImmutable();
+    }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getUserId(): ?int
-    {
-        return $this->user_id;
-    }
-
-    public function setUserId(int $user_id): self
-    {
-        $this->user_id = $user_id;
-
-        return $this;
-    }
-
-    public function getEcId(): ?int
-    {
-        return $this->ec_id;
-    }
-
-    public function setEcId(int $ec_id): self
-    {
-        $this->ec_id = $ec_id;
-
-        return $this;
     }
 
     public function getContenu(): ?string
@@ -79,7 +123,6 @@ class Commentaire
     public function setContenu(string $contenu): self
     {
         $this->contenu = $contenu;
-
         return $this;
     }
 
@@ -91,7 +134,6 @@ class Commentaire
     public function setTime(\DateTimeInterface $time): self
     {
         $this->time = $time;
-
         return $this;
     }
 
@@ -103,19 +145,17 @@ class Commentaire
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
     public function getCreatedAt(): ?\DateTimeImmutable
     {
-        return $this->created_at;
+        return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
-        $this->created_at = $created_at;
-
+        $this->createdAt = $createdAt;
         return $this;
     }
 
@@ -127,7 +167,6 @@ class Commentaire
     public function setUser(?User $user): self
     {
         $this->user = $user;
-
         return $this;
     }
 
@@ -139,7 +178,16 @@ class Commentaire
     public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
-
         return $this;
+    }
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setTimestamps(): void
+    {
+        if ($this->getTime() === null) {
+            $this->time = new \DateTime();
+        }
     }
 }

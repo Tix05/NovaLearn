@@ -15,23 +15,43 @@ class BibliothequeUploadController extends AbstractController
     {
         $uploadedFile = $request->files->get('file');
         if (!$uploadedFile) {
-            throw new BadRequestHttpException('"file" is required');
+            throw new BadRequestHttpException('Un fichier est requis');
+        }
+
+        // Validation du type de fichier
+        $allowedMimeTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!in_array($uploadedFile->getMimeType(), $allowedMimeTypes)) {
+            throw new BadRequestHttpException('Type de fichier non autorisé');
+        }
+
+        $uploadDir = $this->getParameter('kernel.project_dir').'/public/uploads/bibliotheque';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0775, true);
+        }
+
+        $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = transliterator_transliterate(
+            'Any-Latin; Latin-ASCII; [^A-Za-z0-9_] remove; Lower()',
+            $originalName
+        );
+        $fileName = $safeFilename.'-'.uniqid().'.'.$uploadedFile->guessExtension();
+
+        try {
+            $uploadedFile->move($uploadDir, $fileName);
+        } catch (\Exception $e) {
+            throw new BadRequestHttpException('Échec de l\'upload: '.$e->getMessage());
         }
 
         $bibliotheque = new Bibliotheque();
-        $bibliotheque->setFile($uploadedFile);
+        $bibliotheque->setFichier('/uploads/bibliotheque/'.$fileName);
         $bibliotheque->setTitre($request->request->get('titre'));
         $bibliotheque->setType($request->request->get('type'));
-        
-        // Gérer l'EC (peut être passé comme ID)
+        $bibliotheque->setUser($this->getUser());
+
+        // Gérer l'EC
         if ($ecId = $request->request->get('ec')) {
             // Récupérer l'entité EC depuis l'ID et faire setEc()
         }
-
-        // Le fichier sera déplacé dans un EventSubscriber ou ici
-        $fileName = uniqid().'.'.$uploadedFile->guessExtension();
-        $uploadedFile->move($this->getParameter('bibliotheque_directory'), $fileName);
-        $bibliotheque->setFichier($fileName);
 
         return $bibliotheque;
     }

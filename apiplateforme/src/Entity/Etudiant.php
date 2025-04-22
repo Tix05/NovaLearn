@@ -4,137 +4,168 @@ namespace App\Entity;
 
 use App\Repository\EtudiantRepository;
 use Doctrine\ORM\Mapping as ORM;
-
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\EtudiantRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"matricule": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"etudiant:read"}},
+ *     denormalizationContext={"groups"={"etudiant:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "matricule": "exact",
+ *     "user.nom": "partial",
+ *     "user.prenom": "partial",
+ *     "mention.nom": "partial",
+ *     "parcours.nom": "partial",
+ *     "niveau.nom": "partial",
+ *     "year.annee": "exact"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={
+ *     "id", "matricule", "date_inscription", "created_at"
+ * })
+ * @ApiFilter(DateFilter::class, properties={"date_inscription"})
+ * @ApiFilter(BooleanFilter::class, properties={"status"})
+ * @ORM\Entity(repositoryClass=EtudiantRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Etudiant
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"etudiant:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer')]
-    private $user_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $mention_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $year_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $parcours_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $niveau_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255, unique=true)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $matricule;
 
-    #[ORM\Column(type: 'date')]
+    /**
+     * @ORM\Column(type="date")
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotBlank
+     * @Assert\Type("\DateTimeInterface")
+     */
     private $date_inscription;
 
-    #[ORM\Column(type: 'boolean')]
-    private $status;
+    /**
+     * @ORM\Column(type="boolean")
+     * @Groups({"etudiant:read", "etudiant:write"})
+     */
+    private $status = true;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\Length(max=255)
+     */
     private $fichier_virement;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\Length(max=255)
+     */
     private $reference;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotBlank
+     * @Assert\Choice({"virement", "espece", "cheque", "bourse"})
+     * @Assert\Length(max=255)
+     */
     private $type_payement;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"etudiant:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"etudiant:read"})
+     */
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'etudiants')]
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="etudiants")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"etudiant:read"})
+     * @Assert\NotNull
+     */
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'etudiants')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="etudiants")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotNull
+     */
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'etudiants')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="etudiants")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotNull
+     */
     private $parcours;
 
-    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'etudiants')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="etudiants")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotNull
+     */
     private $niveau;
 
-    #[ORM\ManyToOne(targetEntity: Years::class, inversedBy: 'etudiants')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Years::class, inversedBy="etudiants")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"etudiant:read", "etudiant:write"})
+     * @Assert\NotNull
+     */
     private $year;
+
+    public function __construct()
+    {
+        $this->created_at = new \DateTimeImmutable();
+    }
+
+    // Getters et Setters
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getUserId(): ?int
-    {
-        return $this->user_id;
-    }
-
-    public function setUserId(int $user_id): self
-    {
-        $this->user_id = $user_id;
-
-        return $this;
-    }
-
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
-    }
-
-    public function getYearId(): ?int
-    {
-        return $this->year_id;
-    }
-
-    public function setYearId(int $year_id): self
-    {
-        $this->year_id = $year_id;
-
-        return $this;
-    }
-
-    public function getParcoursId(): ?int
-    {
-        return $this->parcours_id;
-    }
-
-    public function setParcoursId(int $parcours_id): self
-    {
-        $this->parcours_id = $parcours_id;
-
-        return $this;
-    }
-
-    public function getNiveauId(): ?int
-    {
-        return $this->niveau_id;
-    }
-
-    public function setNiveauId(int $niveau_id): self
-    {
-        $this->niveau_id = $niveau_id;
-
-        return $this;
     }
 
     public function getMatricule(): ?string
@@ -145,7 +176,6 @@ class Etudiant
     public function setMatricule(string $matricule): self
     {
         $this->matricule = $matricule;
-
         return $this;
     }
 
@@ -157,7 +187,6 @@ class Etudiant
     public function setDateInscription(\DateTimeInterface $date_inscription): self
     {
         $this->date_inscription = $date_inscription;
-
         return $this;
     }
 
@@ -169,7 +198,6 @@ class Etudiant
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
@@ -181,7 +209,6 @@ class Etudiant
     public function setFichierVirement(?string $fichier_virement): self
     {
         $this->fichier_virement = $fichier_virement;
-
         return $this;
     }
 
@@ -193,7 +220,6 @@ class Etudiant
     public function setReference(?string $reference): self
     {
         $this->reference = $reference;
-
         return $this;
     }
 
@@ -205,7 +231,6 @@ class Etudiant
     public function setTypePayement(string $type_payement): self
     {
         $this->type_payement = $type_payement;
-
         return $this;
     }
 
@@ -217,7 +242,6 @@ class Etudiant
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
@@ -229,7 +253,6 @@ class Etudiant
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -241,7 +264,6 @@ class Etudiant
     public function setUser(?User $user): self
     {
         $this->user = $user;
-
         return $this;
     }
 
@@ -253,7 +275,6 @@ class Etudiant
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-
         return $this;
     }
 
@@ -265,7 +286,6 @@ class Etudiant
     public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-
         return $this;
     }
 
@@ -277,7 +297,6 @@ class Etudiant
     public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
-
         return $this;
     }
 
@@ -289,7 +308,14 @@ class Etudiant
     public function setYear(?Years $year): self
     {
         $this->year = $year;
-
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new \DateTimeImmutable();
     }
 }

@@ -6,49 +6,114 @@ use App\Repository\MentionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use DateTimeImmutable;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\MentionRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"name": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"mention:read"}},
+ *     denormalizationContext={"groups"={"mention:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "name": "partial",
+ *     "profs.nom": "partial",
+ *     "etudiants.nom": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "name", "created_at"})
+ * @ORM\Entity(repositoryClass=MentionRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Mention
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"mention:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"mention:read", "mention:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $name;
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"mention:read", "mention:write"})
+     * @Assert\Length(max=255)
+     */
     private $icon;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"mention:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"mention:read"})
+     */
     private $updated_at;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Prof::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
     private $profs;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Etudiant::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
     private $etudiants;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Ue::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Ue::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
     private $ues;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Agenda::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
     private $agendas;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: Bibliotheque::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Bibliotheque::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
     private $bibliotheques;
 
-    #[ORM\OneToMany(mappedBy: 'mention', targetEntity: NotificationGroupe::class)]
-    private Collection $notificationGroupes;
+    /**
+     * @ORM\OneToMany(targetEntity=NotificationGroupe::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
+    private $notificationGroupes;
 
     public function __construct()
     {
@@ -58,6 +123,7 @@ class Mention
         $this->agendas = new ArrayCollection();
         $this->bibliotheques = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
+        $this->created_at = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -73,7 +139,6 @@ class Mention
     public function setName(string $name): self
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -85,31 +150,28 @@ class Mention
     public function setIcon(?string $icon): self
     {
         $this->icon = $icon;
-
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): ?DateTimeImmutable
     {
         return $this->updated_at;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
+    public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -291,5 +353,18 @@ class Mention
         }
 
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new DateTimeImmutable();
+    }
+
+    public function __toString(): string
+    {
+        return $this->name;
     }
 }

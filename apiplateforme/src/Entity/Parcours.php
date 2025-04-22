@@ -6,52 +6,123 @@ use App\Repository\ParcoursRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use DateTimeImmutable;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\ParcoursRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"name": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"parcours:read"}},
+ *     denormalizationContext={"groups"={"parcours:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "name": "partial",
+ *     "full_name": "partial",
+ *     "mention.name": "partial",
+ *     "profs.nom": "partial",
+ *     "etudiants.nom": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "name", "full_name", "created_at"})
+ * @ORM\Entity(repositoryClass=ParcoursRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Parcours
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"parcours:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $mention_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"parcours:read", "parcours:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $name;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"parcours:read", "parcours:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $full_name;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"parcours:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"parcours:read"})
+     */
     private $updated_at;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: Prof::class)]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="parcours")
+     * @Groups({"parcours:read", "parcours:write"})
+     */
+    private $mention;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
     private $profs;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: Etudiant::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
     private $etudiants;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: Agenda::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
     private $agendas;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: Bibliotheque::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Bibliotheque::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
     private $bibliotheques;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: Conversation::class)]
-    private Collection $conversations;
+    /**
+     * @ORM\OneToMany(targetEntity=Conversation::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
+    private $conversations;
 
-    #[ORM\OneToMany(mappedBy: 'parcours', targetEntity: NotificationGroupe::class)]
-    private Collection $notificationGroupes;
+    /**
+     * @ORM\OneToMany(targetEntity=NotificationGroupe::class, mappedBy="parcours")
+     * @Groups({"parcours:read"})
+     */
+    private $notificationGroupes;
 
     public function __construct()
     {
@@ -61,23 +132,12 @@ class Parcours
         $this->bibliotheques = new ArrayCollection();
         $this->conversations = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
+        $this->created_at = new DateTimeImmutable();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(?int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
     }
 
     public function getName(): ?string
@@ -88,7 +148,6 @@ class Parcours
     public function setName(string $name): self
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -100,31 +159,39 @@ class Parcours
     public function setFullName(string $full_name): self
     {
         $this->full_name = $full_name;
-
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): ?DateTimeImmutable
     {
         return $this->updated_at;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
+    public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+        return $this;
+    }
 
+    public function getMention(): ?Mention
+    {
+        return $this->mention;
+    }
+
+    public function setMention(?Mention $mention): self
+    {
+        $this->mention = $mention;
         return $this;
     }
 
@@ -307,4 +374,17 @@ class Parcours
 
         return $this;
     }
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new DateTimeImmutable();
+    }
+
+    public function __toString(): string
+    {
+        return $this->name;
+    }
 }
+

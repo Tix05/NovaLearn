@@ -19,8 +19,11 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
  *     collectionOperations={
  *         "get",
  *         "post"={
+ *             "method"="POST",
+ *             "path"="/bibliotheques/upload",
  *             "controller"=App\Controller\BibliothequeUploadController::class,
  *             "deserialize"=false,
+ *             "security"="is_granted('ROLE_USER')",
  *             "openapi_context"={
  *                 "requestBody"={
  *                     "content"={
@@ -32,15 +35,20 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
  *                                     "titre"={"type"="string"},
  *                                     "type"={"type"="string"},
  *                                     "ec"={"type"="integer"}
- *                                 }
+ *                                 },
+ *                                 "required"={"file", "titre", "type", "ec"}
  *                             }
  *                         }
  *                     }
  *                 }
  *             }
  *         }
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"}
  *     }
- * )
  * @ApiFilter(SearchFilter::class, properties={
  *     "titre": "partial",
  *     "type": "exact",

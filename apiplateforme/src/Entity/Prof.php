@@ -6,112 +6,121 @@ use App\Repository\ProfRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use DateTimeImmutable;
 
 /**
- * @ApiResource()  U
- * @ORM\Entity(repositoryClass="App\Repository\ProfRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"user.nom": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"prof:read"}},
+ *     denormalizationContext={"groups"={"prof:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "user.nom": "partial",
+ *     "user.prenom": "partial",
+ *     "mention.nom": "partial",
+ *     "ec.nom": "partial",
+ *     "parcours.nom": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "user.nom", "created_at"})
+ * @ApiFilter(BooleanFilter::class, properties={"status"})
+ * @ORM\Entity(repositoryClass=ProfRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Prof
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"prof:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer')]
-    private $user_id;
+    /**
+     * @ORM\Column(type="boolean")
+     * @Groups({"prof:read", "prof:write"})
+     */
+    private $status = true;
 
-    #[ORM\Column(type: 'integer')]
-    private $mention_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $ec_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $parcours_id;
-
-    #[ORM\Column(type: 'boolean')]
-    private $status;
-
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"prof:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"prof:read"})
+     */
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'profs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="profs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"prof:read", "prof:write"})
+     * @Assert\NotNull
+     */
     private $user;
 
-    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'profs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="profs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"prof:read", "prof:write"})
+     * @Assert\NotNull
+     */
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: Ec::class, inversedBy: 'profs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="profs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"prof:read", "prof:write"})
+     * @Assert\NotNull
+     */
     private $ec;
 
-    #[ORM\ManyToOne(targetEntity: Parcours::class, inversedBy: 'profs')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="profs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"prof:read", "prof:write"})
+     * @Assert\NotNull
+     */
     private $parcours;
 
-    #[ORM\OneToMany(mappedBy: 'prof', targetEntity: Ec::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Ec::class, mappedBy="prof")
+     * @Groups({"prof:read"})
+     */
     private $ecs;
 
     public function __construct()
     {
         $this->ecs = new ArrayCollection();
+        $this->created_at = new DateTimeImmutable();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getUserId(): ?int
-    {
-        return $this->user_id;
-    }
-
-    public function setUserId(int $user_id): self
-    {
-        $this->user_id = $user_id;
-
-        return $this;
-    }
-
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
-    }
-
-    public function getEcId(): ?int
-    {
-        return $this->ec_id;
-    }
-
-    public function setEcId(int $ec_id): self
-    {
-        $this->ec_id = $ec_id;
-
-        return $this;
-    }
-
-    public function getParcoursId(): ?int
-    {
-        return $this->parcours_id;
-    }
-
-    public function setParcoursId(int $parcours_id): self
-    {
-        $this->parcours_id = $parcours_id;
-
-        return $this;
     }
 
     public function isStatus(): ?bool
@@ -122,31 +131,28 @@ class Prof
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): ?DateTimeImmutable
     {
         return $this->updated_at;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
+    public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -158,7 +164,6 @@ class Prof
     public function setUser(?User $user): self
     {
         $this->user = $user;
-
         return $this;
     }
 
@@ -170,7 +175,6 @@ class Prof
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-
         return $this;
     }
 
@@ -182,7 +186,6 @@ class Prof
     public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
-
         return $this;
     }
 
@@ -194,7 +197,6 @@ class Prof
     public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-
         return $this;
     }
 
@@ -226,5 +228,18 @@ class Prof
         }
 
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new DateTimeImmutable();
+    }
+
+    public function __toString(): string
+    {
+        return $this->user ? $this->user->getNomComplet() : 'Nouveau Prof';
     }
 }

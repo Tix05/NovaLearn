@@ -6,85 +6,118 @@ use App\Repository\UeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use DateTimeImmutable;
 
 /**
- * @ApiResource()   
- * @ORM\Entity(repositoryClass="App\Repository\UeRepository")
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"name": "ASC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"ue:read"}},
+ *     denormalizationContext={"groups"={"ue:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "name": "partial",
+ *     "code": "exact",
+ *     "mention.name": "partial",
+ *     "semestre.libelle": "partial",
+ *     "niveau.libelle": "partial"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "name", "code", "created_at"})
+ * @ORM\Entity(repositoryClass=UeRepository::class)
+ * @ORM\HasLifecycleCallbacks()
  */
 class Ue
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"ue:read"})
+     */
     private $id;
 
-    #[ORM\Column(type: 'integer')]
-    private $mention_id;
-
-    #[ORM\Column(type: 'integer')]
-    private $semestre_id;
-
-    #[ORM\Column(type: 'string', length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"ue:read", "ue:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
     private $name;
 
-    #[ORM\Column(type: 'integer', nullable: true)]
-    private $niveau_id;
-
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"ue:read", "ue:write"})
+     * @Assert\Length(max=255)
+     */
     private $code;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"ue:read"})
+     */
     private $created_at;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     * @Groups({"ue:read"})
+     */
     private $updated_at;
 
-    #[ORM\ManyToOne(targetEntity: Mention::class, inversedBy: 'ues')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="ues")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"ue:read", "ue:write"})
+     * @Assert\NotNull
+     */
     private $mention;
 
-    #[ORM\ManyToOne(targetEntity: Semestre::class, inversedBy: 'ues')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Semestre::class, inversedBy="ues")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"ue:read", "ue:write"})
+     * @Assert\NotNull
+     */
     private $semestre;
 
-    #[ORM\ManyToOne(targetEntity: Niveau::class, inversedBy: 'ues')]
+    /**
+     * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="ues")
+     * @Groups({"ue:read", "ue:write"})
+     */
     private $niveau;
 
-    #[ORM\OneToMany(mappedBy: 'ue', targetEntity: Ec::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Ec::class, mappedBy="ue")
+     * @Groups({"ue:read"})
+     */
     private $ecs;
 
     public function __construct()
     {
         $this->ecs = new ArrayCollection();
+        $this->created_at = new DateTimeImmutable();
     }
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getMentionId(): ?int
-    {
-        return $this->mention_id;
-    }
-
-    public function setMentionId(int $mention_id): self
-    {
-        $this->mention_id = $mention_id;
-
-        return $this;
-    }
-
-    public function getSemestreId(): ?int
-    {
-        return $this->semestre_id;
-    }
-
-    public function setSemestreId(int $semestre_id): self
-    {
-        $this->semestre_id = $semestre_id;
-
-        return $this;
     }
 
     public function getName(): ?string
@@ -95,19 +128,6 @@ class Ue
     public function setName(string $name): self
     {
         $this->name = $name;
-
-        return $this;
-    }
-
-    public function getNiveauId(): ?int
-    {
-        return $this->niveau_id;
-    }
-
-    public function setNiveauId(?int $niveau_id): self
-    {
-        $this->niveau_id = $niveau_id;
-
         return $this;
     }
 
@@ -119,31 +139,28 @@ class Ue
     public function setCode(?string $code): self
     {
         $this->code = $code;
-
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
+    public function setCreatedAt(DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): ?DateTimeImmutable
     {
         return $this->updated_at;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
+    public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -155,7 +172,6 @@ class Ue
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-
         return $this;
     }
 
@@ -167,7 +183,6 @@ class Ue
     public function setSemestre(?Semestre $semestre): self
     {
         $this->semestre = $semestre;
-
         return $this;
     }
 
@@ -179,7 +194,6 @@ class Ue
     public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
-
         return $this;
     }
 
@@ -197,19 +211,29 @@ class Ue
             $this->ecs[] = $ec;
             $ec->setUe($this);
         }
-
         return $this;
     }
 
     public function removeEc(Ec $ec): self
     {
         if ($this->ecs->removeElement($ec)) {
-            // set the owning side to null (unless already changed)
             if ($ec->getUe() === $this) {
                 $ec->setUe(null);
             }
         }
-
         return $this;
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updated_at = new DateTimeImmutable();
+    }
+
+    public function __toString(): string
+    {
+        return $this->name;
     }
 }

@@ -6,46 +6,127 @@ use App\Repository\ConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity(repositoryClass: ConversationRepository::class)]
+/**
+ * @ApiResource(
+ *     attributes={
+ *         "order"={"updatedAt": "DESC"},
+ *         "pagination_client_items_per_page"=true
+ *     },
+ *     normalizationContext={"groups"={"conversation:read"}},
+ *     denormalizationContext={"groups"={"conversation:write"}},
+ *     collectionOperations={
+ *         "get",
+ *         "post"={"security"="is_granted('ROLE_USER')"}
+ *     },
+ *     itemOperations={
+ *         "get",
+ *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getCreatedBy() == user"},
+ *         "delete"={"security"="is_granted('ROLE_ADMIN') or object.getCreatedBy() == user"}
+ *     }
+ * )
+ * @ApiFilter(SearchFilter::class, properties={
+ *     "sujet": "partial",
+ *     "type": "exact",
+ *     "ec.nom": "partial",
+ *     "parcours.nom": "partial",
+ *     "createdBy.id": "exact"
+ * })
+ * @ApiFilter(OrderFilter::class, properties={"id", "sujet", "createdAt", "updatedAt"})
+ * @ApiFilter(DateFilter::class, properties={"createdAt", "updatedAt"})
+ * @ORM\Entity(repositoryClass=ConversationRepository::class)
+ * @ORM\HasLifecycleCallbacks()
+ */
 class Conversation
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    public const TYPE_PRIVEE = 'PRIVEE';
+    public const TYPE_GROUPE_FILIERE = 'GROUPE_FILIERE';
+    public const TYPE_GROUPE_COURS = 'GROUPE_COURS';
+    public const TYPE_ADMIN = 'ADMIN';
 
-    #[ORM\Column(length: 255)]
-    private ?string $Sujet = null;
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"conversation:read"})
+     */
+    private $id;
 
-    #[ORM\Column(length: 255)]
-    private ?string $Type = null;
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"conversation:read", "conversation:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
+     */
+    private $sujet;
 
-    #[ORM\ManyToOne(inversedBy: 'conversations')]
-    private ?Ec $ec = null;
+    /**
+     * @ORM\Column(type="string", length=20)
+     * @Groups({"conversation:read", "conversation:write"})
+     * @Assert\NotBlank
+     * @Assert\Choice({
+     *     Conversation::TYPE_PRIVEE,
+     *     Conversation::TYPE_GROUPE_FILIERE,
+     *     Conversation::TYPE_GROUPE_COURS,
+     *     Conversation::TYPE_ADMIN
+     * })
+     */
+    private $type;
 
-    #[ORM\ManyToOne(inversedBy: 'conversations')]
-    private ?Parcours $parcours = null;
+    /**
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="conversations")
+     * @Groups({"conversation:read", "conversation:write"})
+     */
+    private $ec;
 
-    #[ORM\ManyToOne(inversedBy: 'conversations')]
-    private ?User $createdBy = null;
+    /**
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="conversations")
+     * @Groups({"conversation:read", "conversation:write"})
+     */
+    private $parcours;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="conversations")
+     * @Groups({"conversation:read"})
+     */
+    private $createdBy;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updatedAt = null;
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"conversation:read"})
+     */
+    private $createdAt;
 
-    #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class)]
-    private Collection $messages;
+    /**
+     * @ORM\Column(type="datetime_immutable")
+     * @Groups({"conversation:read"})
+     */
+    private $updatedAt;
 
-    #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Notification::class)]
-    private Collection $notifications;
+    /**
+     * @ORM\OneToMany(targetEntity=Message::class, mappedBy="conversation")
+     * @Groups({"conversation:read"})
+     */
+    private $messages;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="conversation")
+     */
+    private $notifications;
 
     public function __construct()
     {
         $this->messages = new ArrayCollection();
         $this->notifications = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -55,25 +136,23 @@ class Conversation
 
     public function getSujet(): ?string
     {
-        return $this->Sujet;
+        return $this->sujet;
     }
 
-    public function setSujet(string $Sujet): static
+    public function setSujet(string $sujet): self
     {
-        $this->Sujet = $Sujet;
-
+        $this->sujet = $sujet;
         return $this;
     }
 
     public function getType(): ?string
     {
-        return $this->Type;
+        return $this->type;
     }
 
-    public function setType(string $Type): static
+    public function setType(string $type): self
     {
-        $this->Type = $Type;
-
+        $this->type = $type;
         return $this;
     }
 
@@ -82,10 +161,9 @@ class Conversation
         return $this->ec;
     }
 
-    public function setEc(?Ec $ec): static
+    public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
-
         return $this;
     }
 
@@ -94,10 +172,9 @@ class Conversation
         return $this->parcours;
     }
 
-    public function setParcours(?Parcours $parcours): static
+    public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-
         return $this;
     }
 
@@ -106,10 +183,9 @@ class Conversation
         return $this->createdBy;
     }
 
-    public function setCreatedBy(?User $createdBy): static
+    public function setCreatedBy(?User $createdBy): self
     {
         $this->createdBy = $createdBy;
-
         return $this;
     }
 
@@ -118,10 +194,9 @@ class Conversation
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -130,35 +205,33 @@ class Conversation
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
-
         return $this;
     }
 
     /**
-     * @return Collection<int, Message>
+     * @return Collection|Message[]
      */
     public function getMessages(): Collection
     {
         return $this->messages;
     }
 
-    public function addMessage(Message $message): static
+    public function addMessage(Message $message): self
     {
         if (!$this->messages->contains($message)) {
-            $this->messages->add($message);
+            $this->messages[] = $message;
             $message->setConversation($this);
         }
 
         return $this;
     }
 
-    public function removeMessage(Message $message): static
+    public function removeMessage(Message $message): self
     {
         if ($this->messages->removeElement($message)) {
-            // set the owning side to null (unless already changed)
             if ($message->getConversation() === $this) {
                 $message->setConversation(null);
             }
@@ -168,32 +241,48 @@ class Conversation
     }
 
     /**
-     * @return Collection<int, Notification>
+     * @return Collection|Notification[]
      */
     public function getNotifications(): Collection
     {
         return $this->notifications;
     }
 
-    public function addNotification(Notification $notification): static
+    public function addNotification(Notification $notification): self
     {
         if (!$this->notifications->contains($notification)) {
-            $this->notifications->add($notification);
+            $this->notifications[] = $notification;
             $notification->setConversation($this);
         }
 
         return $this;
     }
 
-    public function removeNotification(Notification $notification): static
+    public function removeNotification(Notification $notification): self
     {
         if ($this->notifications->removeElement($notification)) {
-            // set the owning side to null (unless already changed)
             if ($notification->getConversation() === $this) {
                 $notification->setConversation(null);
             }
         }
 
         return $this;
+    }
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setTimestamps(): void
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    /**
+     * @ORM\PreUpdate
+     */
+    public function updateTimestamps(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 }
