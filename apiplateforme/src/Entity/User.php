@@ -18,20 +18,32 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ApiResource(
- *     normalizationContext={"groups"={"user:read"}},
- *     denormalizationContext={"groups"={"user:write"}},
+ *     attributes={
+ *         "normalization_context"={"groups"={"user:read"}},
+ *         "denormalization_context"={"groups"={"user:write"}}
+ *     },
  *     collectionOperations={
- *         "get"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "get"={
+ *             "security"="is_granted('ROLE_ADMIN')"
+ *         },
  *         "post"={
  *             "security"="is_granted('IS_AUTHENTICATED_ANONYMOUSLY')",
  *             "validation_groups"={"Default", "user:create"}
  *         }
  *     },
  *     itemOperations={
- *         "get"={"security"="is_granted('ROLE_ADMIN') or object == user"},
- *         "put"={"security"="is_granted('ROLE_ADMIN') or object == user"},
- *         "patch"={"security"="is_granted('ROLE_ADMIN') or object == user"},
- *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
+ *         "get"={
+ *             "security"="is_granted('ROLE_ADMIN') or object == user"
+ *         },
+ *         "put"={
+ *             "security"="is_granted('ROLE_ADMIN') or object == user"
+ *         },
+ *         "patch"={
+ *             "security"="is_granted('ROLE_ADMIN') or object == user"
+ *         },
+ *         "delete"={
+ *             "security"="is_granted('ROLE_ADMIN')"
+ *         }
  *     }
  * )
  * @ApiFilter(SearchFilter::class, properties={
@@ -39,7 +51,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  *     "name": "partial",
  *     "ville": "partial"
  * })
- * @ApiFilter(OrderFilter::class, properties={"id", "email", "name", "createdAt"})
+ * @ApiFilter(OrderFilter::class, properties={"id", "email", "name", "created_at"})
  * @ApiFilter(BooleanFilter::class, properties={"status"})
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\HasLifecycleCallbacks()
@@ -148,7 +160,55 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private $updated_at;
 
-    // ... (les relations restent identiques à votre version originale)
+    /**
+     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="user")
+     */
+    private $profs;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="user")
+     */
+    private $etudiants;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="auteur")
+     */
+    private $agendas;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Commentaire::class, mappedBy="user")
+     */
+    private $commentaires;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Document::class, mappedBy="user")
+     */
+    private $documents;
+
+    /**
+     * @ORM\OneToMany(targetEntity=FichierSupport::class, mappedBy="auteur")
+     */
+    private $fichierSupports;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Conversation::class, mappedBy="createdBy")
+     */
+    private $conversations;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Message::class, mappedBy="expediteur")
+     */
+    private $messages;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="user")
+     */
+    private $notifications;
+
+    /**
+     * @ORM\OneToMany(targetEntity=AbonnementNotification::class, mappedBy="user")
+     */
+    private $abonnementNotifications;
 
     public function __construct()
     {
@@ -178,10 +238,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): self
     {
         $this->email = $email;
+
         return $this;
     }
 
     /**
+     * A visual identifier that represents this user.
+     *
      * @see UserInterface
      */
     public function getUserIdentifier(): string
@@ -203,7 +266,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        $roles[] = 'ROLE_USER'; // Garantit que chaque utilisateur a au moins ROLE_USER
+        // guarantee every user at least has ROLE_USER
+        $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }
@@ -211,6 +275,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setRoles(array $roles): self
     {
         $this->roles = $roles;
+
         return $this;
     }
 
@@ -225,10 +290,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): self
     {
         $this->password = $password;
+
         return $this;
     }
 
     /**
+     * Returning a salt is only needed, if you are not using a modern
+     * hashing algorithm (e.g. bcrypt or sodium) in your security.yaml.
+     *
      * @see UserInterface
      */
     public function getSalt(): ?string
@@ -241,7 +310,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function eraseCredentials()
     {
-        // Efface les données temporaires sensibles
+        // If you store any temporary, sensitive data on the user, clear it here
+        // $this->plainPassword = null;
     }
 
     public function getName(): ?string
@@ -252,6 +322,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setName(string $name): self
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -263,6 +334,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTelephone(?string $telephone): self
     {
         $this->telephone = $telephone;
+
         return $this;
     }
 
@@ -274,6 +346,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAvatar(?string $avatar): self
     {
         $this->avatar = $avatar;
+
         return $this;
     }
 
@@ -285,6 +358,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setVille(?string $ville): self
     {
         $this->ville = $ville;
+
         return $this;
     }
 
@@ -296,6 +370,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setResetToken(?string $reset_token): self
     {
         $this->reset_token = $reset_token;
+
         return $this;
     }
 
@@ -307,6 +382,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setStatus(bool $status): self
     {
         $this->status = $status;
+
         return $this;
     }
 
@@ -318,6 +394,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAdresse(?string $adresse): self
     {
         $this->adresse = $adresse;
+
         return $this;
     }
 
@@ -329,17 +406,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setProvinceId(?int $province_id): self
     {
         $this->province_id = $province_id;
-        return $this;
-    }
 
-    public function getPreferencesNotification(): ?array
-    {
-        return $this->preferences_notification;
-    }
-
-    public function setPreferencesNotification(?array $preferences_notification): self
-    {
-        $this->preferences_notification = $preferences_notification;
         return $this;
     }
 
@@ -351,6 +418,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
+
         return $this;
     }
 
@@ -362,6 +430,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+
         return $this;
     }
 
@@ -664,7 +733,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this;
     }
-
     /**
      * @ORM\PreUpdate
      */

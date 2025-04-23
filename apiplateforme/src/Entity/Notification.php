@@ -402,6 +402,11 @@ class Notification
 
         return $this;
     }
+    public function markAsRead(): void
+    {
+        $this->lue = true;
+        $this->dateLecture = new \DateTimeImmutable();
+    }
     /**
      * @ORM\PrePersist
      */

@@ -49,6 +49,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
  *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},
  *         "delete"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"}
  *     }
+ * )
  * @ApiFilter(SearchFilter::class, properties={
  *     "titre": "partial",
  *     "type": "exact",

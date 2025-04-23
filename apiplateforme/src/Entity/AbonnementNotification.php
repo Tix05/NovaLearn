@@ -183,7 +183,14 @@ class AbonnementNotification
         $this->updatedAt = $updatedAt;
         return $this;
     }
-
+    public static function getCanals(): array
+    {
+        return [
+            self::CANAL_EMAIL,
+            self::CANAL_SMS,
+            self::CANAL_APPLICATION
+        ];
+    }
     /**
      * @ORM\PreUpdate
      */
