@@ -40,6 +40,7 @@ import MessageAdmin from './pages/page_admin/MessageAdmin';
 import GestionExamen from './pages/page_admin/GestionExamen';
 import Examen from './pages/page_enseignant/Examen';
 import AjoutSupportAdmin from './pages/page_admin/AjoutSupportAdmin';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +78,13 @@ function EtudiantRoutes() {
       <Route path="forgot-password" element={<ForgotPassword />} />
       <Route path="inscription-etape-1" element={<Inscription />} />
       <Route path="inscription-etape-2" element={<Inscription2 />} />
-      <Route path="enseignant" element={<Enseignant />} />
+      <Route path="enseignant"
+        element={
+          <ProtectedRoute>
+            <Enseignant />
+          </ProtectedRoute>
+        }
+      />
       <Route path="bibliotheque" element={<Bibliotheque />} />
       <Route path="agenda" element={<Agenda />} />
       <Route path="message" element={<Message />} />
