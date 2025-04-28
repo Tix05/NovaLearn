@@ -85,6 +85,14 @@ class Ec
     private $status = true;
 
     /**
+     * @ORM\ManyToOne(targetEntity=Prof::class, inversedBy="ecs")
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"ec:read", "ec:write"})
+     * @Assert\NotNull
+     */
+    private $prof;
+
+    /**
      * @ORM\Column(type="datetime_immutable")
      * @Groups({"ec:read"})
      */
@@ -103,12 +111,6 @@ class Ec
      * @Assert\NotNull
      */
     private $ue;
-
-    /**
-     * @ORM\ManyToOne(targetEntity=Prof::class, inversedBy="ecs")
-     * @Groups({"ec:read", "ec:write"})
-     */
-    private $prof;
 
     /**
      * @ORM\OneToMany(mappedBy="ec", targetEntity=Bibliotheque::class)

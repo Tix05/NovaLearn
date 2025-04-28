@@ -4,9 +4,9 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from "primereact/password";
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { login } from '../../services/authService';
-import { Toast } from 'primereact/toast';
-import { useRef } from 'react';
+import { login, logout, getCurrentUser } from '../../services/authService';
+import Loading from '../Loading';
+import { MdErrorOutline } from "react-icons/md";
 
 const LoginEtudiant = () => {
     const [email, setEmail] = useState('');
@@ -14,61 +14,52 @@ const LoginEtudiant = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const toast = useRef(null);
+    const [authSuccess, setAuthSuccess] = useState(false);
 
     useEffect(() => {
-        // Vérifier si l'utilisateur est déjà connecté
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (user && user.roles.includes('ROLE_ETUDIANT')) {
+        const user = getCurrentUser();
+        if (user && user.roles && user.roles.includes('ROLE_ETUDIANT')) {
             navigate('/etudiant/enseignant');
         }
     }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         setLoading(true);
         setError(null);
 
         try {
             const response = await login(email, mdp);
 
-            // Vérifier si l'utilisateur a le rôle étudiant
             if (response.roles && response.roles.includes('ROLE_ETUDIANT')) {
-                navigate('/etudiant/enseignant');
+                setAuthSuccess(true);
+                setTimeout(() => {
+                    navigate('/etudiant/enseignant');
+                }, 2000);
             } else {
                 logout();
-                showError("Vous n'êtes pas autorisé à accéder à cette espace");
+                setError("Vous n'avez pas accès à l'espace étudiant");
             }
         } catch (err) {
-            console.error('Login error:', err);
-            const errorMessage = err.message || 'Une erreur est survenue lors de la connexion';
-            setError(errorMessage);
-            showError(errorMessage);
+            console.error('Erreur de connexion:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
-
-    const showError = (message) => {
-        toast.current.show({
-            severity: 'error',
-            summary: 'Erreur',
-            detail: message,
-            life: 3000
-        });
-    };
-
+    if (authSuccess) {
+        return <Loading />;
+    }
     return (
         <motion.div
             className='w-full min-h-screen flex'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1 }}>
-            <Toast ref={toast} />
             <div className='w-1/2 flex flex-col items-center justify-center bg-black image-login'>
             </div>
-            <div
-                className='w-1/2 flex flex-col justify-center bg-white'>
+            <div className='w-1/2 flex flex-col justify-center bg-white'>
                 <div className='flex flex-col items-center justify-center space-y-3'>
                     <h1 className='font-bold text-2xl'>ESPACE ETUDIANT</h1>
                     <p className='text-gray-700 font-semibold'>Connectez-vous à votre compte pour continuer</p>
@@ -86,6 +77,7 @@ const LoginEtudiant = () => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                                 type="email"
+                                disabled={loading}
                             />
                             <label htmlFor="email">Adresse email</label>
                         </FloatLabel>
@@ -108,20 +100,37 @@ const LoginEtudiant = () => {
                     </div>
                     <button
                         type="submit"
-                        className='bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#cb7c7c] hover:scale-105 duration-500'
+                        className='bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#cb7c7c] hover:scale-105 duration-500 disabled:opacity-50'
                         disabled={loading}
                     >
-                        {loading ? 'Connexion en cours...' : 'Se connecter'}
+                        {loading ? (
+                            <>
+                                <i className="pi pi-spin pi-spinner mr-2"></i>
+                                Connexion en cours...
+                            </>
+                        ) : 'Se connecter'}
                     </button>
                 </form>
                 {error && (
-                    <div className="flex justify-center mt-2">
-                        <p className="text-red-500">{error}</p>
+                    <div className="flex justify-center items-center mt-2 text-red-500 font-semibold space-x-1">
+                        <MdErrorOutline size={20} />
+                        <p >{error}</p>
+
                     </div>
                 )}
                 <div className='flex flex-col items-center mt-3 space-y-3'>
-                    <Link to="/etudiant/forgot-password" className='font-semibold hover:scale-105 duration-500 text-sm text-gray-700'>Mot de passe oublié ?</Link>
-                    <Link to="/etudiant/inscription-etape-1" className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'>S'inscrire</Link>
+                    <Link
+                        to="/etudiant/forgot-password"
+                        className='font-semibold hover:scale-105 duration-500 text-sm text-gray-700'
+                    >
+                        Mot de passe oublié ?
+                    </Link>
+                    <Link
+                        to="/etudiant/inscription-etape-1"
+                        className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'
+                    >
+                        S'inscrire
+                    </Link>
                 </div>
             </div>
         </motion.div>

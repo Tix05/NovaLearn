@@ -7,15 +7,43 @@ export const login = async (email, password) => {
         const response = await axios.post(`${API_URL}/login`, {
             email,
             password
+        }, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
 
         if (response.data.token) {
-            localStorage.setItem('user', JSON.stringify(response.data));
+            const roles = Array.isArray(response.data.roles) ? response.data.roles : ['ROLE_USER'];
+
+            localStorage.setItem('user', JSON.stringify({
+                ...response.data,
+                roles
+            }));
+
+            return {
+                ...response.data,
+                roles
+            };
         }
 
-        return response.data;
+        throw new Error('Réponse inattendue du serveur');
     } catch (error) {
-        throw error.response?.data || error.message;
+        let errorMessage = 'Erreur de connexion';
+
+        if (error.response) {
+            if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response.status === 401) {
+                errorMessage = 'Email ou mot de passe incorrect';
+            } else if (error.response.status === 403) {
+                errorMessage = "Vous n'avez pas accès à cette ressource";
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+
+        throw new Error(errorMessage);
     }
 };
 
@@ -24,5 +52,12 @@ export const logout = () => {
 };
 
 export const getCurrentUser = () => {
-    return JSON.parse(localStorage.getItem('user'));
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+};
+
+// Ajoutez cette fonction à la fin de votre authService.js
+export const getToken = () => {
+    const user = getCurrentUser();
+    return user ? user.token : null;
 };

@@ -3,17 +3,12 @@
 namespace App\Repository;
 
 use App\Entity\Ec;
+use App\Entity\Mention;
+use App\Entity\Parcours;
+use App\Entity\Niveau;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Ec>
- *
- * @method Ec|null find($id, $lockMode = null, $lockVersion = null)
- * @method Ec|null findOneBy(array $criteria, array $orderBy = null)
- * @method Ec[]    findAll()
- * @method Ec[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
- */
 class EcRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -39,28 +34,29 @@ class EcRepository extends ServiceEntityRepository
         }
     }
 
-//    /**
-//     * @return Ec[] Returns an array of Ec objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('e')
-//            ->andWhere('e.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('e.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
-
-//    public function findOneBySomeField($value): ?Ec
-//    {
-//        return $this->createQueryBuilder('e')
-//            ->andWhere('e.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    /**
+     * Trouve les ECs par mention, parcours et niveau
+     * 
+     * @param Mention $mention
+     * @param Parcours $parcours
+     * @param Niveau $niveau
+     * @return Ec[]
+     */
+    public function findByMentionParcoursNiveau(Mention $mention, Parcours $parcours, Niveau $niveau): array
+{
+    return $this->createQueryBuilder('ec')
+        ->join('ec.ue', 'ue')
+        ->join('ue.mention', 'mention')
+        ->leftJoin('App\Entity\UeParcours', 'ue_parcours', 'WITH', 'ue_parcours.ue = ue.id')
+        ->join('ue_parcours.parcours', 'parcours')
+        // Pas besoin de joindre niveau directement car il est déjà lié à parcours
+        ->where('mention.id = :mentionId')
+        ->andWhere('parcours.id = :parcoursId')
+        ->andWhere('parcours.niveau = :niveauId') // Filtre via la relation parcours->niveau
+        ->setParameter('mentionId', $mention->getId())
+        ->setParameter('parcoursId', $parcours->getId())
+        ->setParameter('niveauId', $niveau->getId())
+        ->getQuery()
+        ->getResult();
+}
 }

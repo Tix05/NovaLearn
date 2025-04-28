@@ -137,10 +137,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $adresse;
 
     /**
-     * @ORM\Column(type="integer", nullable=true)
-     * @Groups({"user:read", "user:write"})
-     */
-    private $province_id;
+    * @ORM\ManyToOne(targetEntity="App\Entity\Province")
+    * @ORM\JoinColumn(name="province_id", referencedColumnName="id")
+    * @Groups({"user:read", "user:write"})
+    */
+    private $province;
 
     /**
      * @ORM\Column(type="json", nullable=true)
@@ -398,14 +399,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getProvinceId(): ?int
+    public function getProvince(): ?Province
     {
-        return $this->province_id;
+        return $this->province;
     }
 
-    public function setProvinceId(?int $province_id): self
+    public function setProvince(?Province $province): self
     {
-        $this->province_id = $province_id;
+        $this->province = $province;
 
         return $this;
     }

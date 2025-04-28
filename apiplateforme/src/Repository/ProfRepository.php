@@ -39,6 +39,19 @@ class ProfRepository extends ServiceEntityRepository
         }
     }
 
+    // src/Repository/ProfRepository.php
+
+public function findByMentionAndParcours(Mention $mention, Parcours $parcours)
+{
+    return $this->createQueryBuilder('p')
+        ->andWhere('p.mention = :mention')
+        ->andWhere('p.parcours = :parcours')
+        ->setParameter('mention', $mention)
+        ->setParameter('parcours', $parcours)
+        ->getQuery()
+        ->getResult();
+}
+
 //    /**
 //     * @return Prof[] Returns an array of Prof objects
 //     */

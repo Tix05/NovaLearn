@@ -38,11 +38,14 @@ use DateTimeImmutable;
  *     "code": "exact",
  *     "mention.name": "partial",
  *     "semestre.libelle": "partial",
- *     "niveau.libelle": "partial"
  * })
  * @ApiFilter(OrderFilter::class, properties={"id", "name", "code", "created_at"})
  * @ORM\Entity(repositoryClass=UeRepository::class)
  * @ORM\HasLifecycleCallbacks()
+ * @ORM\Table(indexes={
+ *     @ORM\Index(name="ue_name_idx", columns={"name"}),
+ *     @ORM\Index(name="ue_code_idx", columns={"code"})
+ * })
  */
 class Ue
 {
@@ -98,16 +101,12 @@ class Ue
     private $semestre;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="ues")
-     * @Groups({"ue:read", "ue:write"})
-     */
-    private $niveau;
-
-    /**
      * @ORM\OneToMany(targetEntity=Ec::class, mappedBy="ue")
      * @Groups({"ue:read"})
      */
     private $ecs;
+
+    
 
     public function __construct()
     {
@@ -183,17 +182,6 @@ class Ue
     public function setSemestre(?Semestre $semestre): self
     {
         $this->semestre = $semestre;
-        return $this;
-    }
-
-    public function getNiveau(): ?Niveau
-    {
-        return $this->niveau;
-    }
-
-    public function setNiveau(?Niveau $niveau): self
-    {
-        $this->niveau = $niveau;
         return $this;
     }
 

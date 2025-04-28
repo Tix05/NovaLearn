@@ -15,21 +15,25 @@ use Symfony\Component\Validator\Constraints as Assert;
 use DateTimeImmutable;
 
 /**
+ * /**
  * @ApiResource(
- *     attributes={
- *         "order"={"name": "ASC"},
- *         "pagination_client_items_per_page"=true
- *     },
- *     normalizationContext={"groups"={"parcours:read"}},
- *     denormalizationContext={"groups"={"parcours:write"}},
  *     collectionOperations={
  *         "get",
- *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *         "post"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "denormalization_context"={"groups"={"parcours:write"}}
+ *         }
  *     },
  *     itemOperations={
  *         "get",
- *         "put"={"security"="is_granted('ROLE_ADMIN')"},
- *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "put"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "denormalization_context"={"groups"={"parcours:write"}}
+ *         },
+ *         "patch"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "denormalization_context"={"groups"={"parcours:write"}}
+ *         },
  *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
  *     }
  * )
@@ -37,7 +41,6 @@ use DateTimeImmutable;
  *     "name": "partial",
  *     "full_name": "partial",
  *     "mention.name": "partial",
- *     "profs.nom": "partial",
  *     "etudiants.nom": "partial"
  * })
  * @ApiFilter(OrderFilter::class, properties={"id", "name", "full_name", "created_at"})
@@ -71,6 +74,14 @@ class Parcours
     private $full_name;
 
     /**
+     * @ORM\ManyToOne(targetEntity=Niveau::class)
+     * @ORM\JoinColumn(nullable=true)
+     * @Groups({"parcours:read", "parcours:write"})
+     * @Assert\NotNull
+     */
+    private $niveau;
+
+    /**
      * @ORM\Column(type="datetime_immutable")
      * @Groups({"parcours:read"})
      */
@@ -87,12 +98,6 @@ class Parcours
      * @Groups({"parcours:read", "parcours:write"})
      */
     private $mention;
-
-    /**
-     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="parcours")
-     * @Groups({"parcours:read"})
-     */
-    private $profs;
 
     /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="parcours")
@@ -162,6 +167,17 @@ class Parcours
         return $this;
     }
 
+    public function getNiveau(): ?Niveau
+    {
+        return $this->niveau;
+    }
+
+    public function setNiveau(?Niveau $niveau): self
+    {
+        $this->niveau = $niveau;
+        return $this;
+    }
+
     public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
@@ -192,36 +208,6 @@ class Parcours
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Prof>
-     */
-    public function getProfs(): Collection
-    {
-        return $this->profs;
-    }
-
-    public function addProf(Prof $prof): self
-    {
-        if (!$this->profs->contains($prof)) {
-            $this->profs[] = $prof;
-            $prof->setParcours($this);
-        }
-
-        return $this;
-    }
-
-    public function removeProf(Prof $prof): self
-    {
-        if ($this->profs->removeElement($prof)) {
-            // set the owning side to null (unless already changed)
-            if ($prof->getParcours() === $this) {
-                $prof->setParcours(null);
-            }
-        }
-
         return $this;
     }
 

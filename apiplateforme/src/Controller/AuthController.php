@@ -49,7 +49,6 @@ class AuthController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
         
-        // Vérifier si l'utilisateur est un étudiant
         $isEtudiant = false;
         foreach ($user->getEtudiants() as $etudiant) {
             if ($etudiant->isStatus()) {
@@ -63,6 +62,7 @@ class AuthController extends AbstractController
                 'message' => "Vous n'avez pas accès à l'espace étudiant"
             ], Response::HTTP_FORBIDDEN);
         }
+
         
         $token = $this->JWTManager->create($user);
         
@@ -71,11 +71,11 @@ class AuthController extends AbstractController
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
-            'roles' => $user->getRoles(),
+            'roles' => $user->getRoles(), // Bien renvoyer les rôles
             'etudiant' => $user->getEtudiants()->first() ? [
                 'matricule' => $user->getEtudiants()->first()->getMatricule(),
-                'mention' => $user->getEtudiants()->first()->getMention()->getNom(),
-                'parcours' => $user->getEtudiants()->first()->getParcours()->getNom(),
+                'mention' => $user->getEtudiants()->first()->getMention()->getName(),
+                'parcours' => $user->getEtudiants()->first()->getParcours()->getName(),
                 'niveau' => $user->getEtudiants()->first()->getNiveau()->getNom()
             ] : null
         ]);

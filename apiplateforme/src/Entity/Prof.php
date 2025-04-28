@@ -37,9 +37,6 @@ use DateTimeImmutable;
  * @ApiFilter(SearchFilter::class, properties={
  *     "user.nom": "partial",
  *     "user.prenom": "partial",
- *     "mention.nom": "partial",
- *     "ec.nom": "partial",
- *     "parcours.nom": "partial"
  * })
  * @ApiFilter(OrderFilter::class, properties={"id", "user.nom", "created_at"})
  * @ApiFilter(BooleanFilter::class, properties={"status"})
@@ -83,32 +80,8 @@ class Prof
     private $user;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="profs")
-     * @ORM\JoinColumn(nullable=false)
-     * @Groups({"prof:read", "prof:write"})
-     * @Assert\NotNull
-     */
-    private $mention;
-
-    /**
-     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="profs")
-     * @ORM\JoinColumn(nullable=false)
-     * @Groups({"prof:read", "prof:write"})
-     * @Assert\NotNull
-     */
-    private $ec;
-
-    /**
-     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="profs")
-     * @ORM\JoinColumn(nullable=false)
-     * @Groups({"prof:read", "prof:write"})
-     * @Assert\NotNull
-     */
-    private $parcours;
-
-    /**
      * @ORM\OneToMany(targetEntity=Ec::class, mappedBy="prof")
-     * @Groups({"prof:read"})
+     * @Groups({"prof:read", "prof:write"})
      */
     private $ecs;
 
@@ -164,39 +137,6 @@ class Prof
     public function setUser(?User $user): self
     {
         $this->user = $user;
-        return $this;
-    }
-
-    public function getMention(): ?Mention
-    {
-        return $this->mention;
-    }
-
-    public function setMention(?Mention $mention): self
-    {
-        $this->mention = $mention;
-        return $this;
-    }
-
-    public function getEc(): ?Ec
-    {
-        return $this->ec;
-    }
-
-    public function setEc(?Ec $ec): self
-    {
-        $this->ec = $ec;
-        return $this;
-    }
-
-    public function getParcours(): ?Parcours
-    {
-        return $this->parcours;
-    }
-
-    public function setParcours(?Parcours $parcours): self
-    {
-        $this->parcours = $parcours;
         return $this;
     }
 

@@ -41,6 +41,7 @@ import GestionExamen from './pages/page_admin/GestionExamen';
 import Examen from './pages/page_enseignant/Examen';
 import AjoutSupportAdmin from './pages/page_admin/AjoutSupportAdmin';
 import ProtectedRoute from './components/ProtectedRoute';
+import LogoutPage from './pages/page_etudiant/LogoutPage';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -78,6 +79,7 @@ function EtudiantRoutes() {
       <Route path="forgot-password" element={<ForgotPassword />} />
       <Route path="inscription-etape-1" element={<Inscription />} />
       <Route path="inscription-etape-2" element={<Inscription2 />} />
+      <Route path="logout" element={<LogoutPage />} />
       <Route path="enseignant"
         element={
           <ProtectedRoute>
@@ -85,6 +87,7 @@ function EtudiantRoutes() {
           </ProtectedRoute>
         }
       />
+
       <Route path="bibliotheque" element={<Bibliotheque />} />
       <Route path="agenda" element={<Agenda />} />
       <Route path="message" element={<Message />} />

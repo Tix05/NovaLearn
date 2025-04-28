@@ -29,12 +29,11 @@ use Symfony\Component\Validator\Constraints as Assert;
  * @ApiFilter(SearchFilter::class, properties={
  *     "ue.id": "exact",
  *     "parcours.id": "exact",
- *     "niveau.id": "exact"
  * })
  * @ApiFilter(OrderFilter::class, properties={"created_at"})
  * @ORM\Entity(repositoryClass=UeParcoursRepository::class)
  * @ORM\Table(uniqueConstraints={
- *     @ORM\UniqueConstraint(name="ue_parcours_unique", columns={"ue_id", "parcours_id", "niveau_id"})
+ *     @ORM\UniqueConstraint(name="ue_parcours_unique", columns={"ue_id", "parcours_id"})
  * })
  * @ORM\HasLifecycleCallbacks()
  */
@@ -49,27 +48,18 @@ class UeParcours
     private $id;
 
     /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\Ue")
-     * @ORM\JoinColumn(name="ue_id", referencedColumnName="id", nullable=true)
-     * @Groups({"ue_parcours:read", "ue_parcours:write"})
+     * @ORM\ManyToOne(targetEntity="App\Entity\Ue", inversedBy="ueParcours")
+     * @ORM\JoinColumn(nullable=false)
      */
     private $ue;
 
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\Parcours")
-     * @ORM\JoinColumn(name="parcours_id", referencedColumnName="id", nullable=false)
+     * @ORM\JoinColumn(nullable=false)
      * @Groups({"ue_parcours:read", "ue_parcours:write"})
      * @Assert\NotNull
      */
     private $parcours;
-
-    /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\Niveau")
-     * @ORM\JoinColumn(name="niveau_id", referencedColumnName="id", nullable=false)
-     * @Groups({"ue_parcours:read", "ue_parcours:write"})
-     * @Assert\NotNull
-     */
-    private $niveau;
 
     /**
      * @ORM\Column(type="datetime_immutable")
@@ -112,17 +102,6 @@ class UeParcours
     public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-        return $this;
-    }
-
-    public function getNiveau(): ?Niveau
-    {
-        return $this->niveau;
-    }
-
-    public function setNiveau(?Niveau $niveau): self
-    {
-        $this->niveau = $niveau;
         return $this;
     }
 
