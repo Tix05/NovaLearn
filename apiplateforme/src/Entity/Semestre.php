@@ -90,6 +90,13 @@ class Semestre
      */
     private $ues;
 
+    /**
+     * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="semestres")
+     * @ORM\JoinColumn(nullable=false) // Mettre nullable=true si un Semestre peut exister sans Niveau
+     */
+    private ?Niveau $niveau = null;
+
+
     public function __construct()
     {
         $this->ues = new ArrayCollection();
@@ -142,6 +149,17 @@ class Semestre
     public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
+        return $this;
+    }
+
+    public function getNiveau(): ?Niveau
+    {
+        return $this->niveau;
+    }
+
+    public function setNiveau(?Niveau $niveau): self
+    {
+        $this->niveau = $niveau;
         return $this;
     }
 

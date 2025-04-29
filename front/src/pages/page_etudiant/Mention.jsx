@@ -1,11 +1,46 @@
-import React from 'react';
+// Mention.js
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Divider } from 'primereact/divider';
 import { Link } from 'react-router-dom';
 import { FaRegEye } from 'react-icons/fa';
-import { mentions } from '../../../public/constants/data2';
+import { getStudentMentions } from '../../Services/authService';
 
 const Mention = () => {
+    const [mentions, setMentions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchMentions = async () => {
+            try {
+                const data = await getStudentMentions();
+                setMentions(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMentions();
+    }, []);
+
+    if (loading) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex items-center justify-center">
+                    <div class="spinner-container">
+                        <div class="spinner-outer">
+                            <div class="spinner-inner"></div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+    if (error) return <Layout><div className="h-[90vh] w-full font-semibold items-center justify-center flex text-lg text-red-500">{error}</div></Layout>;
+
     return (
         <Layout>
             <div className='w-full text-gray-800 overflow-x-hidden custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
@@ -26,7 +61,10 @@ const Mention = () => {
                                 <p>Matricule</p>
                                 <div className='flex p-5 justify-between items-center mt-auto'>
                                     <p>{mention.matricule}</p>
-                                    <Link to={`/etudiant/cours/${mention.id}`} className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'>
+                                    <Link
+                                        to={`/etudiant/cours/${mention.id}`}
+                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'
+                                    >
                                         <FaRegEye />
                                         <p>Voir les cours</p>
                                     </Link>

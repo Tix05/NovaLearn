@@ -88,13 +88,38 @@ function EtudiantRoutes() {
         }
       />
 
-      <Route path="bibliotheque" element={<Bibliotheque />} />
+      <Route path="bibliotheque"
+        element={
+          <ProtectedRoute>
+            <Bibliotheque />
+          </ProtectedRoute>
+        } />
       <Route path="agenda" element={<Agenda />} />
       <Route path="message" element={<Message />} />
-      <Route path="mention" element={<Mention />} />
-      <Route path="cours/:mentionId" element={<Cours />} />
-      <Route path="cours/:mentionId/:semestreId" element={<Cours />} />
-      <Route path="cours/:mentionId/:semestreId/:coursId" element={<DescriptionCours />} />
+      <Route path="mention"
+        element={
+          <ProtectedRoute>
+            <Mention />
+          </ProtectedRoute>
+        } />
+      <Route path="cours/:mentionId"
+        element={
+          <ProtectedRoute>
+            <Cours />
+          </ProtectedRoute>
+        } />
+      <Route path="cours/:mentionId/:semestreId"
+        element={
+          <ProtectedRoute>
+            <Cours />
+          </ProtectedRoute>
+        } />
+      <Route path="cours/:mentionId/:semestreId/:coursId"
+        element={
+          <ProtectedRoute>
+            <DescriptionCours />
+          </ProtectedRoute>
+        } />
     </Routes>
   );
 }

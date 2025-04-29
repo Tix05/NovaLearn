@@ -93,6 +93,12 @@ class Ec
     private $prof;
 
     /**
+     * @ORM\Column(type="text", nullable=true)
+     * @Groups({"ec:read", "ec:write"})
+     */
+    private $description;
+
+    /**
      * @ORM\Column(type="datetime_immutable")
      * @Groups({"ec:read"})
      */
@@ -193,6 +199,17 @@ class Ec
     public function setStatus(bool $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function setDescription(?string $description): self
+    {
+        $this->description = $description;
         return $this;
     }
 

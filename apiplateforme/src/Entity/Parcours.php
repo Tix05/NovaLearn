@@ -76,7 +76,7 @@ class Parcours
     /**
      * @ORM\ManyToOne(targetEntity=Niveau::class)
      * @ORM\JoinColumn(nullable=true)
-     * @Groups({"parcours:read", "parcours:write"})
+     * @Groups({"parcours:read", "parcours:write", "bibliotheque:read"})
      * @Assert\NotNull
      */
     private $niveau;

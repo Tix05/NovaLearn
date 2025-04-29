@@ -1,5 +1,4 @@
 <?php
-// src/Controller/Api/EcController.php
 
 namespace App\Controller\Api;
 

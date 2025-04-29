@@ -13,11 +13,13 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 
 /**
- * @ApiResource(
- *     normalizationContext={"groups"={"bibliotheque:read"}},
+  * @ApiResource(
+ *     normalizationContext={"groups"={"bibliotheque:read", "bibliotheque:list"}},
  *     denormalizationContext={"groups"={"bibliotheque:write"}},
  *     collectionOperations={
- *         "get",
+ *         "get"={
+ *             "normalization_context"={"groups"={"bibliotheque:list"}}
+ *         },
  *         "post"={
  *             "method"="POST",
  *             "path"="/bibliotheques/upload",
@@ -71,7 +73,7 @@ class Bibliotheque
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     * @Groups({"bibliotheque:read", "bibliotheque:write", "bibliotheque:list"})
      * @Assert\NotBlank
      */
     private $titre;
@@ -95,10 +97,10 @@ class Bibliotheque
     private $status = true;
 
     /**
-     * @ORM\Column(type="string", length=50)
-     * @Groups({"bibliotheque:read", "bibliotheque:write"})
-     * @Assert\NotBlank
-     */
+    * @ORM\Column(type="string", length=50)
+    * @Groups({"bibliotheque:read", "bibliotheque:write", "bibliotheque:list"})
+    * @Assert\NotBlank
+    */
     private $type;
 
     /**
@@ -115,7 +117,7 @@ class Bibliotheque
 
     /**
      * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="bibliotheques")
-     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
      */
     private $mention;
 
@@ -128,8 +130,7 @@ class Bibliotheque
     /**
      * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="bibliotheques")
      * @ORM\JoinColumn(nullable=false)
-     * @Groups({"bibliotheque:read", "bibliotheque:write"})
-     * @Assert\NotNull
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
      */
     private $ec;
 
@@ -254,6 +255,22 @@ class Bibliotheque
     {
         $this->ec = $ec;
         return $this;
+    }
+
+    /**
+    * @Groups({"bibliotheque:read", "bibliotheque:list"})
+    */
+    public function getMentionName(): ?string
+    {
+        return $this->mention?->getName();
+    }
+
+    /**
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
+     */
+    public function getNiveauNom(): ?string
+    {
+        return $this->parcours?->getNiveau()?->getNom();
     }
 
     /**

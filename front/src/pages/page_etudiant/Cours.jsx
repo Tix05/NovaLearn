@@ -1,15 +1,32 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Divider } from 'primereact/divider';
-import { mentions } from '../../../public/constants/data2';
 import Layout from '../../components/Layout';
 import AccordionUE from '../../components/AccordionUEEtudiant';
+import { getStudentMentions } from '../../Services/authService';
+import { MdErrorOutline } from "react-icons/md";
 
 export default function Cours() {
-    const { mentionId, niveauId } = useParams();
+    const { mentionId } = useParams();
     const [selectedSemestre, setSelectedSemestre] = useState(null);
+    const [mentions, setMentions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await getStudentMentions();
+                setMentions(data);
+                setLoading(false);
+            } catch (err) {
+                setError(err.message);
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     const mention = mentions.find((m) => m.id === parseInt(mentionId));
     const semestres = mention?.semestres || [];
@@ -20,14 +37,12 @@ export default function Cours() {
         }
     }, [semestres]);
 
-    const semestre = semestres.find((s) => s.id === selectedSemestre);
-    const ues = semestre?.ues || [];
-
-
     const renderHeader = () => {
         return (
             <div className="flex flex-col">
-                <h1 className='text-3xl font-semibold text-gray-800 p-5 '>{mention?.nom} - {mention?.niveau}</h1>
+                <h1 className='text-3xl font-semibold text-gray-800 p-5 '>
+                    {mention?.nom} - {mention?.niveau}
+                </h1>
                 <div className="flex items-center py-4 space-x-5 p-5">
                     {semestres.map((s) => (
                         <Link
@@ -46,11 +61,53 @@ export default function Cours() {
 
                 <Divider />
                 <div className='flex justify-between items-center p-3'>
-                    <h1 className='text-lg font-semibold text-gray-800'>Parcours : {mention?.parcours}</h1>
+                    <h1 className='text-lg font-semibold text-gray-800'>
+                        Parcours : {mention?.parcours}
+                    </h1>
                 </div>
             </div>
         );
     };
+
+    if (loading) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex items-center justify-center">
+                    <div class="spinner-container">
+                        <div class="spinner-outer">
+                            <div class="spinner-inner"></div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
+    if (error) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
+                    <MdErrorOutline size={60} />
+                    <p className='text-xl font-bold'>Erreur lors du chargement des données</p>
+                    <p className='text-lg font-semibold'>{error}</p>
+                </div>
+            </Layout>
+        );
+    }
+
+    if (!mention) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
+                    <MdErrorOutline size={60} />
+                    <p className='text-xl font-bold'>Aucun mention trouvé avec cette ID</p>
+                </div>
+            </Layout>
+        );
+    }
+
+    const semestre = semestres.find((s) => s.id === selectedSemestre);
+    const ues = semestre?.ues || [];
 
     return (
         <Layout>
@@ -59,7 +116,6 @@ export default function Cours() {
                 <AccordionUE
                     ues={ues}
                     mentionId={mentionId}
-                    niveauId={niveauId}
                     semestreId={selectedSemestre}
                 />
             </div>

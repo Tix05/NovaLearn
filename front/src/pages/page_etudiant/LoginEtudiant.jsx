@@ -4,7 +4,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from "primereact/password";
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { login, logout, getCurrentUser } from '../../services/authService';
+import { login, getCurrentUser } from '../../Services/authService';
 import Loading from '../Loading';
 import { MdErrorOutline } from "react-icons/md";
 
@@ -100,7 +100,8 @@ const LoginEtudiant = () => {
                     </div>
                     <button
                         type="submit"
-                        className='bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#cb7c7c] hover:scale-105 duration-500 disabled:opacity-50'
+                        className={`bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-[#cb7c7c] duration-500 disabled:opacity-50 ${!loading && 'hover:scale-105 cursor-pointer'
+                            }`}
                         disabled={loading}
                     >
                         {loading ? (
@@ -110,6 +111,7 @@ const LoginEtudiant = () => {
                             </>
                         ) : 'Se connecter'}
                     </button>
+
                 </form>
                 {error && (
                     <div className="flex justify-center items-center mt-2 text-red-500 font-semibold space-x-1">
@@ -121,16 +123,16 @@ const LoginEtudiant = () => {
                 <div className='flex flex-col items-center mt-3 space-y-3'>
                     <Link
                         to="/etudiant/forgot-password"
-                        className='font-semibold hover:scale-105 duration-500 text-sm text-gray-700'
+                        className='font-semibold hover:scale-105 duration-500 text-sm text-gray-700 border-b-2 border-gray-700'
                     >
                         Mot de passe oublié ?
                     </Link>
-                    <Link
+                    {/* <Link
                         to="/etudiant/inscription-etape-1"
                         className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'
                     >
                         S'inscrire
-                    </Link>
+                    </Link> */}
                 </div>
             </div>
         </motion.div>

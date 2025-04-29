@@ -17,11 +17,10 @@ export const getEnseignantsByEtudiant = async () => {
             }
         });
 
-        // Transformer les données pour correspondre à votre structure existante
         return response.data.map(prof => ({
             id: prof.id,
             nom: prof.user.nomComplet,
-            ec: prof.ecs.map(ec => ec.name).join(', '),
+            ec: prof.ecs.join(' - '),
             niveau: prof.niveau || 'Niveau non spécifié',
             profil: prof.user.avatar || `https://randomuser.me/api/portraits/men/${prof.id}.jpg`
         }));

@@ -9,10 +9,6 @@ const LogoutPage = () => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
 
-        // Pour les applications plus complexes, vous pourriez avoir :
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('authState');
-
         // Redirection vers la page de login
         navigate('/etudiant/login-etudiant', { replace: true });
 
@@ -26,9 +22,8 @@ const LogoutPage = () => {
     }, []);
 
     return (
-        <div className="logout-container">
-            <h2>Déconnexion en cours...</h2>
-            {/* Vous pourriez ajouter un spinner de chargement ici */}
+        <div>
+
         </div>
     );
 };

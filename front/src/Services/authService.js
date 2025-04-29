@@ -56,8 +56,21 @@ export const getCurrentUser = () => {
     return user ? JSON.parse(user) : null;
 };
 
-// Ajoutez cette fonction à la fin de votre authService.js
 export const getToken = () => {
     const user = getCurrentUser();
     return user ? user.token : null;
+};
+
+export const getStudentMentions = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/student/mentions`, {
+            headers: {
+                'Authorization': `Bearer ${getToken()}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching student mentions:", error);
+        throw new Error('Erreur lors de la récupération des mentions');
+    }
 };

@@ -121,9 +121,16 @@ class Niveau
      */
     private $notificationGroupes;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Semestre::class, mappedBy="niveau", orphanRemoval=true)
+     */
+    private Collection $semestres;
+
+
     public function __construct()
     {
         $this->etudiants = new ArrayCollection();
+        $this->semestres = new ArrayCollection();
         $this->ues = new ArrayCollection();
         $this->agendas = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
@@ -320,6 +327,34 @@ class Niveau
 
         return $this;
     }
+
+    /**
+ * @return Collection<int, Semestre>
+ */
+public function getSemestres(): Collection
+{
+    return $this->semestres;
+}
+
+public function addSemestre(Semestre $semestre): self
+{
+    if (!$this->semestres->contains($semestre)) {
+        $this->semestres->add($semestre);
+        $semestre->setNiveau($this);
+    }
+    return $this;
+}
+
+public function removeSemestre(Semestre $semestre): self
+{
+    if ($this->semestres->removeElement($semestre)) {
+        if ($semestre->getNiveau() === $this) {
+            $semestre->setNiveau(null);
+        }
+    }
+    return $this;
+}
+
 
     /**
      * @ORM\PreUpdate
