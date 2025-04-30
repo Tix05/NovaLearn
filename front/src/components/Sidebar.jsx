@@ -43,6 +43,15 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
     useEffect(() => {
         // Récupérer les informations de l'utilisateur depuis le localStorage
         const userData = JSON.parse(localStorage.getItem('user'));
+
+        const defaultUser = {
+            name: 'Utilisateur',
+            email: 'utilisateur@example.com',
+            ...userData // Cela écrasera les valeurs par défaut avec celles de userData si elles existent
+        };
+
+        setUser(defaultUser);
+
         if (userData) {
             setUser(userData);
         }
@@ -104,7 +113,6 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
                     })}
                 </ul>
 
-                {/* Section utilisateur */}
                 {user && (
                     <div className={`flex items-center py-2 transition-all duration-500 ${!open ? 'space-x-0 px-0' : 'space-x-5 px-2'}`}>
                         <Avatar
@@ -114,8 +122,8 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
                             className={`transition-all duration-500 ${!open ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
                         />
                         <div className={`leading-5 ${!open && 'w-0 translate-x-24'} duration-500 overflow-hidden`}>
-                            <p>{user.name || 'Utilisateur'}</p>
-                            <span className='text-xs'>{user.email || ''}</span>
+                            <p>{user.name}</p>
+                            <span className='text-xs'>{user.email}</span>
                         </div>
                     </div>
                 )}

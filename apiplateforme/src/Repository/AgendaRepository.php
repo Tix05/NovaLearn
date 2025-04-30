@@ -5,15 +5,8 @@ namespace App\Repository;
 use App\Entity\Agenda;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\QueryBuilder;
 
-/**
- * @extends ServiceEntityRepository<Agenda>
- *
- * @method Agenda|null find($id, $lockMode = null, $lockVersion = null)
- * @method Agenda|null findOneBy(array $criteria, array $orderBy = null)
- * @method Agenda[]    findAll()
- * @method Agenda[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
- */
 class AgendaRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -21,6 +14,48 @@ class AgendaRepository extends ServiceEntityRepository
         parent::__construct($registry, Agenda::class);
     }
 
+    public function findForStudent($mentionId, $parcoursId, $niveauId)
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('(a.type = :coursType OR a.type = :examenType)')
+            ->andWhere('(a.mention = :mentionId AND a.parcours = :parcoursId AND a.niveau = :niveauId)')
+            ->orWhere('a.type = :eventType')
+            ->setParameter('coursType', Agenda::TYPE_COURS)
+            ->setParameter('examenType', Agenda::TYPE_EXAMEN)
+            ->setParameter('eventType', Agenda::TYPE_EVENEMENT)
+            ->setParameter('mentionId', $mentionId)
+            ->setParameter('parcoursId', $parcoursId)
+            ->setParameter('niveauId', $niveauId)
+            ->orderBy('a.date', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findByTypeAndFilters($type, $mentionId = null, $parcoursId = null, $niveauId = null)
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->where('a.type = :type')
+            ->setParameter('type', $type);
+
+        if ($type !== Agenda::TYPE_EVENEMENT) {
+            if ($mentionId) {
+                $qb->andWhere('a.mention = :mentionId')
+                   ->setParameter('mentionId', $mentionId);
+            }
+            if ($parcoursId) {
+                $qb->andWhere('a.parcours = :parcoursId')
+                   ->setParameter('parcoursId', $parcoursId);
+            }
+            if ($niveauId) {
+                $qb->andWhere('a.niveau = :niveauId')
+                   ->setParameter('niveauId', $niveauId);
+            }
+        }
+
+        return $qb->orderBy('a.date', 'ASC')
+                 ->getQuery()
+                 ->getResult();
+    }
     public function add(Agenda $entity, bool $flush = false): void
     {
         $this->getEntityManager()->persist($entity);

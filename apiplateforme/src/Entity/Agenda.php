@@ -144,12 +144,12 @@ class Agenda
     private $updated_at;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="agendas")
-     * @ORM\JoinColumn(nullable=false)
-     * @Groups({"agenda:read"})
-     * @Assert\NotNull
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"agenda:read", "agenda:write"})
+     * @Assert\NotBlank
+     * @Assert\Length(max=255)
      */
-    private $auteur;
+    private $nom_auteur;
 
     /**
      * @ORM\ManyToOne(targetEntity=Mention::class, inversedBy="agendas")
@@ -311,16 +311,15 @@ class Agenda
         return $this;
     }
 
-    public function getAuteur(): ?User
+    public function setNomAuteur(string $nom_auteur): self
     {
-        return $this->auteur;
+        $this->nom_auteur = $nom_auteur;
+        return $this;
     }
 
-    public function setAuteur(?User $auteur): self
+    public function getNomAuteur(): ?string
     {
-        $this->auteur = $auteur;
-
-        return $this;
+        return $this->nom_auteur;
     }
 
     public function getMention(): ?Mention

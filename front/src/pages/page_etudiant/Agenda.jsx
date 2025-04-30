@@ -1,25 +1,21 @@
-import React, { useState } from 'react';
+// src/pages/Agenda.js
+
+import React, { useState, useEffect } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
 import Layout from '../../components/Layout';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
+import { getStudentAgenda } from '../../Services/agendaService';
 
-const DEMO_IMAGES = {
-    maths: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    physique: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    conference: 'https://images.unsplash.com/photo-1579353977828-2a4eab540b9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    chimie: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    informatique: 'https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
-};
-
-const DEMO_VIDEOS = {
-    cours: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
-    conference: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
-    examen: 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4'
-};
-
-export default function Agenda() {
+const Agenda = () => {
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
+    const [agendaData, setAgendaData] = useState({
+        cours: [],
+        examens: [],
+        evenements: []
+    });
+    const [loading, setLoading] = useState(true);
+
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
         { label: 'Semaine', value: 'Semaine' },
@@ -28,170 +24,20 @@ export default function Agenda() {
         { label: 'Semestre', value: 'Semestre' },
     ];
 
-    // Fonction pour générer des dates de test
-    const generateTestDate = (daysFromNow) => {
-        const date = new Date();
-        date.setDate(date.getDate() + daysFromNow);
-        return date.toISOString().split('T')[0];
-    };
+    useEffect(() => {
+        const fetchAgendaData = async () => {
+            try {
+                const data = await getStudentAgenda();
+                setAgendaData(data);
+                setLoading(false);
+            } catch (error) {
+                console.error('Error loading agenda:', error);
+                setLoading(false);
+            }
+        };
 
-    const [coursData] = useState([
-        {
-            id: 1,
-            titre: 'Cours de Mathématiques',
-            date: generateTestDate(1),
-            description: 'Introduction aux équations différentielles',
-            professeur: 'Prof. Dupont',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.maths,
-                name: 'maths.jpg'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Cours de Physique',
-            date: generateTestDate(3),
-            description: 'Mécanique quantique avancée',
-            professeur: 'Prof. Martin',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.cours,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'physique.mp4'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Cours de Chimie',
-            date: generateTestDate(10),
-            description: 'Chimie organique - Les alcènes',
-            professeur: 'Prof. Legrand',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.chimie,
-                name: 'chimie.jpg'
-            }
-        },
-        {
-            id: 4,
-            titre: 'Cours d\'Informatique',
-            date: generateTestDate(30),
-            description: 'Algorithmes avancés',
-            professeur: 'Prof. Dubois',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.informatique,
-                name: 'informatique.jpg'
-            }
-        },
-        {
-            id: 5,
-            titre: 'Cours de Biologie',
-            date: generateTestDate(90),
-            description: 'Génétique moléculaire',
-            professeur: 'Prof. Bernard',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.cours,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'biologie.mp4'
-            }
-        }
-    ]);
-
-    const [examensData] = useState([
-        {
-            id: 1,
-            titre: 'Examen de Mathématiques',
-            date: generateTestDate(5),
-            description: 'Examen final - Partie 1',
-            professeur: 'Prof. Dupont',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.maths,
-                name: 'examen_maths.jpg'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Examen de Physique',
-            date: generateTestDate(8),
-            description: 'Examen pratique',
-            professeur: 'Prof. Martin',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.examen,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'examen_physique.mp4'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Examen de Chimie',
-            date: generateTestDate(60),
-            description: 'Examen théorique',
-            professeur: 'Prof. Legrand',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.chimie,
-                name: 'examen_chimie.jpg'
-            }
-        }
-    ]);
-
-    const [evenementsData] = useState([
-        {
-            id: 1,
-            titre: 'Conférence sur l\'IA',
-            date: generateTestDate(2),
-            description: 'Conférence avec un expert en IA',
-            organisateur: 'Dr. Smith',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.conference,
-                thumbnail: DEMO_IMAGES.conference,
-                name: 'conference_ia.mp4'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Journée portes ouvertes',
-            date: generateTestDate(15),
-            description: 'Découverte des laboratoires de recherche',
-            organisateur: 'Dr. Johnson',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.conference,
-                name: 'portes_ouvertes.jpg'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Séminaire de recherche',
-            date: generateTestDate(45),
-            description: 'Avancées récentes en physique quantique',
-            organisateur: 'Prof. Einstein',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.conference,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'seminaire_physique.mp4'
-            }
-        },
-        {
-            id: 4,
-            titre: 'Remise des diplômes',
-            date: generateTestDate(120),
-            description: 'Cérémonie annuelle de remise des diplômes',
-            organisateur: 'Directeur Université',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.conference,
-                name: 'remise_diplomes.jpg'
-            }
-        }
-    ]);
+        fetchAgendaData();
+    }, []);
 
     const filterData = (data) => {
         if (periodeFilter === 'Tout') {
@@ -248,61 +94,49 @@ export default function Agenda() {
                     <h1 className="text-xl font-semibold text-gray-800 truncate flex-1">
                         {item.titre}
                     </h1>
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">
+                        {item.type}
+                    </span>
                 </div>
 
                 <div className="mb-3">
                     <p className="text-gray-600 whitespace-pre-wrap break-words">
                         {item.description}
                     </p>
+                    {item.mention && item.parcours && item.niveau && (
+                        <p className="text-sm text-gray-500 mt-1">
+                            {item.mention} - {item.parcours} - {item.niveau}
+                        </p>
+                    )}
                 </div>
 
-                {item.media && (
-                    <div className="mt-auto">
-                        {item.media.type === 'image' ? (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <img
-                                    src={item.media.url}
-                                    alt={item.media.name || 'Image'}
-                                    className="w-full h-auto"
-                                />
-                                {item.media.name && (
-                                    <div className="p-2 bg-gray-50 text-sm text-gray-600 truncate">
-                                        {item.media.name}
-                                    </div>
-                                )}
-                            </div>
-                        ) : item.media.type === 'video' ? (
-                            <div className="mt-3">
-                                <div className="relative pt-[56.25%] bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
-                                    <video
-                                        controls
-                                        className="absolute inset-0 w-full h-full"
-                                        poster={item.media.thumbnail}
-                                    >
-                                        <source src={item.media.url} type="video/mp4" />
-                                        Votre navigateur ne supporte pas la lecture de vidéos.
-                                    </video>
-                                </div>
-                                {item.media.name && (
-                                    <div className="mt-1 text-sm text-gray-600 truncate">
-                                        {item.media.name}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center">
-                                <i className="pi pi-file text-gray-500 text-xl mr-3"></i>
-                                <span className="text-gray-700">
-                                    {item.media.name || 'Fichier joint'}
-                                </span>
-                            </div>
-                        )}
+                {item.image && (
+                    <div className="mt-3">
+                        <img
+                            src={item.image}
+                            alt={item.titre}
+                            className="w-full h-auto rounded-lg border border-gray-200"
+                        />
+                    </div>
+                )}
+
+                {item.video && (
+                    <div className="mt-3">
+                        <div className="relative pt-[56.25%] bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
+                            <video
+                                controls
+                                className="absolute inset-0 w-full h-full"
+                            >
+                                <source src={item.video} type="video/mp4" />
+                                Votre navigateur ne supporte pas la lecture de vidéos.
+                            </video>
+                        </div>
                     </div>
                 )}
 
                 <div className="mt-3 pt-2 border-t border-gray-100">
                     <p className="text-sm font-medium text-gray-700">
-                        {item.professeur || item.organisateur || 'Non spécifié'}
+                        Publié par: {item.nom_auteur}
                     </p>
                 </div>
             </div>
@@ -323,6 +157,21 @@ export default function Agenda() {
         </div>
     );
 
+    if (loading) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex items-center justify-center">
+                    <div class="spinner-container">
+                        <div class="spinner-outer">
+                            <div class="spinner-inner"></div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
+
     return (
         <Layout>
             <div className="card custom-scrollbar h-[90vh] overflow-y-auto">
@@ -330,8 +179,8 @@ export default function Agenda() {
                     <TabPanel header="Cours" className='flex flex-col items-center'>
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(coursData).length > 0 ? (
-                                filterData(coursData).map(renderItem)
+                            {filterData(agendaData.cours).length > 0 ? (
+                                filterData(agendaData.cours).map(renderItem)
                             ) : (
                                 <p className="text-gray-500">Aucun cours prévu pour cette période</p>
                             )}
@@ -340,8 +189,8 @@ export default function Agenda() {
                     <TabPanel header="Examens" className='flex flex-col items-center'>
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(examensData).length > 0 ? (
-                                filterData(examensData).map(renderItem)
+                            {filterData(agendaData.examens).length > 0 ? (
+                                filterData(agendaData.examens).map(renderItem)
                             ) : (
                                 <p className="text-gray-500">Aucun examen prévu pour cette période</p>
                             )}
@@ -350,8 +199,8 @@ export default function Agenda() {
                     <TabPanel header="Evènements" className='flex flex-col items-center'>
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(evenementsData).length > 0 ? (
-                                filterData(evenementsData).map(renderItem)
+                            {filterData(agendaData.evenements).length > 0 ? (
+                                filterData(agendaData.evenements).map(renderItem)
                             ) : (
                                 <p className="text-gray-500">Aucun évènement prévu pour cette période</p>
                             )}
@@ -361,4 +210,6 @@ export default function Agenda() {
             </div>
         </Layout>
     );
-}
+};
+
+export default Agenda;

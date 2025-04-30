@@ -172,11 +172,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $etudiants;
 
     /**
-     * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="auteur")
-     */
-    private $agendas;
-
-    /**
      * @ORM\OneToMany(targetEntity=Commentaire::class, mappedBy="user")
      */
     private $commentaires;
@@ -215,7 +210,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->profs = new ArrayCollection();
         $this->etudiants = new ArrayCollection();
-        $this->agendas = new ArrayCollection();
         $this->commentaires = new ArrayCollection();
         $this->documents = new ArrayCollection();
         $this->fichierSupports = new ArrayCollection();
@@ -495,36 +489,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @return Collection<int, Agenda>
-     */
-    public function getAgendas(): Collection
-    {
-        return $this->agendas;
-    }
-
-    public function addAgenda(Agenda $agenda): self
-    {
-        if (!$this->agendas->contains($agenda)) {
-            $this->agendas[] = $agenda;
-            $agenda->setAuteur($this);
-        }
-
-        return $this;
-    }
-
-    public function removeAgenda(Agenda $agenda): self
-    {
-        if ($this->agendas->removeElement($agenda)) {
-            // set the owning side to null (unless already changed)
-            if ($agenda->getAuteur() === $this) {
-                $agenda->setAuteur(null);
-            }
-        }
-
-        return $this;
-    }
-
+    
     /**
      * @return Collection<int, Commentaire>
      */
