@@ -126,7 +126,6 @@ const DashboardAdmin = () => {
         }
     ];
 
-    // Données des enseignants (10 exemples)
     const dataTeacher = [
         {
             id: 1,
@@ -222,6 +221,8 @@ const DashboardAdmin = () => {
     ];
 
     const [globalFilterValue, setGlobalFilterValue] = React.useState('');
+    const [chartDataStudent, setChartDataStudent] = useState({});
+    const [chartOptionsStudent, setChartOptionsStudent] = useState({});
     const [chartData, setChartData] = useState({});
     const [chartOptions, setChartOptions] = useState({});
 
@@ -285,21 +286,28 @@ const DashboardAdmin = () => {
         const textColor = documentStyle.getPropertyValue('--text-color');
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
         const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
-        const data = {
+        const dataStudent = {
             labels: ['Jan', 'Fev', 'Mar', 'Avr', 'May', 'Jun', 'Jul'],
             datasets: [
                 {
-                    label: 'Etudiant',
+                    label: 'Informatique',
                     data: [65, 59, 80, 81, 56, 55, 40],
                     fill: false,
                     borderColor: documentStyle.getPropertyValue('--red-600'),
                     tension: 0.4
                 },
                 {
-                    label: 'Enseignant',
+                    label: 'Gestion',
                     data: [28, 48, 40, 19, 86, 27, 90],
                     fill: false,
                     borderColor: documentStyle.getPropertyValue('--green-500'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Communication',
+                    data: [30, 44, 48, 11, 81, 22, 96],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--blue-500'),
                     tension: 0.4
                 }
             ]
@@ -334,6 +342,40 @@ const DashboardAdmin = () => {
             }
         };
 
+        setChartDataStudent(dataStudent);
+        setChartOptionsStudent(options);
+    }, []);
+
+    useEffect(() => {
+        const documentStyle = getComputedStyle(document.documentElement);
+        const data = {
+            labels: ['A', 'B', 'C'],
+            datasets: [
+                {
+                    data: [540, 325, 702],
+                    backgroundColor: [
+                        documentStyle.getPropertyValue('--blue-500'),
+                        documentStyle.getPropertyValue('--yellow-500'),
+                        documentStyle.getPropertyValue('--green-500')
+                    ],
+                    hoverBackgroundColor: [
+                        documentStyle.getPropertyValue('--blue-400'),
+                        documentStyle.getPropertyValue('--yellow-400'),
+                        documentStyle.getPropertyValue('--green-400')
+                    ]
+                }
+            ]
+        }
+        const options = {
+            plugins: {
+                legend: {
+                    labels: {
+                        usePointStyle: true
+                    }
+                }
+            }
+        };
+
         setChartData(data);
         setChartOptions(options);
     }, []);
@@ -342,49 +384,63 @@ const DashboardAdmin = () => {
         <LayoutAdmin>
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-4xl font-semibold text-gray-800 p-5'>Tableau de bord</h1>
-                <div className='flex items-center justify-center gap-5 p-5'>
-                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
-                        <div className='p-3 rounded-md bg-blue-500 text-white'>
-                            <PiStudentFill size={30} />
+                <div className='flex items-center justify-center w-full space-x-5 mb-5'>
+                    <div className='flex flex-col items-center justify-center gap-5 w-1/2'>
+                        <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
+                            <div className='p-3 rounded-md bg-blue-500 text-white'>
+                                <PiStudentFill size={30} />
+                            </div>
+                            <div className='justify-between flex flex-col ml-3'>
+                                <p className='font-semibold text-gray-800'>
+                                    Etudiants
+                                </p>
+                                <p className='font-bold text-gray-800'>
+                                    {dataStudent.length}
+                                </p>
+                            </div>
                         </div>
-                        <div className='justify-between flex flex-col ml-3'>
-                            <p className='font-semibold text-gray-800'>
-                                Etudiants
-                            </p>
-                            <p className='font-bold text-gray-800'>
-                                {dataStudent.length}
-                            </p>
+                        <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
+                            <div className='p-3 rounded-md bg-red-800 text-white'>
+                                <PiChalkboardTeacher size={30} />
+                            </div>
+                            <div className='justify-between flex flex-col ml-3'>
+                                <p className='font-semibold text-gray-800'>
+                                    Professeurs
+                                </p>
+                                <p className='font-bold text-gray-800'>
+                                    {dataTeacher.length}
+                                </p>
+                            </div>
+                        </div>
+                        <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
+                            <div className='p-3 rounded-md bg-yellow-600 text-white'>
+                                <RiUserSettingsLine size={30} />
+                            </div>
+                            <div className='justify-between flex flex-col ml-3'>
+                                <p className='font-semibold text-gray-800'>
+                                    Admin
+                                </p>
+                                <p className='font-bold text-gray-800'>
+                                    1
+                                </p>
+                            </div>
                         </div>
                     </div>
-                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
-                        <div className='p-3 rounded-md bg-red-800 text-white'>
-                            <PiChalkboardTeacher size={30} />
-                        </div>
-                        <div className='justify-between flex flex-col ml-3'>
-                            <p className='font-semibold text-gray-800'>
-                                Professeurs
-                            </p>
-                            <p className='font-bold text-gray-800'>
-                                {dataTeacher.length}
-                            </p>
-                        </div>
-                    </div>
-                    <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
-                        <div className='p-3 rounded-md bg-yellow-600 text-white'>
-                            <RiUserSettingsLine size={30} />
-                        </div>
-                        <div className='justify-between flex flex-col ml-3'>
-                            <p className='font-semibold text-gray-800'>
-                                Admin
-                            </p>
-                            <p className='font-bold text-gray-800'>
-                                1
-                            </p>
-                        </div>
-                    </div>
+                    <Chart type="pie" data={chartData} options={chartOptions} className="md:w-30rem w-1/2" />
                 </div>
-                <div className='px-28 py-10'>
-                    <Chart type="line" data={chartData} options={chartOptions} />
+                <div className='flex flex-col items-center justify-center w-full px-5 space-y-5 mb-5'>
+                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                        <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des connexion à la plateforme</h1>
+                        <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                    </div>
+                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                        <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des étudiants</h1>
+                        <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                    </div>
+                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                        <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des enseignants</h1>
+                        <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                    </div>
                 </div>
                 <div>
                     <TabView className='custom-tabview'>

@@ -80,7 +80,7 @@ function EtudiantRoutes() {
       <Route path="inscription-etape-1" element={<Inscription />} />
       <Route path="inscription-etape-2" element={<Inscription2 />} />
       <Route path="logout" element={<LogoutPage />} />
-      <Route path="enseignant"
+      <Route path="dashboard"
         element={
           <ProtectedRoute>
             <Enseignant />

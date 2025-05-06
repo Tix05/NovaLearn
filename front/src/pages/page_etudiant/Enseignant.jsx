@@ -7,10 +7,13 @@ import { InputIcon } from 'primereact/inputicon';
 import Layout from '../../components/Layout';
 import { Button } from 'primereact/button';
 import { getEnseignantsByEtudiant } from '../../Services/enseignantService';
+import { Chart } from 'primereact/chart';
 
 export default function Enseignant() {
     const [data, setData] = useState([]);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [chartDataStudent, setChartDataStudent] = useState({});
+    const [chartOptionsStudent, setChartOptionsStudent] = useState({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,6 +32,74 @@ export default function Enseignant() {
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
     };
+
+    useEffect(() => {
+        const documentStyle = getComputedStyle(document.documentElement);
+        const textColor = documentStyle.getPropertyValue('--text-color');
+        const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
+        const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+        const dataStudent = {
+            labels: ['Jan', 'Fev', 'Mar', 'Avr', 'May', 'Jun', 'Jul'],
+            datasets: [
+                {
+                    label: 'Informatique',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--red-600'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Gestion',
+                    data: [28, 48, 40, 19, 86, 27, 90],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--green-500'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Communication',
+                    data: [30, 44, 48, 11, 81, 22, 96],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--blue-500'),
+                    tension: 0.4
+                }
+            ]
+        };
+        const options = {
+            maintainAspectRatio: false,
+            aspectRatio: 0.6,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                }
+            }
+        };
+
+        setChartDataStudent(dataStudent);
+        setChartOptionsStudent(options);
+    }, []);
+
+
+
 
     const imageBodyTemplate = (rowData) => {
         return (
@@ -70,6 +141,10 @@ export default function Enseignant() {
     return (
         <Layout>
             <div className='custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+                <div className='w-full p-10'>
+                    <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des étudiants</h1>
+                    <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                </div>
                 <DataTable
                     value={data}
                     paginator

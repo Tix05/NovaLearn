@@ -9,9 +9,9 @@ import { BiMenuAltLeft } from 'react-icons/bi';
 
 const menuItems = [
     {
-        to: '/etudiant/enseignant',
+        to: '/etudiant/dashboard',
         icons: <PiChalkboardTeacher size={25} />,
-        label: 'Mes enseignants'
+        label: 'Dashboard'
     },
     {
         to: ['/etudiant/mention', '/etudiant/cours/:mentionId', '/etudiant/cours/:mentionId/:semestreId', '/etudiant/cours/:mentionId/:semestreId/:coursId'],

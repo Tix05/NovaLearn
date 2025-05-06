@@ -80,12 +80,6 @@ class Mention
     private $updated_at;
 
     /**
-     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
-     * @Groups({"mention:read"})
-     */
-    private $profs;
-
-    /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */

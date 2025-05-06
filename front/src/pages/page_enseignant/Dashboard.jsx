@@ -1,14 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { Calendar } from 'primereact/calendar';
-import Weather from '../../components/Weather';
+// import Weather from '../../components/Weather';
 import { FaCircleArrowRight } from "react-icons/fa6";
 import { BiSolidMessageRounded } from "react-icons/bi";
 import { Link } from 'react-router-dom';
-
+import { Chart } from 'primereact/chart';
 
 const Dashboard = () => {
     const [date, setDate] = useState(null);
+    const [chartDataStudent, setChartDataStudent] = useState({});
+    const [chartOptionsStudent, setChartOptionsStudent] = useState({});
+
+    useEffect(() => {
+        const documentStyle = getComputedStyle(document.documentElement);
+        const textColor = documentStyle.getPropertyValue('--text-color');
+        const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
+        const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+        const dataStudent = {
+            labels: ['Jan', 'Fev', 'Mar', 'Avr', 'May', 'Jun', 'Jul'],
+            datasets: [
+                {
+                    label: 'Informatique',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--red-600'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Gestion',
+                    data: [28, 48, 40, 19, 86, 27, 90],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--green-500'),
+                    tension: 0.4
+                },
+                {
+                    label: 'Communication',
+                    data: [30, 44, 48, 11, 81, 22, 96],
+                    fill: false,
+                    borderColor: documentStyle.getPropertyValue('--blue-500'),
+                    tension: 0.4
+                }
+            ]
+        };
+        const options = {
+            maintainAspectRatio: false,
+            aspectRatio: 0.6,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: textColorSecondary
+                    },
+                    grid: {
+                        color: surfaceBorder
+                    }
+                }
+            }
+        };
+
+        setChartDataStudent(dataStudent);
+        setChartOptionsStudent(options);
+    }, []);
 
     return (
         <LayoutEnseignant>
@@ -55,9 +122,15 @@ const Dashboard = () => {
                         </Link>
                     </div>
                 </div>
-                <div className="flex justify-center items-center gap-x-10">
-                    <Calendar value={date} onChange={(e) => setDate(e.value)} inline />
-                    <Weather />
+                <div className='flex flex-col items-center justify-center w-full px-5 space-y-5 mb-5'>
+                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                        <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des étudiants</h1>
+                        <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                    </div>
+                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                        <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des enseignants</h1>
+                        <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
+                    </div>
                 </div>
             </div>
         </LayoutEnseignant>
