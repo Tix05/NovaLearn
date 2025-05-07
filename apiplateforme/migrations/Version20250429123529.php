@@ -14,28 +14,26 @@ final class Version20250429123529 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Add foreign key constraint to semestre table';
     }
 
     public function up(Schema $schema): void
     {
-        // this up() migration is auto-generated, please modify it to your needs
+        // Vérifier si la contrainte existe avant de l'ajouter
         $this->addSql(<<<'SQL'
-            ALTER TABLE semestre ADD CONSTRAINT FK_71688FBCB3E9C81 FOREIGN KEY (niveau_id) REFERENCES niveau (id)
-        SQL);
-        $this->addSql(<<<'SQL'
-            CREATE INDEX IDX_71688FBCB3E9C81 ON semestre (niveau_id)
+            SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+                                     WHERE TABLE_NAME = 'semestre' AND CONSTRAINT_NAME = 'FK_SEMESTRE_NIVEAU');
+            SET @sql = IF(@constraint_exists = 0, 
+                         'ALTER TABLE semestre ADD CONSTRAINT FK_SEMESTRE_NIVEAU FOREIGN KEY (niveau_id) REFERENCES niveau (id)', 
+                         'SELECT 1');
+            PREPARE stmt FROM @sql;
+            EXECUTE stmt;
+            DEALLOCATE PREPARE stmt;
         SQL);
     }
 
     public function down(Schema $schema): void
     {
-        // this down() migration is auto-generated, please modify it to your needs
-        $this->addSql(<<<'SQL'
-            ALTER TABLE semestre DROP FOREIGN KEY FK_71688FBCB3E9C81
-        SQL);
-        $this->addSql(<<<'SQL'
-            DROP INDEX IDX_71688FBCB3E9C81 ON semestre
-        SQL);
+        $this->addSql('ALTER TABLE semestre DROP FOREIGN KEY FK_SEMESTRE_NIVEAU');
     }
 }

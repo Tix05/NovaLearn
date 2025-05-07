@@ -64,7 +64,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @ORM\Column(type="integer")
      * @Groups({"user:read"})
      */
-    private $id;
+    private ?int $id = null;
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
@@ -73,13 +73,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @Assert\Email
      * @Assert\Length(max=180)
      */
-    private $email;
+    private ?string $email = null;
 
     /**
      * @ORM\Column(type="json")
      * @Groups({"user:read", "user:write"})
      */
-    private $roles = [];
+    private array $roles = [];
 
     /**
      * @ORM\Column(type="string")
@@ -87,7 +87,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @Assert\NotBlank(groups={"user:create"})
      * @Assert\Length(min=6)
      */
-    private $password;
+    private ?string $password = null;
 
     /**
      * @ORM\Column(type="string", length=60)
@@ -95,116 +95,121 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @Assert\NotBlank
      * @Assert\Length(min=2, max=60)
      */
-    private $name;
+    private ?string $name = null;
 
     /**
      * @ORM\Column(type="string", length=20, nullable=true)
      * @Groups({"user:read", "user:write"})
      * @Assert\Length(max=20)
      */
-    private $telephone;
+    private ?string $telephone = null;
 
     /**
      * @ORM\Column(type="string", length=125, nullable=true)
      * @Groups({"user:read", "user:write"})
      * @Assert\Length(max=125)
      */
-    private $avatar;
+    private ?string $avatar = null;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      * @Groups({"user:read", "user:write"})
      * @Assert\Length(max=255)
      */
-    private $ville;
+    private ?string $ville = null;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    private $reset_token;
+    private ?string $reset_token = null;
 
     /**
      * @ORM\Column(type="boolean")
      * @Groups({"user:read", "user:write"})
      */
-    private $status = true;
+    private bool $status = true;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      * @Groups({"user:read", "user:write"})
      * @Assert\Length(max=255)
      */
-    private $adresse;
+    private ?string $adresse = null;
 
     /**
-    * @ORM\ManyToOne(targetEntity="App\Entity\Province")
-    * @ORM\JoinColumn(name="province_id", referencedColumnName="id")
-    * @Groups({"user:read", "user:write"})
-    */
-    private $province;
+     * @ORM\ManyToOne(targetEntity="App\Entity\Province")
+     * @ORM\JoinColumn(name="province_id", referencedColumnName="id")
+     * @Groups({"user:read", "user:write"})
+     */
+    private ?Province $province = null;
 
     /**
      * @ORM\Column(type="json", nullable=true)
      * @Groups({"user:read", "user:write"})
      */
-    private $preferences_notification;
+    private ?array $preferences_notification = null;
 
     /**
      * @ORM\Column(type="datetime_immutable")
      * @Groups({"user:read"})
      */
-    private $created_at;
+    private ?\DateTimeImmutable $created_at = null;
 
     /**
      * @ORM\Column(type="datetime_immutable", nullable=true)
      * @Groups({"user:read"})
      */
-    private $updated_at;
+    private ?\DateTimeImmutable $updated_at = null;
 
     /**
      * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="user")
      */
-    private $profs;
+    private Collection $profs;
 
     /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="user")
      */
-    private $etudiants;
+    private Collection $etudiants;
 
     /**
      * @ORM\OneToMany(targetEntity=Commentaire::class, mappedBy="user")
      */
-    private $commentaires;
+    private Collection $commentaires;
 
     /**
      * @ORM\OneToMany(targetEntity=Document::class, mappedBy="user")
      */
-    private $documents;
+    private Collection $documents;
 
     /**
      * @ORM\OneToMany(targetEntity=FichierSupport::class, mappedBy="auteur")
      */
-    private $fichierSupports;
+    private Collection $fichierSupports;
 
     /**
      * @ORM\OneToMany(targetEntity=Conversation::class, mappedBy="createdBy")
      */
-    private $conversations;
+    private Collection $conversations;
 
     /**
      * @ORM\OneToMany(targetEntity=Message::class, mappedBy="expediteur")
      */
-    private $messages;
+    private Collection $messages;
 
     /**
      * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="user")
      */
-    private $notifications;
+    private Collection $notifications;
 
     /**
      * @ORM\OneToMany(targetEntity=AbonnementNotification::class, mappedBy="user")
      */
-    private $abonnementNotifications;
+    private Collection $abonnementNotifications;
+
+    /**
+     * @ORM\OneToMany(targetEntity=ParticipantConversation::class, mappedBy="user", orphanRemoval=true)
+     */
+    private Collection $conversationParticipants;
 
     public function __construct()
     {
@@ -217,6 +222,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->messages = new ArrayCollection();
         $this->notifications = new ArrayCollection();
         $this->abonnementNotifications = new ArrayCollection();
+        $this->conversationParticipants = new ArrayCollection();
         $this->created_at = new \DateTimeImmutable();
     }
 
@@ -233,50 +239,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): self
     {
         $this->email = $email;
-
         return $this;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
     public function getUserIdentifier(): string
     {
         return (string) $this->email;
     }
 
-    /**
-     * @deprecated since Symfony 5.3, use getUserIdentifier instead
-     */
     public function getUsername(): string
     {
         return (string) $this->email;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
-
         return array_unique($roles);
     }
 
     public function setRoles(array $roles): self
     {
         $this->roles = $roles;
-
         return $this;
     }
 
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
     public function getPassword(): string
     {
         return $this->password;
@@ -285,28 +273,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): self
     {
         $this->password = $password;
-
         return $this;
     }
 
-    /**
-     * Returning a salt is only needed, if you are not using a modern
-     * hashing algorithm (e.g. bcrypt or sodium) in your security.yaml.
-     *
-     * @see UserInterface
-     */
     public function getSalt(): ?string
     {
         return null;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function eraseCredentials()
     {
-        // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
     }
 
     public function getName(): ?string
@@ -317,7 +293,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setName(string $name): self
     {
         $this->name = $name;
-
         return $this;
     }
 
@@ -329,7 +304,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTelephone(?string $telephone): self
     {
         $this->telephone = $telephone;
-
         return $this;
     }
 
@@ -341,7 +315,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAvatar(?string $avatar): self
     {
         $this->avatar = $avatar;
-
         return $this;
     }
 
@@ -353,7 +326,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setVille(?string $ville): self
     {
         $this->ville = $ville;
-
         return $this;
     }
 
@@ -365,7 +337,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setResetToken(?string $reset_token): self
     {
         $this->reset_token = $reset_token;
-
         return $this;
     }
 
@@ -377,7 +348,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setStatus(bool $status): self
     {
         $this->status = $status;
-
         return $this;
     }
 
@@ -389,7 +359,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAdresse(?string $adresse): self
     {
         $this->adresse = $adresse;
-
         return $this;
     }
 
@@ -401,7 +370,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setProvince(?Province $province): self
     {
         $this->province = $province;
+        return $this;
+    }
 
+    public function getPreferencesNotification(): ?array
+    {
+        return $this->preferences_notification;
+    }
+
+    public function setPreferencesNotification(?array $preferences_notification): self
+    {
+        $this->preferences_notification = $preferences_notification;
         return $this;
     }
 
@@ -413,7 +392,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
@@ -425,7 +403,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -443,19 +420,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->profs[] = $prof;
             $prof->setUser($this);
         }
-
         return $this;
     }
 
     public function removeProf(Prof $prof): self
     {
         if ($this->profs->removeElement($prof)) {
-            // set the owning side to null (unless already changed)
             if ($prof->getUser() === $this) {
                 $prof->setUser(null);
             }
         }
-
         return $this;
     }
 
@@ -473,23 +447,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->etudiants[] = $etudiant;
             $etudiant->setUser($this);
         }
-
         return $this;
     }
 
     public function removeEtudiant(Etudiant $etudiant): self
     {
         if ($this->etudiants->removeElement($etudiant)) {
-            // set the owning side to null (unless already changed)
             if ($etudiant->getUser() === $this) {
                 $etudiant->setUser(null);
             }
         }
-
         return $this;
     }
 
-    
     /**
      * @return Collection<int, Commentaire>
      */
@@ -504,19 +474,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->commentaires[] = $commentaire;
             $commentaire->setUser($this);
         }
-
         return $this;
     }
 
     public function removeCommentaire(Commentaire $commentaire): self
     {
         if ($this->commentaires->removeElement($commentaire)) {
-            // set the owning side to null (unless already changed)
             if ($commentaire->getUser() === $this) {
                 $commentaire->setUser(null);
             }
         }
-
         return $this;
     }
 
@@ -534,19 +501,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->documents[] = $document;
             $document->setUser($this);
         }
-
         return $this;
     }
 
     public function removeDocument(Document $document): self
     {
         if ($this->documents->removeElement($document)) {
-            // set the owning side to null (unless already changed)
             if ($document->getUser() === $this) {
                 $document->setUser(null);
             }
         }
-
         return $this;
     }
 
@@ -564,19 +528,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->fichierSupports[] = $fichierSupport;
             $fichierSupport->setAuteur($this);
         }
-
         return $this;
     }
 
     public function removeFichierSupport(FichierSupport $fichierSupport): self
     {
         if ($this->fichierSupports->removeElement($fichierSupport)) {
-            // set the owning side to null (unless already changed)
             if ($fichierSupport->getAuteur() === $this) {
                 $fichierSupport->setAuteur(null);
             }
         }
-
         return $this;
     }
 
@@ -588,25 +549,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->conversations;
     }
 
-    public function addConversation(Conversation $conversation): static
+    public function addConversation(Conversation $conversation): self
     {
         if (!$this->conversations->contains($conversation)) {
-            $this->conversations->add($conversation);
+            $this->conversations[] = $conversation;
             $conversation->setCreatedBy($this);
         }
-
         return $this;
     }
 
-    public function removeConversation(Conversation $conversation): static
+    public function removeConversation(Conversation $conversation): self
     {
         if ($this->conversations->removeElement($conversation)) {
-            // set the owning side to null (unless already changed)
             if ($conversation->getCreatedBy() === $this) {
                 $conversation->setCreatedBy(null);
             }
         }
-
         return $this;
     }
 
@@ -618,25 +576,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->messages;
     }
 
-    public function addMessage(Message $message): static
+    public function addMessage(Message $message): self
     {
         if (!$this->messages->contains($message)) {
-            $this->messages->add($message);
+            $this->messages[] = $message;
             $message->setExpediteur($this);
         }
-
         return $this;
     }
 
-    public function removeMessage(Message $message): static
+    public function removeMessage(Message $message): self
     {
         if ($this->messages->removeElement($message)) {
-            // set the owning side to null (unless already changed)
             if ($message->getExpediteur() === $this) {
                 $message->setExpediteur(null);
             }
         }
-
         return $this;
     }
 
@@ -648,25 +603,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->notifications;
     }
 
-    public function addNotification(Notification $notification): static
+    public function addNotification(Notification $notification): self
     {
         if (!$this->notifications->contains($notification)) {
-            $this->notifications->add($notification);
+            $this->notifications[] = $notification;
             $notification->setUser($this);
         }
-
         return $this;
     }
 
-    public function removeNotification(Notification $notification): static
+    public function removeNotification(Notification $notification): self
     {
         if ($this->notifications->removeElement($notification)) {
-            // set the owning side to null (unless already changed)
             if ($notification->getUser() === $this) {
                 $notification->setUser(null);
             }
         }
-
         return $this;
     }
 
@@ -678,27 +630,52 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->abonnementNotifications;
     }
 
-    public function addAbonnementNotification(AbonnementNotification $abonnementNotification): static
+    public function addAbonnementNotification(AbonnementNotification $abonnementNotification): self
     {
         if (!$this->abonnementNotifications->contains($abonnementNotification)) {
-            $this->abonnementNotifications->add($abonnementNotification);
+            $this->abonnementNotifications[] = $abonnementNotification;
             $abonnementNotification->setUser($this);
         }
-
         return $this;
     }
 
-    public function removeAbonnementNotification(AbonnementNotification $abonnementNotification): static
+    public function removeAbonnementNotification(AbonnementNotification $abonnementNotification): self
     {
         if ($this->abonnementNotifications->removeElement($abonnementNotification)) {
-            // set the owning side to null (unless already changed)
             if ($abonnementNotification->getUser() === $this) {
                 $abonnementNotification->setUser(null);
             }
         }
-
         return $this;
     }
+
+    /**
+     * @return Collection<int, ParticipantConversation>
+     */
+    public function getConversationParticipants(): Collection
+    {
+        return $this->conversationParticipants;
+    }
+
+    public function addConversationParticipant(ParticipantConversation $conversationParticipant): self
+    {
+        if (!$this->conversationParticipants->contains($conversationParticipant)) {
+            $this->conversationParticipants[] = $conversationParticipant;
+            $conversationParticipant->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeConversationParticipant(ParticipantConversation $conversationParticipant): self
+    {
+        if ($this->conversationParticipants->removeElement($conversationParticipant)) {
+            if ($conversationParticipant->getUser() === $this) {
+                $conversationParticipant->setUser(null);
+            }
+        }
+        return $this;
+    }
+
     /**
      * @ORM\PreUpdate
      */

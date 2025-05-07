@@ -27,7 +27,7 @@ const DocumentPreview = ({ document, onDownload, onDelete }) => {
                 </h2>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => onDownload(document)}  // Ici 'document' est la prop passée au composant
+                        onClick={() => onDownload(document)}
                         className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors flex items-center gap-1"
                     >
                         Télécharger

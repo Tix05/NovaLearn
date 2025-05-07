@@ -55,6 +55,36 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
         $this->add($user, true);
     }
+    /**
+     * Find all users except the one with the given ID
+     *
+     * @param int $userId
+     * @return User[]
+     */
+    public function findAllExcept(int $userId): array
+    {
+        return $this->createQueryBuilder('u')
+            ->where('u.id != :userId')
+            ->setParameter('userId', $userId)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find users associated with a given Parcours through Etudiant
+     *
+     * @param Parcours $parcours
+     * @return User[]
+     */
+    public function findByParcours(Parcours $parcours): array
+    {
+        return $this->createQueryBuilder('u')
+            ->innerJoin('u.etudiants', 'e')
+            ->where('e.parcours = :parcours')
+            ->setParameter('parcours', $parcours)
+            ->getQuery()
+            ->getResult();
+    }
 
 //    /**
 //     * @return User[] Returns an array of User objects

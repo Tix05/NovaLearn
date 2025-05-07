@@ -4,76 +4,96 @@ import EmojiPicker from 'emoji-picker-react';
 import { format } from 'date-fns';
 import Avatar from 'react-avatar';
 import Layout from '../../components/Layout';
-import { LuSendHorizontal } from "react-icons/lu";
+import { LuSendHorizontal } from 'react-icons/lu';
 import { motion } from 'framer-motion';
-
-const mockUsers = [
-    { id: "user1", name: "Alice", status: "online", avatar: "https://i.pravatar.cc/150?img=1" },
-    { id: "user2", name: "Bob", status: "online", avatar: "https://i.pravatar.cc/150?img=2" },
-    { id: "user3", name: "Charlie", status: "offline", avatar: "https://i.pravatar.cc/150?img=3" },
-    { id: "user4", name: "David", status: "online", avatar: "https://i.pravatar.cc/150?img=4" },
-    { id: "user5", name: "Eve", status: "offline", avatar: "https://i.pravatar.cc/150?img=5" },
-];
-
-const mockMessages = [
-    { id: "1", text: "Salut, tu as vu le dernier épisode de la série ?", timestamp: new Date(), userId: "user2", toId: "user1", userName: "Bob" },
-    { id: "2", text: "Oui, incroyable le twist final !", timestamp: new Date(), userId: "user1", toId: "user2", userName: "Alice" },
-    { id: "3", text: "As-tu des recommandations pour un bon livre ?", timestamp: new Date(), userId: "user3", toId: "user1", userName: "Charlie" },
-    { id: "4", text: "Je te recommande 'Sapiens' de Yuval Noah Harari.", timestamp: new Date(), userId: "user1", toId: "user3", userName: "Alice" },
-    { id: "5", text: "Tu viens à la fête ce week-end ?", timestamp: new Date(), userId: "user4", toId: "user1", userName: "David" },
-    { id: "6", text: "Oui, je vais passer avec des amis.", timestamp: new Date(), userId: "user1", toId: "user4", userName: "Alice" }
-];
-
-const initialGroupMessages = [
-    { id: "g1", text: "Bienvenue dans le groupe !", timestamp: new Date(), userId: "user1", userName: "Alice" },
-    { id: "g2", text: "Merci !", timestamp: new Date(), userId: "user2", userName: "Bob" },
-    { id: "g3", text: "Qui veut organiser une sortie ce week-end ?", timestamp: new Date(), userId: "user3", userName: "Charlie" },
-    { id: "g4", text: "Je suis partant !", timestamp: new Date(), userId: "user4", userName: "David" },
-    { id: "g5", text: "Moi aussi !", timestamp: new Date(), userId: "user5", userName: "Eve" }
-];
+import { getConversations, getMessages, sendMessage, markMessageAsRead } from '../../Services/messagingService';
+import { getCurrentUser } from '../../Services/authService';
 
 function Message() {
-    const [messages, setMessages] = useState(mockMessages);
-    const [groupMessages, setGroupMessages] = useState(initialGroupMessages);
+    const [conversations, setConversations] = useState([]);
+    const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [messageSearchTerm, setMessageSearchTerm] = useState('');
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [isGroupSelected, setIsGroupSelected] = useState(false);
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [error, setError] = useState(null);
     const messagesEndRef = useRef(null);
-    const currentUserId = "user1";
+    const currentUser = getCurrentUser();
+
+    useEffect(() => {
+        const fetchConversations = async () => {
+            try {
+                const data = await getConversations();
+                console.log('Conversations fetched:', data); // Log pour déboguer
+                setConversations(data);
+            } catch (error) {
+                console.error('Error fetching conversations:', error);
+                setError('Échec du chargement des conversations');
+            }
+        };
+
+        fetchConversations();
+        const interval = setInterval(fetchConversations, 30000); // Actualiser toutes les 30 secondes
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        if (selectedConversation && selectedConversation.id) {
+            const fetchMessages = async () => {
+                try {
+                    const data = await getMessages(selectedConversation.id);
+                    setMessages(data);
+                    // Marquer les messages comme lus
+                    data.forEach(message => {
+                        if (!message.lu && currentUser && message.expediteur.id !== currentUser.id) {
+                            markMessageAsRead(message.id);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error fetching messages:', error);
+                    setError('Échec du chargement des messages');
+                }
+            };
+
+            fetchMessages();
+        } else {
+            setMessages([]); // Réinitialiser les messages si aucune conversation n'est sélectionnée
+        }
+    }, [selectedConversation, currentUser]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, groupMessages]);
+    }, [messages]);
 
-    const handleSendMessage = (e) => {
+    const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
-
-        if (isGroupSelected) {
-            const newGroupMsg = {
-                id: String(Date.now()),
-                text: newMessage,
-                timestamp: new Date(),
-                userId: currentUserId,
-                userName: "Alice"
-            };
-            setGroupMessages([...groupMessages, newGroupMsg]);
-        } else if (selectedUser) {
-            const newMsg = {
-                id: String(Date.now()),
-                text: newMessage,
-                timestamp: new Date(),
-                userId: currentUserId,
-                toId: selectedUser.id,
-                userName: "Alice"
-            };
-            setMessages([...messages, newMsg]);
+        if (!newMessage.trim() || !selectedConversation || !currentUser) {
+            setError('Veuillez sélectionner une conversation et écrire un message');
+            return;
         }
 
-        setNewMessage('');
+        try {
+            const message = await sendMessage(
+                selectedConversation.id,
+                selectedConversation.type === 'PRIVEE' && !selectedConversation.id ? selectedConversation.participants[0].id : null,
+                selectedConversation.type === 'GROUPE_FILIERE' && !selectedConversation.id ? selectedConversation.participants[0].id : null,
+                newMessage
+            );
+            setMessages([...messages, message]);
+            setNewMessage('');
+            // Mettre à jour selectedConversation avec le nouvel ID de conversation
+            if (!selectedConversation.id && message.conversationId) {
+                setSelectedConversation({ ...selectedConversation, id: message.conversationId });
+            }
+            // Actualiser les conversations
+            const updatedConversations = await getConversations();
+            setConversations(updatedConversations);
+            setError(null);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            setError('Échec de l\'envoi du message');
+        }
     };
 
     const onEmojiClick = (emojiObject) => {
@@ -81,20 +101,25 @@ function Message() {
         setShowEmojiPicker(false);
     };
 
-    const filteredUsers = mockUsers.filter(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        user.id !== currentUserId
+    const filteredConversations = conversations.filter(conv =>
+        conv.sujet?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.participants.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const filteredMessages = isGroupSelected
-        ? groupMessages.filter(msg => msg.text.toLowerCase().includes(messageSearchTerm.toLowerCase()))
-        : messages.filter(
-            msg =>
-                selectedUser &&
-                ((msg.userId === currentUserId && msg.toId === selectedUser.id) ||
-                    (msg.userId === selectedUser.id && msg.toId === currentUserId)) &&
-                msg.text.toLowerCase().includes(messageSearchTerm.toLowerCase())
-        );
+    const filteredMessages = messages.filter(msg =>
+        msg.contenu.toLowerCase().includes(messageSearchTerm.toLowerCase())
+    );
+
+    const getConversationTitle = (conv) => {
+        if (conv.type === 'GROUPE_FILIERE') {
+            return `Groupe ${conv.sujet || 'Filière'}`;
+        }
+        if (conv.type === 'ADMIN') {
+            return 'Administration';
+        }
+        const otherParticipants = conv.participants.filter(p => currentUser && p.id !== currentUser.id);
+        return otherParticipants.map(p => p.name).join(', ');
+    };
 
     return (
         <Layout>
@@ -109,22 +134,38 @@ function Message() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <div className="space-y-2">
-                        <button
-                            onClick={() => { setSelectedUser(null); setIsGroupSelected(true); }}
-                            className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${isGroupSelected ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-300'}`}
-                        >
-                            <Avatar name="Groupe" size="40" round={true} />
-                            <span>Communication</span>
-                        </button>
-                        {filteredUsers.map(user => (
+                        {filteredConversations.map(conv => (
                             <button
-                                key={user.id}
-                                onClick={() => { setSelectedUser(user); setIsGroupSelected(false); }}
-                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${selectedUser?.id === user.id ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-300'}`}
+                                key={`${conv.type}-${conv.participants[0].id}`} // Clé unique
+                                onClick={() => {
+                                    console.log('Selected conversation:', conv); // Log pour déboguer
+                                    setSelectedConversation(conv);
+                                }}
+                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
+                                        selectedConversation?.type === conv.type
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-800 hover:bg-gray-300'
+                                    }`}
                             >
-                                <Avatar src={user.avatar} size="40" round={true} />
-                                <span>{user.name}</span>
-                                <Circle className={`h-3 w-3 ${user.status === 'online' ? 'text-green-500' : 'text-gray-500'}`} fill="currentColor" />
+                                <Avatar
+                                    name={getConversationTitle(conv)}
+                                    src={conv.participants.find(p => currentUser && p.id !== currentUser.id)?.avatar}
+                                    size="40"
+                                    round={true}
+                                />
+                                <div className="flex-1 text-left">
+                                    <span>{getConversationTitle(conv)}</span>
+                                    <div className="text-xs text-gray-500">
+                                        {conv.lastMessage ? conv.lastMessage.contenu.substring(0, 20) + '...' : ''}
+                                    </div>
+                                </div>
+                                {conv.unreadCount > 0 && (
+                                    <span className="absolute right-2 top-2 h-3 w-3 bg-red-500 rounded-full"></span>
+                                )}
+                                <Circle
+                                    className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.isOnline ? 'text-green-500' : 'text-gray-500'}`}
+                                    fill="currentColor"
+                                />
                             </button>
                         ))}
                     </div>
@@ -132,8 +173,10 @@ function Message() {
 
                 <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
                     <div className="flex items-center justify-between bg-[#4CAF50] p-4 font-semibold space-x-2">
-                        <span className='text-white text-xl'>{isGroupSelected ? 'Groupe' : selectedUser ? `Message avec ${selectedUser.name}` : 'Sélectionnez un utilisateur'}</span>
-                        {(selectedUser || isGroupSelected) && (
+                        <span className='text-white text-xl'>
+                            {selectedConversation ? getConversationTitle(selectedConversation) : 'Sélectionnez une conversation'}
+                        </span>
+                        {selectedConversation && (
                             <input
                                 type="text"
                                 placeholder="Rechercher des messages..."
@@ -145,9 +188,10 @@ function Message() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" style={{ height: 'calc(100vh - 11rem)' }}>
+                        {error && <div className="text-red-500 text-center">{error}</div>}
                         {filteredMessages.length === 0 ? (
                             <div className="text-center text-gray-500 italic text-xl mt-40">
-                                Aucun discussion
+                                Aucun message
                             </div>
                         ) : (
                             filteredMessages.map((message) => (
@@ -156,12 +200,16 @@ function Message() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.3 }}
-                                    className={`flex ${message.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex ${message.expediteur.id === currentUser.id ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 ${message.userId === currentUserId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}>
-                                        <div className="font-semibold text-sm mb-1">{message.userId === currentUserId ? "Moi" : message.userName}</div>
-                                        <div>{message.text}</div>
-                                        <div className="text-xs opacity-70 mt-1">{format(message.timestamp, 'HH:mm')}</div>
+                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 ${message.expediteur.id === currentUser.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}>
+                                        <div className="font-semibold text-sm mb-1">
+                                            {message.expediteur.id === currentUser.id ? 'Moi' : message.expediteur.name}
+                                        </div>
+                                        <div>{message.contenu}</div>
+                                        <div className="text-xs opacity-70 mt-1">
+                                            {format(new Date(message.date), 'HH:mm')}
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))
@@ -180,9 +228,13 @@ function Message() {
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder="Tapez un message..."
                                 className="flex-1 bg-white text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 font-semibold"
-                                disabled={!selectedUser && !isGroupSelected}
+                                disabled={!selectedConversation}
                             />
-                            <button type="submit" className={`px-2 py-1 items-center justify-center flex text-white rounded-lg ${newMessage.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'}`} disabled={!newMessage.trim() || (!selectedUser && !isGroupSelected)}>
+                            <button
+                                type="submit"
+                                className={`px-2 py-1 items-center justify-center flex text-white rounded-lg ${newMessage.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'}`}
+                                disabled={!newMessage.trim() || !selectedConversation}
+                            >
                                 <LuSendHorizontal className="h-7 w-7" />
                             </button>
                         </div>
