@@ -7,6 +7,7 @@ import { RiDashboard2Line } from 'react-icons/ri';
 import { MdOutlineSettings, MdOutlineLibraryBooks, MdOutlineViewAgenda, MdOutlineMessage } from "react-icons/md";
 import { PiStudent, PiExamBold } from 'react-icons/pi';
 import { IoLibraryOutline } from 'react-icons/io5';
+import { FaRegFilePdf } from "react-icons/fa";
 
 const menuItems = [
     {
@@ -53,6 +54,11 @@ const menuItems = [
         to: '/admin/message',
         icons: <MdOutlineMessage size={25} />,
         label: 'Message'
+    },
+    {
+        to: '/admin/pdf-generator',
+        icons: <FaRegFilePdf size={25} />,
+        label: 'Generateur de document'
     }
 ]
 

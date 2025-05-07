@@ -42,6 +42,7 @@ import Examen from './pages/page_enseignant/Examen';
 import AjoutSupportAdmin from './pages/page_admin/AjoutSupportAdmin';
 import ProtectedRoute from './components/ProtectedRoute';
 import LogoutPage from './pages/page_etudiant/LogoutPage';
+import GenerateurDeDocument from './pages/page_admin/GenerateurDeDocument';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +157,7 @@ function AdminRoutes() {
       <Route path="bibliotheque" element={<BibliothequeAdmin />} />
       <Route path="agenda" element={<AgendaAdmin />} />
       <Route path="message" element={<MessageAdmin />} />
+      <Route path="pdf-generator" element={< GenerateurDeDocument />} />
       <Route path="mentions" element={<MentionAdmin />} />
       <Route path="mentions/:mentionId/niveaux" element={<NiveauEtParcour />} />
       <Route path="mentions/:mentionId/niveaux/:niveauId/semestres/:semestreId/cours" element={<CoursAdmin />} />

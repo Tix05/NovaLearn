@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { getCurrentUser } from './authService'; // Modification ici
+import { getCurrentUser } from './authService';
 
-const API_URL = 'http://localhost:8000/api'; // Remplacez par votre URL réelle
+const API_URL = 'http://localhost:8000/api';
 
 export const getEnseignantsByEtudiant = async () => {
     try {
