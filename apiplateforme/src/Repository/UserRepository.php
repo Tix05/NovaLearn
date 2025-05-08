@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Entity\Parcours;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
@@ -55,12 +56,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
         $this->add($user, true);
     }
-    /**
-     * Find all users except the one with the given ID
-     *
-     * @param int $userId
-     * @return User[]
-     */
+
     public function findAllExcept(int $userId): array
     {
         return $this->createQueryBuilder('u')
@@ -70,44 +66,14 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getResult();
     }
 
-    /**
-     * Find users associated with a given Parcours through Etudiant
-     *
-     * @param Parcours $parcours
-     * @return User[]
-     */
     public function findByParcours(Parcours $parcours): array
     {
         return $this->createQueryBuilder('u')
             ->innerJoin('u.etudiants', 'e')
-            ->where('e.parcours = :parcours')
-            ->setParameter('parcours', $parcours)
+            ->innerJoin('e.parcours', 'p')
+            ->where('p.id = :parcoursId')
+            ->setParameter('parcoursId', $parcours->getId())
             ->getQuery()
             ->getResult();
     }
-
-//    /**
-//     * @return User[] Returns an array of User objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('u')
-//            ->andWhere('u.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('u.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
-
-//    public function findOneBySomeField($value): ?User
-//    {
-//        return $this->createQueryBuilder('u')
-//            ->andWhere('u.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
 }

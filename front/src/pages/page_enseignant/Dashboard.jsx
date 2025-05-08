@@ -123,11 +123,11 @@ const Dashboard = () => {
                     </div>
                 </div>
                 <div className='flex flex-col items-center justify-center w-full px-5 space-y-5 mb-5'>
-                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                    <div className='w-full p-2'>
                         <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des étudiants</h1>
                         <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
                     </div>
-                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                    <div className='w-full p-2'>
                         <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des enseignants</h1>
                         <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
                     </div>

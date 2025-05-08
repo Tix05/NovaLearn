@@ -98,7 +98,7 @@ export default function SidebarAdmin({ isMobile, isSidebarVisible, toggleSidebar
                 <img src={logo} alt="Logo" className={`${open ? 'w-[200px]' : 'w-0'} rounded-md`} />
             </div>
 
-            <ul>
+            <ul className='mt-5'>
                 {
                     menuItems.map((item, index) => {
                         const isActive = Array.isArray(item.to)

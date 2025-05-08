@@ -18,31 +18,76 @@ function Message() {
     const [messageSearchTerm, setMessageSearchTerm] = useState('');
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
     const currentUser = getCurrentUser();
 
+    // Log pour confirmer le montage
+    console.log('Message component mounted');
+    console.log('Current user:', currentUser);
+
+    // Nettoyer les états au démontage
+    useEffect(() => {
+        return () => {
+            console.log('Message component unmounted');
+            setConversations([]);
+            setMessages([]);
+            setSelectedConversation(null);
+            setError(null);
+            setLoading(true);
+        };
+    }, []);
+
+    // Charger les conversations et gérer le polling
     useEffect(() => {
         const fetchConversations = async () => {
+            if (!currentUser) {
+                setError('Utilisateur non authentifié');
+                setLoading(false);
+                return;
+            }
             try {
-                const data = await getConversations();
-                console.log('Conversations fetched:', data); // Log pour déboguer
-                setConversations(data);
+                const data = await getConversations({ t: Date.now() });
+                // Trier les conversations par date du dernier message (plus récent en premier)
+                const sortedConversations = data.sort((a, b) => {
+                    const dateA = a.lastMessage?.date ? new Date(a.lastMessage.date) : new Date(0);
+                    const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
+                    return dateB - dateA;
+                });
+                console.log('Conversations fetched and sorted:', sortedConversations);
+                setConversations(sortedConversations);
+                // Sélectionner automatiquement la première conversation si disponible
+                if (sortedConversations.length > 0 && !selectedConversation) {
+                    console.log('Auto-selecting first conversation:', sortedConversations[0]);
+                    setSelectedConversation(sortedConversations[0]);
+                }
+                setLoading(false);
             } catch (error) {
                 console.error('Error fetching conversations:', error);
                 setError('Échec du chargement des conversations');
+                setLoading(false);
             }
         };
 
+        // Réinitialiser les états au montage
+        setConversations([]);
+        setMessages([]);
+        setSelectedConversation(null);
+        setError(null);
+        setLoading(true);
         fetchConversations();
-        const interval = setInterval(fetchConversations, 30000); // Actualiser toutes les 30 secondes
+
+        const interval = setInterval(fetchConversations, 60000);
         return () => clearInterval(interval);
     }, []);
 
+    // Charger les messages pour la conversation sélectionnée
     useEffect(() => {
         if (selectedConversation && selectedConversation.id) {
             const fetchMessages = async () => {
                 try {
-                    const data = await getMessages(selectedConversation.id);
+                    const data = await getMessages(selectedConversation.id, { t: Date.now() });
+                    console.log('Messages fetched:', data);
                     setMessages(data);
                     // Marquer les messages comme lus
                     data.forEach(message => {
@@ -58,10 +103,11 @@ function Message() {
 
             fetchMessages();
         } else {
-            setMessages([]); // Réinitialiser les messages si aucune conversation n'est sélectionnée
+            setMessages([]);
         }
     }, [selectedConversation, currentUser]);
 
+    // Faire défiler vers le dernier message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
@@ -73,22 +119,28 @@ function Message() {
             return;
         }
 
+        console.log('Sending message to conversation:', selectedConversation);
+
         try {
             const message = await sendMessage(
                 selectedConversation.id,
                 selectedConversation.type === 'PRIVEE' && !selectedConversation.id ? selectedConversation.participants[0].id : null,
-                selectedConversation.type === 'GROUPE_FILIERE' && !selectedConversation.id ? selectedConversation.participants[0].id : null,
+                selectedConversation.type === 'GROUPE_FILIERE' && !selectedConversation.id ? selectedConversation.parcoursId || selectedConversation.participants[0].id : null,
                 newMessage
             );
             setMessages([...messages, message]);
             setNewMessage('');
-            // Mettre à jour selectedConversation avec le nouvel ID de conversation
             if (!selectedConversation.id && message.conversationId) {
                 setSelectedConversation({ ...selectedConversation, id: message.conversationId });
             }
-            // Actualiser les conversations
-            const updatedConversations = await getConversations();
-            setConversations(updatedConversations);
+            const updatedConversations = await getConversations({ t: Date.now() });
+            // Trier à nouveau après mise à jour
+            const sortedConversations = updatedConversations.sort((a, b) => {
+                const dateA = a.lastMessage?.date ? new Date(a.lastMessage.date) : new Date(0);
+                const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
+                return dateB - dateA;
+            });
+            setConversations(sortedConversations);
             setError(null);
         } catch (error) {
             console.error('Error sending message:', error);
@@ -121,6 +173,20 @@ function Message() {
         return otherParticipants.map(p => p.name).join(', ');
     };
 
+    if (loading) {
+        return (
+            <Layout>
+                <div className="h-[90vh] w-full flex items-center justify-center">
+                    <div className="spinner-container">
+                        <div className="spinner-outer">
+                            <div className="spinner-inner"></div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
             <div className="flex bg-white">
@@ -136,15 +202,15 @@ function Message() {
                     <div className="space-y-2">
                         {filteredConversations.map(conv => (
                             <button
-                                key={`${conv.type}-${conv.participants[0].id}`} // Clé unique
+                                key={`${conv.type}-${conv.participants[0].id}`}
                                 onClick={() => {
-                                    console.log('Selected conversation:', conv); // Log pour déboguer
+                                    console.log('Selected conversation:', conv);
                                     setSelectedConversation(conv);
                                 }}
                                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
-                                        selectedConversation?.type === conv.type
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-gray-800 hover:bg-gray-300'
+                                    selectedConversation?.type === conv.type
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-800 hover:bg-gray-300'
                                     }`}
                             >
                                 <Avatar

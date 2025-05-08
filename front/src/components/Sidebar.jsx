@@ -11,7 +11,7 @@ const menuItems = [
     {
         to: '/etudiant/dashboard',
         icons: <PiChalkboardTeacher size={25} />,
-        label: 'Dashboard'
+        label: 'Tableau de bord'
     },
     {
         to: ['/etudiant/mention', '/etudiant/cours/:mentionId', '/etudiant/cours/:mentionId/:semestreId', '/etudiant/cours/:mentionId/:semestreId/:coursId'],

@@ -384,8 +384,8 @@ const DashboardAdmin = () => {
         <LayoutAdmin>
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-4xl font-semibold text-gray-800 p-5'>Tableau de bord</h1>
-                <div className='flex items-center justify-center w-full space-x-5 mb-5'>
-                    <div className='flex flex-col items-center justify-center gap-5 w-1/2'>
+                <div className='flex items-center justify-center w-full mb-5'>
+                    <div className='flex flex-col items-center justify-center gap-5 ml-10 w-2/4'>
                         <div className='flex bg-white border-[1px] shadow-md p-2 rounded-lg w-full'>
                             <div className='p-3 rounded-md bg-blue-500 text-white'>
                                 <PiStudentFill size={30} />
@@ -426,18 +426,21 @@ const DashboardAdmin = () => {
                             </div>
                         </div>
                     </div>
-                    <Chart type="pie" data={chartData} options={chartOptions} className="md:w-30rem w-1/2" />
+                    <div className='flex flex-col items-center justify-center w-3/4'>
+                        <h1 className='font-semibold text-gray-700 text-lg'>Taux de présence aux examens</h1>
+                        <Chart type="pie" data={chartData} options={chartOptions} className="w-[30vw]" />
+                    </div>
                 </div>
                 <div className='flex flex-col items-center justify-center w-full px-5 space-y-5 mb-5'>
-                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                    <div className='w-full p-2'>
                         <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des connexion à la plateforme</h1>
                         <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
                     </div>
-                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                    <div className='w-full p-2'>
                         <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des étudiants</h1>
                         <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
                     </div>
-                    <div className='w-full p-2 bg-white border-[1px] shadow-md rounded-lg'>
+                    <div className='w-full p-2'>
                         <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Evolution des enseignants</h1>
                         <Chart type="line" data={chartDataStudent} options={chartOptionsStudent} />
                     </div>

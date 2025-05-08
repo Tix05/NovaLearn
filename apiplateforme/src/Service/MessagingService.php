@@ -124,12 +124,16 @@ class MessagingService
 
     public function createConversation(User $creator, ?User $recipient = null, ?Parcours $parcours = null): Conversation
     {
+        if (!$creator) {
+            throw new \InvalidArgumentException('Créateur de la conversation requis');
+        }
+
         $conversation = new Conversation();
         $conversation->setCreatedBy($creator);
 
         if ($parcours) {
             $conversation->setType(Conversation::TYPE_GROUPE_FILIERE);
-            $conversation->setSujet($parcours->getNom());
+            $conversation->setSujet($parcours->getName() ?? 'Groupe sans nom');
             $conversation->setParcours($parcours);
         } else {
             $conversation->setType(Conversation::TYPE_PRIVEE);
@@ -172,6 +176,10 @@ class MessagingService
 
     public function sendMessage(Conversation $conversation, string $contenu, User $expediteur): Message
     {
+        if (!$conversation || !$expediteur) {
+            throw new \InvalidArgumentException('Conversation ou expéditeur requis');
+        }
+
         $message = new Message();
         $message->setConversation($conversation)
                 ->setExpediteur($expediteur)

@@ -19,7 +19,7 @@ const LoginEtudiant = () => {
     useEffect(() => {
         const user = getCurrentUser();
         if (user && user.roles && user.roles.includes('ROLE_ETUDIANT')) {
-            navigate('/etudiant/enseignant');
+            navigate('/etudiant/dashboard');
         }
     }, [navigate]);
 
@@ -35,7 +35,7 @@ const LoginEtudiant = () => {
             if (response.roles && response.roles.includes('ROLE_ETUDIANT')) {
                 setAuthSuccess(true);
                 setTimeout(() => {
-                    navigate('/etudiant/enseignant');
+                    navigate('/etudiant/dashboard');
                 }, 2000);
             } else {
                 logout();

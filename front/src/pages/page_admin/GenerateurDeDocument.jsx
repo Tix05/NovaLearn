@@ -5,7 +5,8 @@ import DocumentList from '../../components/componentsDocumentGenerating/Document
 import DocumentSelector from '../../components/componentsDocumentGenerating/DocumentSelector';
 import { generatePdf, downloadDocument } from '../../utils/pdfGenerator';
 import LayoutAdmin from '../../components/LayoutAdmin';
-import { School } from 'lucide-react';
+import { FaAngleLeft } from "react-icons/fa";
+
 
 const GenerateurDeDocument = () => {
     const [selectedType, setSelectedType] = useState(null);
@@ -147,8 +148,9 @@ const GenerateurDeDocument = () => {
                                 {step !== 'select' && (
                                     <button
                                         onClick={handleBack}
-                                        className="text-sm text-green-600 hover:text-green-800"
+                                        className="flex text-sm text-white bg-green-700 px-5 rounded-lg py-2 hover:scale-105 duration-300 items-center justify-center"
                                     >
+                                        <FaAngleLeft className="mr-2" size={20} />
                                         Retour
                                     </button>
                                 )}

@@ -45,6 +45,7 @@ class MessagingController extends AbstractController
                     'id' => $partner['conversationId'] ?? null,
                     'sujet' => $partner['type'] === 'GROUP' ? $partner['name'] : null,
                     'type' => $partner['type'] === 'GROUP' ? 'GROUPE_FILIERE' : 'PRIVEE',
+                    'parcoursId' => $partner['type'] === 'GROUP' ? $partner['id'] : null,
                     'participants' => [
                         [
                             'id' => $partner['id'],
@@ -142,7 +143,11 @@ class MessagingController extends AbstractController
                     if (!$parcours) {
                         return $this->json(['error' => 'Parcours non trouvé'], 404);
                     }
-                    $conversation = $this->messagingService->createConversation($user, null, $parcours);
+                    try {
+                        $conversation = $this->messagingService->createConversation($user, null, $parcours);
+                    } catch (\Exception $e) {
+                        return $this->json(['error' => 'Erreur lors de la création de la conversation de groupe: ' . $e->getMessage()], 500);
+                    }
                 }
             } else {
                 return $this->json(['error' => 'ConversationId, recipientId ou parcoursId requis'], 400);

@@ -12,11 +12,11 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
 
     const getIcon = (type) => {
         switch (type) {
-            case 'certificate': return <FileText className="w-5 h-5" />;
-            case 'card': return <CreditCard className="w-5 h-5" />;
-            case 'attestation': return <Award className="w-5 h-5" />;
-            case 'transcript': return <FileSpreadsheet className="w-5 h-5" />;
-            default: return <FileText className="w-5 h-5" />;
+            case 'certificate': return <FileText className="w-8 h-8" />;
+            case 'card': return <CreditCard className="w-8 h-8" />;
+            case 'attestation': return <Award className="w-8 h-8" />;
+            case 'transcript': return <FileSpreadsheet className="w-8 h-8" />;
+            default: return <FileText className="w-8 h-8" />;
         }
     };
 
@@ -47,7 +47,7 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
                                 onClick={() => onSelect(doc)}
                             >
                                 <div className={`
-                  p-2 rounded-full 
+                  p-2 rounded-full items-center justify-center flex
                   ${doc.type === 'certificate' ? 'bg-green-100 text-green-600' : ''}
                   ${doc.type === 'card' ? 'bg-green-100 text-green-600' : ''}
                   ${doc.type === 'attestation' ? 'bg-green-100 text-green-600' : ''}
@@ -73,7 +73,7 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
                                     className="p-2 text-gray-600 hover:text-green-700 transition-colors"
                                     title="Télécharger"
                                 >
-                                    <Download className="w-4 h-4" />
+                                    <Download className="w-8 h-8" />
                                 </button>
                                 <button
                                     onClick={(e) => {
@@ -83,7 +83,7 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
                                     className="p-2 text-red-500 hover:text-red-700 transition-colors"
                                     title="Supprimer"
                                 >
-                                    <Trash className="w-4 h-4" />
+                                    <Trash className="w-8 h-8" />
                                 </button>
                             </div>
                         </div>
