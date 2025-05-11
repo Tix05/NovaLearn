@@ -12,6 +12,8 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Symfony\Component\HttpFoundation\File\File;
 use DateTimeImmutable;
 
 /**
@@ -41,6 +43,7 @@ use DateTimeImmutable;
  * @ApiFilter(OrderFilter::class, properties={"id", "name", "created_at"})
  * @ORM\Entity(repositoryClass=MentionRepository::class)
  * @ORM\HasLifecycleCallbacks()
+ * @Vich\Uploadable
  */
 class Mention
 {
@@ -50,7 +53,7 @@ class Mention
      * @ORM\Column(type="integer")
      * @Groups({"mention:read"})
      */
-    private $id;
+    private ?int $id = null;
 
     /**
      * @ORM\Column(type="string", length=255)
@@ -58,56 +61,77 @@ class Mention
      * @Assert\NotBlank
      * @Assert\Length(max=255)
      */
-    private $name;
+    private ?string $name = null;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      * @Groups({"mention:read", "mention:write"})
      * @Assert\Length(max=255)
      */
-    private $icon;
+    private ?string $icon = null;
+
+    /**
+     * @Vich\UploadableField(mapping="mention_icon", fileNameProperty="icon")
+     * @Assert\File(
+     *     maxSize="2M",
+     *     mimeTypes={"image/jpeg", "image/png", "image/gif"}
+     * )
+     * @Groups({"mention:write"})
+     */
+    private ?File $iconFile = null;
+
+    /**
+     * @ORM\Column(type="datetime_immutable", nullable=true)
+     */
+    private ?\DateTimeImmutable $iconUpdatedAt = null;
 
     /**
      * @ORM\Column(type="datetime_immutable")
      * @Groups({"mention:read"})
      */
-    private $created_at;
+    private ?\DateTimeImmutable $created_at = null;
 
     /**
      * @ORM\Column(type="datetime_immutable", nullable=true)
      * @Groups({"mention:read"})
      */
-    private $updated_at;
+    private ?\DateTimeImmutable $updated_at = null;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
+     * @Groups({"mention:read"})
+     */
+    private Collection $profs;
 
     /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */
-    private $etudiants;
+    private Collection $etudiants;
 
     /**
      * @ORM\OneToMany(targetEntity=Ue::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */
-    private $ues;
+    private Collection $ues;
 
     /**
      * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */
-    private $agendas;
+    private Collection $agendas;
 
     /**
      * @ORM\OneToMany(targetEntity=Bibliotheque::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */
-    private $bibliotheques;
+    private Collection $bibliotheques;
 
     /**
      * @ORM\OneToMany(targetEntity=NotificationGroupe::class, mappedBy="mention")
      * @Groups({"mention:read"})
      */
-    private $notificationGroupes;
+    private Collection $notificationGroupes;
 
     public function __construct()
     {
@@ -147,6 +171,31 @@ class Mention
         return $this;
     }
 
+    public function getIconFile(): ?File
+    {
+        return $this->iconFile;
+    }
+
+    public function setIconFile(?File $iconFile = null): self
+    {
+        $this->iconFile = $iconFile;
+        if ($iconFile) {
+            $this->iconUpdatedAt = new \DateTimeImmutable();
+        }
+        return $this;
+    }
+
+    public function getIconUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->iconUpdatedAt;
+    }
+
+    public function setIconUpdatedAt(?\DateTimeImmutable $iconUpdatedAt): self
+    {
+        $this->iconUpdatedAt = $iconUpdatedAt;
+        return $this;
+    }
+
     public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->created_at;
@@ -183,19 +232,16 @@ class Mention
             $this->profs[] = $prof;
             $prof->setMention($this);
         }
-
         return $this;
     }
 
     public function removeProf(Prof $prof): self
     {
         if ($this->profs->removeElement($prof)) {
-            // set the owning side to null (unless already changed)
             if ($prof->getMention() === $this) {
                 $prof->setMention(null);
             }
         }
-
         return $this;
     }
 
@@ -213,19 +259,16 @@ class Mention
             $this->etudiants[] = $etudiant;
             $etudiant->setMention($this);
         }
-
         return $this;
     }
 
     public function removeEtudiant(Etudiant $etudiant): self
     {
         if ($this->etudiants->removeElement($etudiant)) {
-            // set the owning side to null (unless already changed)
             if ($etudiant->getMention() === $this) {
                 $etudiant->setMention(null);
             }
         }
-
         return $this;
     }
 
@@ -243,19 +286,16 @@ class Mention
             $this->ues[] = $ue;
             $ue->setMention($this);
         }
-
         return $this;
     }
 
     public function removeUe(Ue $ue): self
     {
         if ($this->ues->removeElement($ue)) {
-            // set the owning side to null (unless already changed)
             if ($ue->getMention() === $this) {
                 $ue->setMention(null);
             }
         }
-
         return $this;
     }
 
@@ -273,19 +313,16 @@ class Mention
             $this->agendas[] = $agenda;
             $agenda->setMention($this);
         }
-
         return $this;
     }
 
     public function removeAgenda(Agenda $agenda): self
     {
         if ($this->agendas->removeElement($agenda)) {
-            // set the owning side to null (unless already changed)
             if ($agenda->getMention() === $this) {
                 $agenda->setMention(null);
             }
         }
-
         return $this;
     }
 
@@ -303,19 +340,16 @@ class Mention
             $this->bibliotheques[] = $bibliotheque;
             $bibliotheque->setMention($this);
         }
-
         return $this;
     }
 
     public function removeBibliotheque(Bibliotheque $bibliotheque): self
     {
         if ($this->bibliotheques->removeElement($bibliotheque)) {
-            // set the owning side to null (unless already changed)
             if ($bibliotheque->getMention() === $this) {
                 $bibliotheque->setMention(null);
             }
         }
-
         return $this;
     }
 
@@ -327,25 +361,22 @@ class Mention
         return $this->notificationGroupes;
     }
 
-    public function addNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    public function addNotificationGroupe(NotificationGroupe $notificationGroupe): self
     {
         if (!$this->notificationGroupes->contains($notificationGroupe)) {
             $this->notificationGroupes->add($notificationGroupe);
             $notificationGroupe->setMention($this);
         }
-
         return $this;
     }
 
-    public function removeNotificationGroupe(NotificationGroupe $notificationGroupe): static
+    public function removeNotificationGroupe(NotificationGroupe $notificationGroupe): self
     {
         if ($this->notificationGroupes->removeElement($notificationGroupe)) {
-            // set the owning side to null (unless already changed)
             if ($notificationGroupe->getMention() === $this) {
                 $notificationGroupe->setMention(null);
             }
         }
-
         return $this;
     }
 

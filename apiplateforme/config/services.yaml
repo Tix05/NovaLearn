@@ -6,6 +6,7 @@
 parameters:
     bibliotheque_directory: '%kernel.project_dir%/public/uploads/bibliotheque'
     supports_upload_dir: '%kernel.project_dir%/public/uploads/supports'
+    app.base_url: 'http://localhost:8000'
 
 services:
     # default configuration for services in *this* file

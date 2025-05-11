@@ -5,15 +5,16 @@ namespace App\Entity;
 use App\Repository\BibliothequeRepository;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\Core\Annotation\ApiResource;
-use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\Serializer\Annotation\Groups;
-use Symfony\Component\Validator\Constraints as Assert;
 use ApiPlatform\Core\Annotation\ApiFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
 /**
-  * @ApiResource(
+ * @ApiResource(
  *     normalizationContext={"groups"={"bibliotheque:read", "bibliotheque:list"}},
  *     denormalizationContext={"groups"={"bibliotheque:write"}},
  *     collectionOperations={
@@ -60,6 +61,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
  * @ApiFilter(OrderFilter::class, properties={"id", "titre", "createdAt"})
  * @ORM\Entity(repositoryClass=BibliothequeRepository::class)
  * @ORM\HasLifecycleCallbacks()
+ * @Vich\Uploadable
  */
 class Bibliotheque
 {
@@ -80,15 +82,23 @@ class Bibliotheque
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"bibliotheque:read"})
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
      */
     private $fichier;
 
     /**
-     * @Assert\File(maxSize="10M")
+     * @Vich\UploadableField(mapping="bibliotheque_files", fileNameProperty="fichier")
+     * @Assert\File(
+     *     maxSize="10M",
+     *     mimeTypes={
+     *         "application/pdf",
+     *         "application/msword",
+     *         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+     *     }
+     * )
      * @Groups({"bibliotheque:write"})
      */
-    private $file;
+    private ?File $file = null;
 
     /**
      * @ORM\Column(type="boolean")
@@ -97,10 +107,10 @@ class Bibliotheque
     private $status = true;
 
     /**
-    * @ORM\Column(type="string", length=50)
-    * @Groups({"bibliotheque:read", "bibliotheque:write", "bibliotheque:list"})
-    * @Assert\NotBlank
-    */
+     * @ORM\Column(type="string", length=50)
+     * @Groups({"bibliotheque:read", "bibliotheque:write", "bibliotheque:list"})
+     * @Assert\NotBlank
+     */
     private $type;
 
     /**
@@ -130,9 +140,15 @@ class Bibliotheque
     /**
      * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="bibliotheques")
      * @ORM\JoinColumn(nullable=false)
-     * @Groups({"bibliotheque:read", "bibliotheque:list"})
+     * @Groups({"bibliotheque:read", "bibliotheque:write", "bibliotheque:list"})
      */
     private $ec;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="bibliotheques")
+     * @Groups({"bibliotheque:read"})
+     */
+    private $user;
 
     public function __construct()
     {
@@ -160,7 +176,7 @@ class Bibliotheque
         return $this->fichier;
     }
 
-    public function setFichier(string $fichier): self
+    public function setFichier(?string $fichier): self
     {
         $this->fichier = $fichier;
         return $this;
@@ -257,9 +273,20 @@ class Bibliotheque
         return $this;
     }
 
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
+        return $this;
+    }
+
     /**
-    * @Groups({"bibliotheque:read", "bibliotheque:list"})
-    */
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
+     */
     public function getMentionName(): ?string
     {
         return $this->mention?->getName();
@@ -271,6 +298,14 @@ class Bibliotheque
     public function getNiveauNom(): ?string
     {
         return $this->parcours?->getNiveau()?->getNom();
+    }
+
+    /**
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
+     */
+    public function getEcName(): ?string
+    {
+        return $this->ec?->getName();
     }
 
     /**

@@ -1,10 +1,16 @@
-// Mention.js
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import { Divider } from 'primereact/divider';
 import { Link } from 'react-router-dom';
 import { FaRegEye } from 'react-icons/fa';
 import { getStudentMentions } from '../../Services/authService';
+
+const defaultIcon = 'data:image/svg+xml;base64,' + btoa(`
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+</svg>
+`);
 
 const Mention = () => {
     const [mentions, setMentions] = useState([]);
@@ -30,9 +36,9 @@ const Mention = () => {
         return (
             <Layout>
                 <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div class="spinner-container">
-                        <div class="spinner-outer">
-                            <div class="spinner-inner"></div>
+                    <div className="spinner-container">
+                        <div className="spinner-outer">
+                            <div className="spinner-inner"></div>
                         </div>
                     </div>
                 </div>
@@ -49,7 +55,12 @@ const Mention = () => {
                     {mentions.map((mention) => (
                         <div key={mention.id} className='bg-white shadow-md rounded-lg border-[1px] w-[500px] flex flex-col'>
                             <div className='flex items-center p-3 space-x-5'>
-                                <img src={mention.icon} alt="icon-mention" className='w-[30px]' />
+                                <img
+                                    src={mention.icon || defaultIcon} // Use inline SVG as fallback
+                                    alt="icon-mention"
+                                    className='w-[30px]'
+                                    onError={(e) => { e.target.src = defaultIcon; }} // Fallback to inline SVG on error
+                                />
                                 <h1 className='font-bold text-md'>{mention.nom}</h1>
                             </div>
                             <Divider />

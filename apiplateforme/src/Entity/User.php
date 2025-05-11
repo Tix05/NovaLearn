@@ -15,6 +15,8 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Symfony\Component\HttpFoundation\File\File;
 
 /**
  * @ApiResource(
@@ -110,6 +112,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @Assert\Length(max=125)
      */
     private ?string $avatar = null;
+
+    /**
+     * @Vich\UploadableField(mapping="user_avatar", fileNameProperty="avatar")
+     * @Assert\File(
+     *     maxSize="2M",
+     *     mimeTypes={"image/jpeg", "image/png", "image/gif"}
+     * )
+     */
+    private ?File $avatarFile = null;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
@@ -307,7 +318,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getAvatar(): ?string
+   public function getAvatar(): ?string
     {
         return $this->avatar;
     }
@@ -315,6 +326,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAvatar(?string $avatar): self
     {
         $this->avatar = $avatar;
+        return $this;
+    }
+
+    public function getAvatarFile(): ?File
+    {
+        return $this->avatarFile;
+    }
+
+    public function setAvatarFile(?File $avatarFile = null): self
+    {
+        $this->avatarFile = $avatarFile;
+        if ($avatarFile) {
+            $this->avatarUpdatedAt = new \DateTimeImmutable();
+        }
+        return $this;
+    }
+
+    public function getAvatarUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->avatarUpdatedAt;
+    }
+
+    public function setAvatarUpdatedAt(?\DateTimeImmutable $avatarUpdatedAt): self
+    {
+        $this->avatarUpdatedAt = $avatarUpdatedAt;
         return $this;
     }
 

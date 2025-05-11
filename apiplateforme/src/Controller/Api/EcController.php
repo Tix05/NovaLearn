@@ -48,19 +48,26 @@ class EcController extends AbstractController
         $profs = [];
         $uniqueProfs = [];
 
+        // Base URL pour les avatars (peut être configuré dans parameters.yaml si besoin)
+        $avatarBaseUrl = $this->getParameter('app.base_url') . '/uploads/avatars';
+
         foreach ($ecs as $ec) {
             $prof = $ec->getProf();
             $profId = $prof->getId();
         
             if (!isset($uniqueProfs[$profId])) {
                 $uniqueProfs[$profId] = true;
+                $avatarUrl = $prof->getUser()->getAvatar() 
+                    ? $avatarBaseUrl . '/' . $prof->getUser()->getAvatar()
+                    : 'https://www.gravatar.com/avatar/default?s=200&d=mm';
+
                 $profs[] = [
                     'id' => $prof->getId(),
                     'user' => [
-                        'nomComplet' => $prof->getUser()->getName(), // Utilisation de getName()
-                        'avatar' => $prof->getUser()->getAvatar()
+                        'nomComplet' => $prof->getUser()->getName(),
+                        'avatar' => $avatarUrl, // URL complète de l'avatar
                     ],
-                    'ecs' => [], // Initialisation du tableau
+                    'ecs' => [],
                     'niveau' => $niveau->getNom()
                 ];
             }
@@ -68,7 +75,7 @@ class EcController extends AbstractController
             // Ajouter l'EC au professeur
             foreach ($profs as &$p) {
                 if ($p['id'] === $profId) {
-                    $p['ecs'][] = $ec->getName(); // Correction ici
+                    $p['ecs'][] = $ec->getName();
                     break;
                 }
             }

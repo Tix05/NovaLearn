@@ -22,14 +22,9 @@ function Message() {
     const messagesEndRef = useRef(null);
     const currentUser = getCurrentUser();
 
-    // Log pour confirmer le montage
-    console.log('Message component mounted');
-    console.log('Current user:', currentUser);
-
     // Nettoyer les états au démontage
     useEffect(() => {
         return () => {
-            console.log('Message component unmounted');
             setConversations([]);
             setMessages([]);
             setSelectedConversation(null);
@@ -54,16 +49,13 @@ function Message() {
                     const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
                     return dateB - dateA;
                 });
-                console.log('Conversations fetched and sorted:', sortedConversations);
                 setConversations(sortedConversations);
                 // Sélectionner automatiquement la première conversation si disponible
                 if (sortedConversations.length > 0 && !selectedConversation) {
-                    console.log('Auto-selecting first conversation:', sortedConversations[0]);
                     setSelectedConversation(sortedConversations[0]);
                 }
                 setLoading(false);
             } catch (error) {
-                console.error('Error fetching conversations:', error);
                 setError('Échec du chargement des conversations');
                 setLoading(false);
             }
@@ -87,7 +79,6 @@ function Message() {
             const fetchMessages = async () => {
                 try {
                     const data = await getMessages(selectedConversation.id, { t: Date.now() });
-                    console.log('Messages fetched:', data);
                     setMessages(data);
                     // Marquer les messages comme lus
                     data.forEach(message => {
@@ -96,7 +87,6 @@ function Message() {
                         }
                     });
                 } catch (error) {
-                    console.error('Error fetching messages:', error);
                     setError('Échec du chargement des messages');
                 }
             };
@@ -118,8 +108,6 @@ function Message() {
             setError('Veuillez sélectionner une conversation et écrire un message');
             return;
         }
-
-        console.log('Sending message to conversation:', selectedConversation);
 
         try {
             const message = await sendMessage(
@@ -143,7 +131,6 @@ function Message() {
             setConversations(sortedConversations);
             setError(null);
         } catch (error) {
-            console.error('Error sending message:', error);
             setError('Échec de l\'envoi du message');
         }
     };
@@ -203,10 +190,7 @@ function Message() {
                         {filteredConversations.map(conv => (
                             <button
                                 key={`${conv.type}-${conv.participants[0].id}`}
-                                onClick={() => {
-                                    console.log('Selected conversation:', conv);
-                                    setSelectedConversation(conv);
-                                }}
+                                onClick={() => setSelectedConversation(conv)}
                                 className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
                                     selectedConversation?.type === conv.type
                                     ? 'bg-blue-600 text-white'

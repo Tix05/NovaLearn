@@ -3,56 +3,80 @@
 namespace App\Controller;
 
 use App\Entity\Bibliotheque;
+use App\Repository\EcRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Serializer\SerializerInterface;
+use Vich\UploaderBundle\Handler\UploadHandler;
 
 #[AsController]
 class BibliothequeUploadController extends AbstractController
 {
-    public function __invoke(Request $request): Bibliotheque
+    private $entityManager;
+    private $ecRepository;
+    private $uploadHandler;
+    private $serializer;
+
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        EcRepository $ecRepository,
+        UploadHandler $uploadHandler,
+        SerializerInterface $serializer
+    ) {
+        $this->entityManager = $entityManager;
+        $this->ecRepository = $ecRepository;
+        $this->uploadHandler = $uploadHandler;
+        $this->serializer = $serializer;
+    }
+
+    public function __invoke(Request $request): Response
     {
-        $uploadedFile = $request->files->get('file');
-        if (!$uploadedFile) {
-            throw new BadRequestHttpException('Un fichier est requis');
+        $file = $request->files->get('file');
+        $titre = $request->request->get('titre');
+        $type = $request->request->get('type');
+        $ecId = $request->request->get('ec');
+
+        if (!$file || !$titre || !$type || !$ecId) {
+            return new Response(
+                json_encode(['error' => 'Missing required fields']),
+                Response::HTTP_BAD_REQUEST,
+                ['Content-Type' => 'application/json']
+            );
         }
 
-        // Validation du type de fichier
-        $allowedMimeTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        if (!in_array($uploadedFile->getMimeType(), $allowedMimeTypes)) {
-            throw new BadRequestHttpException('Type de fichier non autorisé');
-        }
-
-        $uploadDir = $this->getParameter('kernel.project_dir').'/public/uploads/bibliotheque';
-        if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0775, true);
-        }
-
-        $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $safeFilename = transliterator_transliterate(
-            'Any-Latin; Latin-ASCII; [^A-Za-z0-9_] remove; Lower()',
-            $originalName
-        );
-        $fileName = $safeFilename.'-'.uniqid().'.'.$uploadedFile->guessExtension();
-
-        try {
-            $uploadedFile->move($uploadDir, $fileName);
-        } catch (\Exception $e) {
-            throw new BadRequestHttpException('Échec de l\'upload: '.$e->getMessage());
+        $ec = $this->ecRepository->find($ecId);
+        if (!$ec) {
+            return new Response(
+                json_encode(['error' => 'EC not found']),
+                Response::HTTP_BAD_REQUEST,
+                ['Content-Type' => 'application/json']
+            );
         }
 
         $bibliotheque = new Bibliotheque();
-        $bibliotheque->setFichier('/uploads/bibliotheque/'.$fileName);
-        $bibliotheque->setTitre($request->request->get('titre'));
-        $bibliotheque->setType($request->request->get('type'));
+        $bibliotheque->setTitre($titre);
+        $bibliotheque->setType($type);
+        $bibliotheque->setEc($ec);
+        $bibliotheque->setMention($ec->getParcours()->getMention());
+        $bibliotheque->setParcours($ec->getParcours());
         $bibliotheque->setUser($this->getUser());
+        $bibliotheque->setFile($file);
 
-        // Gérer l'EC
-        if ($ecId = $request->request->get('ec')) {
-            // Récupérer l'entité EC depuis l'ID et faire setEc()
-        }
+        // Gérer l'upload avec VichUploader
+        $this->uploadHandler->upload($bibliotheque, 'file');
 
-        return $bibliotheque;
+        $this->entityManager->persist($bibliotheque);
+        $this->entityManager->flush();
+
+        $data = $this->serializer->serialize($bibliotheque, 'json', ['groups' => ['bibliotheque:read']]);
+
+        return new Response(
+            $data,
+            Response::HTTP_CREATED,
+            ['Content-Type' => 'application/json']
+        );
     }
 }

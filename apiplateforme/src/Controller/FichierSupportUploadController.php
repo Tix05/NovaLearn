@@ -3,61 +3,77 @@
 namespace App\Controller;
 
 use App\Entity\FichierSupport;
+use App\Repository\EcRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Attribute\AsController;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Security;
 
-#[AsController]
 class FichierSupportUploadController extends AbstractController
 {
-    public function __invoke(Request $request): FichierSupport
+    private $entityManager;
+    private $ecRepository;
+    private $security;
+
+    public function __construct(EntityManagerInterface $entityManager, EcRepository $ecRepository, Security $security)
     {
-        $uploadedFile = $request->files->get('file');
+        $this->entityManager = $entityManager;
+        $this->ecRepository = $ecRepository;
+        $this->security = $security;
+    }
+
+    /**
+     * @Route("/fichier_supports/upload", name="fichier_support_upload", methods={"POST"})
+     */
+    public function __invoke(Request $request): Response
+    {
+        $file = $request->files->get('file');
+        $titre = $request->request->get('titre');
         $type = $request->request->get('type');
+        $ecId = $request->request->get('ec');
+        $description = $request->request->get('description');
+        $estPublique = filter_var($request->request->get('est_publique', true), FILTER_VALIDATE_BOOLEAN);
+        $url = $request->request->get('url');
 
-        // Validation selon le type
-        if (in_array($type, [FichierSupport::TYPE_FICHIER, FichierSupport::TYPE_AUDIO]) && !$uploadedFile) {
-            throw new BadRequestHttpException('Un fichier est requis pour ce type');
+        // Validation des champs requis
+        if (!$titre || !$type || !$ecId) {
+            return $this->json(['error' => 'Les champs titre, type et ec sont requis'], Response::HTTP_BAD_REQUEST);
         }
 
-        if (in_array($type, [FichierSupport::TYPE_LIEN, FichierSupport::TYPE_VIDEO]) && !$request->request->get('url')) {
-            throw new BadRequestHttpException('Une URL est requise pour ce type');
+        // Vérifier si l'EC existe
+        $ec = $this->ecRepository->find($ecId);
+        if (!$ec) {
+            return $this->json(['error' => 'EC non trouvé'], Response::HTTP_NOT_FOUND);
         }
 
+        // Créer une nouvelle instance de FichierSupport
         $fichierSupport = new FichierSupport();
-        $fichierSupport->setTitre($request->request->get('titre'));
+        $fichierSupport->setTitre($titre);
         $fichierSupport->setType($type);
-        $fichierSupport->setDescription($request->request->get('description'));
-        $fichierSupport->setEstPublique($request->request->get('est_publique', true));
-        $fichierSupport->setAuteur($this->getUser());
+        $fichierSupport->setEc($ec);
+        $fichierSupport->setDescription($description);
+        $fichierSupport->setEstPublique($estPublique);
+        $fichierSupport->setAuteur($this->security->getUser());
 
-        // Gérer l'EC
-        if ($ecId = $request->request->get('ec')) {
-            // Récupérer l'entité EC depuis l'ID et faire setEc()
-        }
-
-        // Gestion du fichier uploadé
-        if ($uploadedFile) {
-            $uploadDir = $this->getParameter('kernel.project_dir').'/public/uploads/supports';
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0775, true);
+        // Gérer le fichier ou l'URL
+        if ($type !== FichierSupport::TYPE_LIEN) {
+            if (!$file) {
+                return $this->json(['error' => 'Un fichier est requis pour ce type de support'], Response::HTTP_BAD_REQUEST);
             }
-
-            $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-            $safeFilename = preg_replace('/[^a-zA-Z0-9-_]/', '', $originalName);
-            $fileName = $safeFilename.'-'.uniqid().'.'.$uploadedFile->guessExtension();
-
-            try {
-                $uploadedFile->move($uploadDir, $fileName);
-                $fichierSupport->setFichier('/uploads/supports/'.$fileName);
-            } catch (\Exception $e) {
-                throw new BadRequestHttpException('Échec de l\'upload du fichier');
+            $fichierSupport->setFile($file);
+        } else {
+            if (!$url) {
+                return $this->json(['error' => 'Une URL est requise pour le type LIEN'], Response::HTTP_BAD_REQUEST);
             }
-        } elseif ($url = $request->request->get('url')) {
             $fichierSupport->setUrl($url);
         }
 
-        return $fichierSupport;
+        // Persister l'entité
+        $this->entityManager->persist($fichierSupport);
+        $this->entityManager->flush();
+
+        return $this->json($fichierSupport, Response::HTTP_CREATED, [], ['groups' => 'fichier_support:read']);
     }
 }

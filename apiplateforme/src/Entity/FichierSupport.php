@@ -12,6 +12,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
 use Symfony\Component\HttpFoundation\File\File;
 
 /**
@@ -27,7 +28,6 @@ use Symfony\Component\HttpFoundation\File\File;
  *         "post"={
  *             "method"="POST",
  *             "path"="/fichier_supports/upload",
- *             "controller"=App\Controller\FichierSupportUploadController::class,
  *             "deserialize"=false,
  *             "security"="is_granted('ROLE_PROF')",
  *             "openapi_context"={
@@ -70,6 +70,7 @@ use Symfony\Component\HttpFoundation\File\File;
  * @ApiFilter(BooleanFilter::class, properties={"est_publique"})
  * @ORM\Entity(repositoryClass=FichierSupportRepository::class)
  * @ORM\HasLifecycleCallbacks()
+ * @Vich\Uploadable
  */
 class FichierSupport
 {
@@ -112,6 +113,24 @@ class FichierSupport
      * @Groups({"fichier_support:read"})
      */
     private $fichier;
+
+    /**
+     * @Vich\UploadableField(mapping="support_files", fileNameProperty="fichier")
+     * @Assert\File(
+     *     maxSize="10M",
+     *     mimeTypes={
+     *         "application/pdf",
+     *         "application/msword",
+     *         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+     *         "audio/mpeg",
+     *         "audio/wav",
+     *         "video/mp4",
+     *         "video/mpeg"
+     *     },
+     *     groups={"file_required"}
+     * )
+     */
+    private ?File $file = null;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
@@ -198,18 +217,18 @@ class FichierSupport
         return $this;
     }
 
-    public function setFile(?File $file = null): void
-    {
-        $this->file = $file;
-
-        if (null !== $file) {
-            $this->updated_at = new \DateTimeImmutable();
-        }
-    }
-
     public function getFile(): ?File
     {
         return $this->file;
+    }
+
+    public function setFile(?File $file = null): self
+    {
+        $this->file = $file;
+        if ($file) {
+            $this->updated_at = new \DateTimeImmutable();
+        }
+        return $this;
     }
 
     public function getFichier(): ?string

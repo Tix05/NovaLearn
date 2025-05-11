@@ -22,7 +22,7 @@ export const getEnseignantsByEtudiant = async () => {
             nom: prof.user.nomComplet,
             ec: prof.ecs.join(' - '),
             niveau: prof.niveau || 'Niveau non spécifié',
-            profil: prof.user.avatar || `https://randomuser.me/api/portraits/men/${prof.id}.jpg`
+            profil: prof.user.avatar
         }));
 
     } catch (error) {

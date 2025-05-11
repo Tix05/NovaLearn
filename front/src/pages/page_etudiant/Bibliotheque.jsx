@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
@@ -6,7 +6,10 @@ import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import { Dropdown } from 'primereact/dropdown';
 import Layout from '../../components/Layout';
-import { Button } from 'primereact/button';
+import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
+import { MdErrorOutline } from 'react-icons/md';
+import { FaEye, FaDownload } from 'react-icons/fa6';
 import { getBibliothequeItems } from '../../Services/bibliothequeService';
 
 export default function Bibliotheque() {
@@ -17,6 +20,9 @@ export default function Bibliotheque() {
     const [mentionFilter, setMentionFilter] = useState('Tous');
     const [niveauFilter, setNiveauFilter] = useState('Tous');
     const [categorieFilter, setCategorieFilter] = useState('Tous');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const toast = useRef(null);
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value.toLowerCase());
@@ -26,11 +32,9 @@ export default function Bibliotheque() {
         const fetchData = async () => {
             try {
                 const response = await getBibliothequeItems();
-                console.log('Données reçues:', response);
                 setData(Array.isArray(response) ? response : []);
                 setLoading(false);
             } catch (err) {
-                console.error("Erreur:", err);
                 setError(err.message);
                 setLoading(false);
             }
@@ -92,18 +96,113 @@ export default function Bibliotheque() {
         return matchesGlobal && matchesMention && matchesNiveau && matchesCategorie;
     }) : [];
 
+    const showToast = (severity, summary, detail) => {
+        if (toast.current) {
+            toast.current.show({
+                severity,
+                summary,
+                detail,
+                life: 3000,
+            });
+        }
+    };
+
+    const handleDownload = (fichier, titre, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!fichier) {
+            showToast('warn', 'Attention', 'Aucun fichier disponible pour le téléchargement');
+            return;
+        }
+
+        try {
+            const link = document.createElement('a');
+            link.href = `${fichier}?disposition=attachment`;
+            link.download = titre || fichier.split('/').pop();
+            link.onerror = () => {
+                showToast('error', 'Erreur', 'Échec du téléchargement : fichier non trouvé ou inaccessible');
+            };
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('success', 'Succès', 'Téléchargement commencé');
+        } catch (error) {
+            showToast('error', 'Erreur', 'Échec du téléchargement');
+        }
+    };
+
+    const handlePreview = (rowData) => {
+        if (!rowData.fichier) {
+            showToast('error', 'Erreur', 'Aucun fichier disponible pour la visualisation');
+            return;
+        }
+
+        const extension = rowData.fichier.split('.').pop().toLowerCase();
+        if (extension !== 'pdf') {
+            showToast('error', 'Erreur', 'Seuls les fichiers PDF sont supportés pour la prévisualisation');
+            return;
+        }
+
+        setSelectedFile(rowData);
+        setShowPreview(true);
+    };
+
+    const renderPreviewContent = (fileData) => {
+        if (!fileData.fichier) {
+            showToast('error', 'Erreur', 'URL du fichier invalide');
+            return <p>URL invalide</p>;
+        }
+
+        return (
+            <div className="w-full h-full overflow-auto">
+                <iframe
+                    src={`${fileData.fichier}?disposition=inline`}
+                    title={fileData.titre || 'Prévisualisation'}
+                    className="w-full h-full border-none"
+                    onError={() => showToast('error', 'Erreur', 'Impossible de charger le document')}
+                />
+            </div>
+        );
+    };
+
+    const actionBodyTemplate = (rowData) => {
+        return (
+            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <button
+                    className="p-2 bg-[#3B82F6] text-white rounded-full hover:bg-[#2563EB] transition-transform duration-300 hover:scale-105 disabled:bg-gray-400"
+                    onClick={() => handlePreview(rowData)}
+                    disabled={!rowData.fichier || rowData.fichier.split('.').pop().toLowerCase() !== 'pdf'}
+                    title="Visualiser"
+                    type="button"
+                >
+                    <FaEye />
+                </button>
+                <button
+                    className="p-2 bg-[#6B7280] text-white rounded-full hover:bg-[#4B5563] transition-transform duration-300 hover:scale-105 disabled:bg-gray-400"
+                    onClick={(e) => handleDownload(rowData.fichier, rowData.titre, e)}
+                    disabled={!rowData.fichier}
+                    title="Télécharger"
+                    type="button"
+                >
+                    <FaDownload />
+                </button>
+            </div>
+        );
+    };
+
     const renderHeader = () => {
         return (
             <div className="flex flex-col space-y-4">
-                <h1 className='text-3xl p-5 font-semibold'>Bibliothèque</h1>
-                <div className='grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center'>
+                <h1 className="text-3xl p-5 font-semibold">Bibliothèque</h1>
+                <div className="grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center">
                     <IconField iconPosition="left">
                         <InputIcon className="pi pi-search" />
                         <InputText
                             value={globalFilterValue}
                             onChange={onGlobalFilterChange}
                             placeholder="Rechercher..."
-                            className='custom-input'
+                            className="custom-input"
                         />
                     </IconField>
 
@@ -117,7 +216,6 @@ export default function Bibliotheque() {
                             className="rounded font-poppins text-sm bg-white"
                             disabled={loading}
                         />
-
                         <Dropdown
                             value={niveauFilter}
                             onChange={(e) => setNiveauFilter(e.value)}
@@ -127,7 +225,6 @@ export default function Bibliotheque() {
                             className="rounded font-poppins text-sm bg-white"
                             disabled={loading}
                         />
-
                         <Dropdown
                             value={categorieFilter}
                             onChange={(e) => setCategorieFilter(e.value)}
@@ -143,49 +240,13 @@ export default function Bibliotheque() {
         );
     };
 
-    const handleDownload = (fichier) => {
-        if (!fichier) return;
-        const link = document.createElement('a');
-        link.href = `/uploads/bibliotheque/${fichier}`;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const actionBodyTemplate = (rowData) => {
-        return (
-            <div className='flex items-center gap-x-2'>
-                <Button
-                    icon="pi pi-download"
-                    rounded
-                    severity="secondary"
-                    onClick={() => handleDownload(rowData.fichier)}
-                    tooltip="Télécharger"
-                    tooltipOptions={{ position: 'top' }}
-                    disabled={!rowData.fichier}
-                />
-                <Button
-                    icon="pi pi-eye"
-                    rounded
-                    severity="success"
-                    onClick={() => handleDownload(rowData.fichier)}
-                    tooltip="Voir"
-                    tooltipOptions={{ position: 'top' }}
-                    disabled={!rowData.fichier}
-                />
-            </div>
-        );
-    };
-
     if (loading) {
         return (
             <Layout>
                 <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div class="spinner-container">
-                        <div class="spinner-outer">
-                            <div class="spinner-inner"></div>
+                    <div className="spinner-container">
+                        <div className="spinner-outer">
+                            <div className="spinner-inner"></div>
                         </div>
                     </div>
                 </div>
@@ -198,8 +259,8 @@ export default function Bibliotheque() {
             <Layout>
                 <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
                     <MdErrorOutline size={60} />
-                    <p className='text-xl font-bold'>Erreur lors du chargement des données</p>
-                    <p className='text-lg font-semibold'>{error}</p>
+                    <p className="text-xl font-bold">Erreur lors du chargement des données</p>
+                    <p className="text-lg font-semibold">{error}</p>
                 </div>
             </Layout>
         );
@@ -207,6 +268,21 @@ export default function Bibliotheque() {
 
     return (
         <Layout>
+            <Toast ref={toast} position="bottom-right" />
+            <Dialog
+                header={selectedFile?.titre || 'Visualisation'}
+                visible={showPreview}
+                maximized={true}
+                onHide={() => {
+                    setShowPreview(false);
+                    setSelectedFile(null);
+                }}
+                maximizable
+                style={{ height: '100vh' }}
+                contentStyle={{ padding: 0 }}
+            >
+                {selectedFile && renderPreviewContent(selectedFile)}
+            </Dialog>
             <div className="p-4">
                 <DataTable
                     value={filteredData}
@@ -246,6 +322,13 @@ export default function Bibliotheque() {
                         sortable
                         style={{ minWidth: '10rem' }}
                         body={(rowData) => rowData.type || 'N/A'}
+                    />
+                    <Column
+                        field="ecName"
+                        header="EC"
+                        sortable
+                        style={{ minWidth: '12rem' }}
+                        body={(rowData) => rowData.ecName || 'N/A'}
                     />
                     <Column
                         body={actionBodyTemplate}

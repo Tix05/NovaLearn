@@ -1,9 +1,9 @@
 <?php
 
-
 namespace App\Controller\Api;
 
 use App\Entity\Etudiant;
+use App\Entity\FichierSupport;
 use App\Repository\MentionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
@@ -47,85 +47,96 @@ class StudentDataController extends AbstractController
     }
 
     private function buildMentionStructure($mention, $parcours, $niveau, $etudiant)
-{
-    $semestresData = [];
-    
-    foreach ($mention->getUes() as $ue) {
-        if ($ue->getSemestre() && $ue->getSemestre()->getNiveau()->getId() === $niveau->getId()) {
-            $semestreId = $ue->getSemestre()->getId();
-            
-            if (!isset($semestresData[$semestreId])) {
-                $semestresData[$semestreId] = [
-                    'id' => $semestreId,
-                    'intitule' => $ue->getSemestre()->getName(),
-                    'ues' => []
-                ];
-            }
-            
-            $ueData = [
-                'id' => $ue->getId(),
-                'nom' => $ue->getName(),
-                'cours' => []
-            ];
-            
-            foreach ($ue->getEcs() as $ec) {
-                $ueData['cours'][] = [
-                    'id' => $ec->getId(),
-                    'titre' => $ec->getName(),
-                    'credit' => $ec->getCoeff(),
-                    'description' => $ec->getDescription() ?? 'Aucune description disponible',
-                    'supports' => $this->getFormattedSupports($ec->getFichierSupports())
-                ];
-            }
-            
-            $semestresData[$semestreId]['ues'][] = $ueData;
-        }
-    }
-
-    return [
-        [
-            'id' => $mention->getId(),
-            'nom' => $mention->getName(),
-            'niveau' => $niveau->getNom(),
-            'parcours' => $parcours->getName(),
-            'matricule' => $etudiant->getMatricule(),
-            'icon' => $mention->getIcon(),
-            'semestres' => array_values($semestresData)
-        ]
-    ];
-}
-
-private function getFormattedSupports($supports)
-{
-    $formatted = [];
-    
-    foreach ($supports as $support) {
-        if (!$support->isEstPublique()) {
-            continue; // Ne pas inclure les supports non publics
-        }
+    {
+        $semestresData = [];
+        $baseUrl = $this->getParameter('app.base_url'); // Base URL from parameters
         
-        $formatted[] = [
-            'id' => $support->getId(),
-            'type' => $this->mapSupportType($support->getType()),
-            'titre' => $support->getTitre(),
-            'description' => $support->getDescription(),
-            'url' => $support->getFichier() ? '/uploads/supports/' . $support->getFichier() : $support->getUrl(),
-            'date_ajout' => $support->getDateAjout()->format('Y-m-d H:i:s')
+        foreach ($mention->getUes() as $ue) {
+            if ($ue->getSemestre() && $ue->getSemestre()->getNiveau()->getId() === $niveau->getId()) {
+                $semestreId = $ue->getSemestre()->getId();
+                
+                if (!isset($semestresData[$semestreId])) {
+                    $semestresData[$semestreId] = [
+                        'id' => $semestreId,
+                        'intitule' => $ue->getSemestre()->getName(),
+                        'ues' => []
+                    ];
+                }
+                
+                $ueData = [
+                    'id' => $ue->getId(),
+                    'nom' => $ue->getName(),
+                    'cours' => []
+                ];
+                
+                foreach ($ue->getEcs() as $ec) {
+                    $ueData['cours'][] = [
+                        'id' => $ec->getId(),
+                        'titre' => $ec->getName(),
+                        'credit' => $ec->getCoeff(),
+                        'description' => $ec->getDescription() ?? 'Aucune description disponible',
+                        'supports' => $this->getFormattedSupports($ec->getFichierSupports())
+                    ];
+                }
+                
+                $semestresData[$semestreId]['ues'][] = $ueData;
+            }
+        }
+
+        // Construct full URL for the mention icon
+        $iconUrl = $mention->getIcon() ? $baseUrl . '/uploads/icons/' . $mention->getIcon() : null;
+
+        return [
+            [
+                'id' => $mention->getId(),
+                'nom' => $mention->getName(),
+                'niveau' => $niveau->getNom(),
+                'parcours' => $parcours->getName(),
+                'matricule' => $etudiant->getMatricule(),
+                'icon' => $iconUrl, // Use full URL for the icon
+                'semestres' => array_values($semestresData)
+            ]
         ];
     }
-    
-    return $formatted;
-}
 
-private function mapSupportType($type)
-{
-    $types = [
-        FichierSupport::TYPE_FICHIER => 'document',
-        FichierSupport::TYPE_VIDEO => 'video',
-        FichierSupport::TYPE_AUDIO => 'audio',
-        FichierSupport::TYPE_LIEN => 'lien'
-    ];
-    
-    return $types[$type] ?? 'document';
-}
+    private function getFormattedSupports($supports)
+    {
+        $formatted = [];
+        $baseUrl = $this->getParameter('app.base_url');
+
+        foreach ($supports as $support) {
+            if (!$support->isEstPublique()) {
+                continue; // Ne pas inclure les supports non publics
+            }
+
+            $fileUrl = $support->getFichier() 
+                ? $baseUrl . '/Uploads/supports/' . $support->getFichier() 
+                : $support->getUrl();
+
+            $formatted[] = [
+                'id' => $support->getId(),
+                'type' => $this->mapSupportType($support->getType()),
+                'titre' => $support->getTitre(),
+                'description' => $support->getDescription(),
+                'url' => $fileUrl,
+                'date_ajout' => $support->getDateAjout()->format('Y-m-d H:i:s')
+            ];
+        }
+
+        return $formatted;
+    }
+
+    private function mapSupportType($type)
+    {
+        $types = [
+            FichierSupport::TYPE_FICHIER => 'document',
+            FichierSupport::TYPE_VIDEO => 'video',
+            FichierSupport::TYPE_AUDIO => 'audio',
+            FichierSupport::TYPE_LIEN => 'lien'
+        ];
+        
+        $type = str_replace("'", "", $type);
+        
+        return $types[$type] ?? 'document';
+    }
 }
