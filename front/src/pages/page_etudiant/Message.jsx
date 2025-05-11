@@ -8,6 +8,7 @@ import { LuSendHorizontal } from 'react-icons/lu';
 import { motion } from 'framer-motion';
 import { getConversations, getMessages, sendMessage, markMessageAsRead } from '../../Services/messagingService';
 import { getCurrentUser } from '../../Services/authService';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 function Message() {
     const [conversations, setConversations] = useState([]);
@@ -163,12 +164,8 @@ function Message() {
     if (loading) {
         return (
             <Layout>
-                <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div className="spinner-container">
-                        <div className="spinner-outer">
-                            <div className="spinner-inner"></div>
-                        </div>
-                    </div>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
                 </div>
             </Layout>
         );

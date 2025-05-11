@@ -4,6 +4,7 @@ import { Divider } from 'primereact/divider';
 import { Link } from 'react-router-dom';
 import { FaRegEye } from 'react-icons/fa';
 import { getStudentMentions } from '../../Services/authService';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 const defaultIcon = 'data:image/svg+xml;base64,' + btoa(`
 <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -35,12 +36,8 @@ const Mention = () => {
     if (loading) {
         return (
             <Layout>
-                <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div className="spinner-container">
-                        <div className="spinner-outer">
-                            <div className="spinner-inner"></div>
-                        </div>
-                    </div>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
                 </div>
             </Layout>
         );

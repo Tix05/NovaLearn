@@ -43,6 +43,7 @@ import AjoutSupportAdmin from './pages/page_admin/AjoutSupportAdmin';
 import ProtectedRoute from './components/ProtectedRoute';
 import LogoutPage from './pages/page_etudiant/LogoutPage';
 import GenerateurDeDocument from './pages/page_admin/GenerateurDeDocument';
+import LogoutPageEnseignant from './pages/page_enseignant/LogoutPageEnseignant';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +129,7 @@ function EtudiantRoutes() {
 function EnseignantRoutes() {
   return (
     <Routes>
+      <Route path="logout-enseignant" element={<LogoutPageEnseignant />} />
       <Route path="login-enseignant" element={<LoginEnseignant />} />
       <Route path="forgot-password-teacher" element={<ForgotPasswordProf />} />
       <Route path="dashboard" element={<Dashboard />} />

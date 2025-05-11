@@ -133,6 +133,11 @@ class Mention
      */
     private Collection $notificationGroupes;
 
+    /**
+    * @ORM\OneToMany(targetEntity=Parcours::class, mappedBy="mention")
+    */
+    private $parcours;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -141,6 +146,7 @@ class Mention
         $this->agendas = new ArrayCollection();
         $this->bibliotheques = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
+        $this->parcours = new ArrayCollection();
         $this->created_at = new DateTimeImmutable();
     }
 
@@ -377,6 +383,36 @@ class Mention
                 $notificationGroupe->setMention(null);
             }
         }
+        return $this;
+    }
+
+    /**
+     * @return Collection|Parcours[]
+     */
+    public function getParcours(): Collection
+    {
+        return $this->parcours;
+    }
+
+    public function addParcour(Parcours $parcour): self
+    {
+        if (!$this->parcours->contains($parcour)) {
+            $this->parcours[] = $parcour;
+            $parcour->setMention($this);
+        }
+
+        return $this;
+    }
+
+    public function removeParcour(Parcours $parcour): self
+    {
+        if ($this->parcours->removeElement($parcour)) {
+            // set the owning side to null (unless already changed)
+            if ($parcour->getMention() === $this) {
+                $parcour->setMention(null);
+            }
+        }
+
         return $this;
     }
 

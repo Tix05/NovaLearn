@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { InputText } from "primereact/inputtext";
@@ -7,25 +7,39 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { useParams } from 'react-router-dom';
 import { IoIosDocument } from 'react-icons/io';
-import { FaFileAudio, FaFileVideo } from 'react-icons/fa';
+import { FaFileAudio, FaFileVideo, FaLink } from 'react-icons/fa6';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { IconField } from 'primereact/iconfield';
-import { InputIcon } from 'primereact/inputicon';
-import { mentions } from '../../../public/constants/data2';
+import { addTeacherSupport, getTeacherMentions } from '../../Services/teacherAuthService';
 
 const AjoutSupport = () => {
     const { mentionId, semestreId, coursId } = useParams();
     const [activeIndex, setActiveIndex] = useState(0);
     const [titre, setTitre] = useState('');
     const [selectedFiles, setSelectedFiles] = useState({});
+    const [linkUrl, setLinkUrl] = useState('');
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [mentions, setMentions] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false); // Nouvel état
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
 
-    const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const semestre = mention?.semestres.find((s) => s.id === semestreId);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await getTeacherMentions();
+                setMentions(data);
+            } catch (err) {
+                showToast('error', 'Erreur', err.message);
+            }
+        };
 
+        fetchData();
+    }, []);
+
+    const mention = mentions.find((m) => m.id === parseInt(mentionId));
+    const semestre = mention?.semestres.find((s) => s.id === parseInt(semestreId));
     let cours = null;
     if (semestre) {
         for (const ue of semestre.ues) {
@@ -36,6 +50,7 @@ const AjoutSupport = () => {
             }
         }
     }
+
     const supportTypes = [
         {
             name: 'document',
@@ -54,13 +69,19 @@ const AjoutSupport = () => {
             icon: <FaFileAudio className='text-2xl' />,
             accept: 'audio/*',
             label: 'Audio'
+        },
+        {
+            name: 'lien',
+            icon: <FaLink className='text-2xl' />,
+            accept: null,
+            label: 'Lien'
         }
     ];
 
     const handleFileSelect = (e, type) => {
         setSelectedFiles(prev => ({
             ...prev,
-            [type]: e.files[0] // Stocke seulement le premier fichier
+            [type]: e.files[0]
         }));
     };
 
@@ -70,38 +91,95 @@ const AjoutSupport = () => {
             delete newFiles[type];
             return newFiles;
         });
-
-        // Réinitialise le composant FileUpload
+        setLinkUrl('');
         if (fileUploadRefs.current[type]) {
             fileUploadRefs.current[type].clear();
         }
     };
 
-    const handleDelete = (support) => {
-        // Implémentez la suppression ici
-        showToast('success', 'Succès', 'Support supprimé avec succès');
-    };
-
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const currentType = supportTypes[activeIndex].name;
 
-        if (!titre || !selectedFiles[currentType]) {
-            showToast('warn', 'Attention', 'Veuillez remplir tous les champs et sélectionner un fichier');
+        if (!titre) {
+            showToast('warn', 'Attention', 'Veuillez remplir le champ titre');
             return;
         }
 
-        // Simulation d'envoi avec date actuelle
-        const newSupport = {
-            id: Math.random(),
-            titre,
-            nom: selectedFiles[currentType].name,
-            type: currentType,
-            date: new Date().toLocaleDateString('fr-FR')
-        };
+        if (currentType !== 'lien' && !selectedFiles[currentType]) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner un fichier');
+            return;
+        }
 
-        showToast('success', 'Succès', 'Support ajouté avec succès');
-        setTitre('');
-        handleCancelUpload(currentType);
+        if (currentType === 'lien' && !linkUrl) {
+            showToast('warn', 'Attention', 'Veuillez fournir une URL');
+            return;
+        }
+
+        setIsSubmitting(true); // Activer l'état de chargement
+
+        try {
+            const response = await addTeacherSupport(
+                coursId,
+                titre,
+                currentType,
+                currentType !== 'lien' ? selectedFiles[currentType] : null,
+                null,
+                currentType === 'lien' ? linkUrl : null,
+                true
+            );
+
+            // Mise à jour manuelle de l'état pour refléter le nouveau support
+            setMentions(prev => {
+                return prev.map(mention => {
+                    if (mention.id === parseInt(mentionId)) {
+                        return {
+                            ...mention,
+                            semestres: mention.semestres.map(semestre => {
+                                if (semestre.id === parseInt(semestreId)) {
+                                    return {
+                                        ...semestre,
+                                        ues: semestre.ues.map(ue => ({
+                                            ...ue,
+                                            cours: ue.cours.map(c => {
+                                                if (c.id === parseInt(coursId)) {
+                                                    return {
+                                                        ...c,
+                                                        supports: [
+                                                            ...(c.supports || []),
+                                                            {
+                                                                id: response.support.id,
+                                                                titre: response.support.titre,
+                                                                type: response.support.type,
+                                                                url: response.support.url,
+                                                                fichier: response.support.fichier,
+                                                                date_ajout: response.support.date_ajout,
+                                                                estPublique: true // Ajouter pour cohérence
+                                                            }
+                                                        ]
+                                                    };
+                                                }
+                                                return c;
+                                            })
+                                        }))
+                                    };
+                                }
+                                return semestre;
+                            })
+                        };
+                    }
+                    return mention;
+                });
+            });
+
+            showToast('success', 'Succès', 'Support ajouté avec succès');
+            setTitre('');
+            setLinkUrl('');
+            handleCancelUpload(currentType);
+        } catch (error) {
+            showToast('error', 'Erreur', error.message);
+        } finally {
+            setIsSubmitting(false); // Désactiver l'état de chargement
+        }
     };
 
     const showToast = (severity, summary, detail) => {
@@ -123,12 +201,12 @@ const AjoutSupport = () => {
             <div className="flex justify-between items-center">
                 <span className="text-xl font-bold">Supports {type}</span>
                 <IconField iconPosition="left">
-                    <InputIcon className="pi pi-search" />
                     <InputText
                         value={globalFilterValue}
                         onChange={onGlobalFilterChange}
                         placeholder="Rechercher..."
                     />
+                    <i className="pi pi-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                 </IconField>
             </div>
         );
@@ -169,9 +247,16 @@ const AjoutSupport = () => {
                                                 />
                                             </div>
                                             <div className='flex items-center gap-3 flex-1'>
-                                                <span className='font-medium'>Fichier :</span>
+                                                <span className='font-medium'>{type.name === 'lien' ? 'URL :' : 'Fichier :'}</span>
                                                 <div className="flex items-center gap-2">
-                                                    {hasSelectedFile ? (
+                                                    {type.name === 'lien' ? (
+                                                        <InputText
+                                                            value={linkUrl}
+                                                            onChange={(e) => setLinkUrl(e.target.value)}
+                                                            placeholder="https://..."
+                                                            className='w-full'
+                                                        />
+                                                    ) : hasSelectedFile ? (
                                                         <div className="flex items-center gap-2">
                                                             <span>{selectedFiles[type.name].name}</span>
                                                             <Button
@@ -203,13 +288,13 @@ const AjoutSupport = () => {
                                                 icon="pi pi-times"
                                                 severity="secondary"
                                                 onClick={() => handleCancelUpload(type.name)}
-                                                disabled={!hasSelectedFile}
+                                                disabled={type.name === 'lien' ? !linkUrl : !hasSelectedFile}
                                             />
                                             <Button
-                                                label="Enregistrer"
-                                                icon="pi pi-save"
+                                                label={isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                                                icon={isSubmitting ? 'pi pi-spin pi-spinner' : 'pi pi-save'}
                                                 onClick={handleSubmit}
-                                                disabled={!titre || !hasSelectedFile}
+                                                disabled={isSubmitting || !titre || (type.name === 'lien' ? !linkUrl : !hasSelectedFile)}
                                             />
                                         </div>
                                     </div>
@@ -238,13 +323,14 @@ const AjoutSupport = () => {
                                                 style={{ minWidth: '10rem' }}
                                             />
                                             <Column
-                                                field="nom"
-                                                header="Fichier"
+                                                field="fichier"
+                                                header={type.name === 'lien' ? 'URL' : 'Fichier'}
+                                                body={(row) => row.fichier || row.url || 'Non défini'}
                                                 sortable
                                                 style={{ minWidth: '5rem' }}
                                             />
                                             <Column
-                                                field="date"
+                                                field="date_ajout"
                                                 header="Date d'ajout"
                                                 sortable
                                                 style={{ minWidth: '8rem' }}

@@ -11,6 +11,7 @@ import { Dialog } from 'primereact/dialog';
 import { MdErrorOutline } from 'react-icons/md';
 import { FaEye, FaDownload } from 'react-icons/fa6';
 import { getBibliothequeItems } from '../../Services/bibliothequeService';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 export default function Bibliotheque() {
     const [data, setData] = useState([]);
@@ -243,12 +244,8 @@ export default function Bibliotheque() {
     if (loading) {
         return (
             <Layout>
-                <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div className="spinner-container">
-                        <div className="spinner-outer">
-                            <div className="spinner-inner"></div>
-                        </div>
-                    </div>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
                 </div>
             </Layout>
         );

@@ -5,6 +5,7 @@ import Layout from '../../components/Layout';
 import AccordionUE from '../../components/AccordionUEEtudiant';
 import { getStudentMentions } from '../../Services/authService';
 import { MdErrorOutline } from "react-icons/md";
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 export default function Cours() {
     const { mentionId } = useParams();
@@ -72,12 +73,8 @@ export default function Cours() {
     if (loading) {
         return (
             <Layout>
-                <div className="h-[90vh] w-full flex items-center justify-center">
-                    <div class="spinner-container">
-                        <div class="spinner-outer">
-                            <div class="spinner-inner"></div>
-                        </div>
-                    </div>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
                 </div>
             </Layout>
         );
