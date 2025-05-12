@@ -16,6 +16,7 @@ import { MdErrorOutline } from 'react-icons/md';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import 'react-quill/dist/quill.snow.css';
 
 const DescriptionCours = () => {
     const { mentionId, semestreId, coursId } = useParams();
@@ -384,7 +385,6 @@ const DescriptionCours = () => {
                     {cours ? `Détails du cours - ${cours.titre}` : 'Détails du cours'}
                 </h1>
 
-                {/* Section Description */}
                 <div className='flex flex-col shadow-md m-5 border-[1px] rounded-lg'>
                     <h1 className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg'>
                         {cours?.titre || 'Titre non disponible'}
@@ -393,9 +393,15 @@ const DescriptionCours = () => {
                         <p className='font-semibold text-xl'>Description du cours :</p>
                         <Divider />
                         <div className='p-10'>
-                            <p className='font-semibold leading-relaxed text-justify'>
-                                {cours?.description || 'Aucune description disponible'}
-                            </p>
+                            <div className='ql-snow'>
+                                <div
+                                    className='ql-editor'
+                                    dangerouslySetInnerHTML={{
+                                        __html: cours?.description || '<p>Aucune description disponible</p>'
+                                    }}
+                                    style={{ minHeight: '100px', padding: '0' }}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -15,7 +15,7 @@ import 'react-quill/dist/quill.snow.css';
 import { Avatar } from 'primereact/avatar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
-import { getTeacherMentions, deleteTeacherSupport } from '../../Services/teacherAuthService';
+import { getTeacherMentions, deleteTeacherSupport, updateEcDescription } from '../../Services/teacherAuthService';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { MdErrorOutline } from 'react-icons/md';
 
@@ -203,12 +203,54 @@ const DescriptionCoursEnseignant = () => {
         });
     };
 
-    const handleSaveDescription = () => {
+    const handleSaveDescription = async () => {
+        // Valider la description
+        const cleanDescription = description.replace(/<[^>]+>/g, '').trim();
+        if (!cleanDescription) {
+            showToast('warn', 'Attention', 'La description ne peut pas être vide');
+            return;
+        }
+
         setIsSaving(true);
-        setTimeout(() => {
-            setIsSaving(false);
+        try {
+            await updateEcDescription(coursId, description);
+            // Mettre à jour l'état mentions pour refléter la nouvelle description
+            setMentions(prev => {
+                return prev.map(mention => {
+                    if (mention.id === parseInt(mentionId)) {
+                        return {
+                            ...mention,
+                            semestres: mention.semestres.map(semestre => {
+                                if (semestre.id === parseInt(semestreId)) {
+                                    return {
+                                        ...semestre,
+                                        ues: semestre.ues.map(ue => ({
+                                            ...ue,
+                                            cours: ue.cours.map(c => {
+                                                if (c.id === parseInt(coursId)) {
+                                                    return {
+                                                        ...c,
+                                                        description
+                                                    };
+                                                }
+                                                return c;
+                                            })
+                                        }))
+                                    };
+                                }
+                                return semestre;
+                            })
+                        };
+                    }
+                    return mention;
+                });
+            });
             showToast('success', 'Succès', 'Description enregistrée');
-        }, 500);
+        } catch (error) {
+            showToast('error', 'Erreur', error.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleAddComment = () => {
@@ -491,7 +533,7 @@ const DescriptionCoursEnseignant = () => {
                         <div className='flex justify-end'>
                             <Button
                                 label={isSaving ? "Enregistrement..." : "Enregistrer"}
-                                icon="pi pi-save"
+                                icon={isSaving ? "pi pi-spin pi-spinner" : "pi pi-save"}
                                 onClick={handleSaveDescription}
                                 disabled={isSaving}
                             />

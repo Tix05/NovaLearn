@@ -6,6 +6,7 @@ import AccordionUE from '../../components/AccordionUEEnseignant';
 import { getTeacherMentions } from '../../Services/teacherAuthService';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { MdErrorOutline } from 'react-icons/md';
+import { FileText } from 'lucide-react';
 
 export default function CoursEnseignant() {
     const { mentionId } = useParams();
@@ -41,7 +42,7 @@ export default function CoursEnseignant() {
     const renderHeader = () => {
         return (
             <div className="flex flex-col">
-                <h1 className='text-3xl font-semibold text-gray-800 p-5'>
+                <h1 className="text-3xl font-semibold text-gray-800 p-5">
                     {mention?.nom} - {mention?.niveau}
                 </h1>
                 <div className="flex items-center py-4 space-x-5 p-5">
@@ -50,8 +51,8 @@ export default function CoursEnseignant() {
                             key={s.id}
                             to={`/enseignant/coursEnseignant/${mentionId}/${s.id}`}
                             className={`pb-2 transition duration-400 ${selectedSemestre === s.id
-                                ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
-                                : "text-gray-600 hover:text-blue-500 font-semibold"
+                                ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                                : 'text-gray-600 hover:text-blue-500 font-semibold'
                                 }`}
                             onClick={() => setSelectedSemestre(s.id)}
                         >
@@ -60,8 +61,8 @@ export default function CoursEnseignant() {
                     ))}
                 </div>
                 <Divider />
-                <div className='flex justify-between items-center p-3'>
-                    <h1 className='text-lg font-semibold text-gray-800'>
+                <div className="flex justify-between items-center p-3">
+                    <h1 className="text-lg font-semibold text-gray-800">
                         Parcours : {mention?.parcours}
                     </h1>
                 </div>
@@ -84,8 +85,8 @@ export default function CoursEnseignant() {
             <LayoutEnseignant>
                 <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
                     <MdErrorOutline size={60} />
-                    <p className='text-xl font-bold'>Erreur lors du chargement des données</p>
-                    <p className='text-lg font-semibold'>{error}</p>
+                    <p className="text-xl font-bold">Erreur lors du chargement des données</p>
+                    <p className="text-lg font-semibold">{error}</p>
                 </div>
             </LayoutEnseignant>
         );
@@ -96,7 +97,7 @@ export default function CoursEnseignant() {
             <LayoutEnseignant>
                 <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
                     <MdErrorOutline size={60} />
-                    <p className='text-xl font-bold'>Aucune mention trouvée avec cet ID</p>
+                    <p className="text-xl font-bold">Aucune mention trouvée avec cet ID</p>
                 </div>
             </LayoutEnseignant>
         );
@@ -113,6 +114,14 @@ export default function CoursEnseignant() {
                     ues={ues}
                     mentionId={mentionId}
                     semestreId={selectedSemestre}
+                    onCreateExam={(coursId) => (
+                        <Link
+                            to={`/enseignant/examen/${mentionId}/${selectedSemestre}/${coursId}`}
+                            className="bg-blue-700 px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-blue-800 duration-300"
+                        >
+                            Créer un examen
+                        </Link>
+                    )}
                 />
             </div>
         </LayoutEnseignant>

@@ -7,7 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 
-const AccordionUEEnseignant = ({ ues, mentionId, semestreId }) => {
+const AccordionUEEnseignant = ({ ues, mentionId, semestreId, onCreateExam }) => {
     const [activeIndex, setActiveIndex] = useState(null);
     const [filters, setFilters] = useState({});
 
@@ -42,12 +42,16 @@ const AccordionUEEnseignant = ({ ues, mentionId, semestreId }) => {
                 >
                     Ajouter support
                 </Link>
-                <Link
-                    to={`/enseignant/examen`}
-                    className='bg-blue-700 px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-blue-800 duration-300'
-                >
-                    Créer un examen
-                </Link>
+                {onCreateExam ? (
+                    onCreateExam(rowData.id)
+                ) : (
+                    <Link
+                        to={`/enseignant/examen/${mentionId}/${semestreId}/${rowData.id}`}
+                        className='bg-blue-700 px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-blue-800 duration-300'
+                    >
+                        Créer un examen
+                    </Link>
+                )}
             </div>
         );
     };

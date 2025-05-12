@@ -138,7 +138,7 @@ function EnseignantRoutes() {
       <Route path="bibliotheque" element={<BibliothequeEnseignant />} />
       <Route path="agenda" element={<AgendaEnseignant />} />
       <Route path="message" element={<MessageEnseignant />} />
-      <Route path="examen" element={<Examen />} />
+      <Route path="examen/:mentionId/:semestreId/:coursId" element={<Examen />} />
       <Route path="coursEnseignant/:mentionId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId" element={<CoursEnseignant />} />
       <Route path="coursEnseignant/:mentionId/:semestreId/:coursId" element={<DescriptionCoursEnseignant />} />

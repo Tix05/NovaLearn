@@ -21,7 +21,7 @@ const AjoutSupport = () => {
     const [linkUrl, setLinkUrl] = useState('');
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentions, setMentions] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false); // Nouvel état
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
 

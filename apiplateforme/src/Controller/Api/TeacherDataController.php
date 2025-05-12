@@ -305,4 +305,62 @@ class TeacherDataController extends AbstractController
 
         return $this->json(['message' => 'Support supprimé avec succès'], Response::HTTP_OK);
     }
+
+    /**
+     * @Route("/ecs/{id}/description", name="api_teacher_update_ec_description", methods={"PUT"})
+     */
+    public function updateEcDescription(int $id, Request $request, EntityManagerInterface $entityManager, EcRepository $ecRepository, LoggerInterface $logger): Response
+    {
+        $user = $this->getUser();
+        $logger->info('Utilisateur authentifié pour mise à jour description EC', ['user' => $user ? $user->getEmail() : null, 'roles' => $user ? $user->getRoles() : null]);
+
+        if (!$user instanceof User) {
+            $logger->error('Aucun utilisateur authentifié');
+            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $logger->error('Utilisateur non enseignant', ['user' => $user->getEmail(), 'roles' => $user->getRoles()]);
+            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+        }
+
+        $prof = $entityManager->getRepository(Prof::class)->findOneBy(['user' => $user->getId()]);
+        if (!$prof) {
+            $logger->error('Aucune entité Prof trouvée pour cet utilisateur', ['user_id' => $user->getId()]);
+            return $this->json(['message' => 'Utilisateur non associé à un profil enseignant'], Response::HTTP_FORBIDDEN);
+        }
+
+        $ec = $ecRepository->find($id);
+        if (!$ec) {
+            $logger->warning('EC non trouvé', ['ec_id' => $id]);
+            return $this->json(['message' => 'EC non trouvé'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($ec->getProf()->getId() !== $prof->getId()) {
+            $logger->warning('Non autorisé à modifier cet EC', ['ec_id' => $id, 'prof_id' => $prof->getId()]);
+            return $this->json(['message' => 'Non autorisé à modifier cet EC'], Response::HTTP_FORBIDDEN);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $description = $data['description'] ?? null;
+
+        if ($description === null) {
+            $logger->warning('Description manquante', ['ec_id' => $id]);
+            return $this->json(['message' => 'Description manquante'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Nettoyer la description pour éviter les problèmes de sécurité
+        $description = strip_tags($description, '<p><strong><em><u><ol><ul><li><h1><h2><h3><blockquote><br><span>');
+
+        $ec->setDescription($description);
+        $entityManager->persist($ec);
+        $entityManager->flush();
+
+        $logger->info('Description EC mise à jour avec succès', ['ec_id' => $id, 'description' => substr($description, 0, 100) . '...']);
+
+        return $this->json([
+            'message' => 'Description mise à jour avec succès',
+            'description' => $ec->getDescription()
+        ], Response::HTTP_OK);
+    }
 }
