@@ -12,6 +12,8 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 /**
  * @ApiResource(
@@ -156,12 +158,22 @@ class Etudiant
      */
     private $year;
 
+    /**
+     * @ORM\OneToMany(targetEntity=ReponseEtudiant::class, mappedBy="etudiant")
+     */
+    private Collection $reponsesExamens;
+
+    /**
+     * @ORM\OneToMany(targetEntity=CorrectionExamen::class, mappedBy="etudiant")
+     */
+    private Collection $correctionsExamens;
+
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
+        $this->reponsesExamens = new ArrayCollection();
+        $this->correctionsExamens = new ArrayCollection();
     }
-
-    // Getters et Setters
 
     public function getId(): ?int
     {
@@ -308,6 +320,54 @@ class Etudiant
     public function setYear(?Years $year): self
     {
         $this->year = $year;
+        return $this;
+    }
+
+    public function getReponsesExamens(): Collection
+    {
+        return $this->reponsesExamens;
+    }
+
+    public function addReponsesExamen(ReponseEtudiant $reponsesExamen): self
+    {
+        if (!$this->reponsesExamens->contains($reponsesExamen)) {
+            $this->reponsesExamens[] = $reponsesExamen;
+            $reponsesExamen->setEtudiant($this);
+        }
+        return $this;
+    }
+
+    public function removeReponsesExamen(ReponseEtudiant $reponsesExamen): self
+    {
+        if ($this->reponsesExamens->removeElement($reponsesExamen)) {
+            if ($reponsesExamen->getEtudiant() === $this) {
+                $reponsesExamen->setEtudiant(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getCorrectionsExamens(): Collection
+    {
+        return $this->correctionsExamens;
+    }
+
+    public function addCorrectionsExamen(CorrectionExamen $correctionsExamen): self
+    {
+        if (!$this->correctionsExamens->contains($correctionsExamen)) {
+            $this->correctionsExamens[] = $correctionsExamen;
+            $correctionsExamen->setEtudiant($this);
+        }
+        return $this;
+    }
+
+    public function removeCorrectionsExamen(CorrectionExamen $correctionsExamen): self
+    {
+        if ($this->correctionsExamens->removeElement($correctionsExamen)) {
+            if ($correctionsExamen->getEtudiant() === $this) {
+                $correctionsExamen->setEtudiant(null);
+            }
+        }
         return $this;
     }
 

@@ -43,6 +43,7 @@ security:
         # - { path: ^/profile, roles: ROLE_USER }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/teacher/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/teacher, roles: ROLE_PROFESSEUR }
 

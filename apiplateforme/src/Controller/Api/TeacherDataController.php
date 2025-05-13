@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 
+
 /**
  * @Route("/api/teacher")
  */
@@ -362,5 +363,53 @@ class TeacherDataController extends AbstractController
             'message' => 'Description mise à jour avec succès',
             'description' => $ec->getDescription()
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * @Route("/ec/{id}/supports", name="api_ec_supports", methods={"GET"})
+     */
+    public function getEcSupports(int $id, EcRepository $ecRepository, LoggerInterface $logger): JsonResponse
+    {
+        $user = $this->getUser();
+        $logger->info('Utilisateur authentifié pour récupération des supports', [
+            'user' => $user ? $user->getEmail() : null,
+            'ec_id' => $id
+        ]);
+
+        if (!$user instanceof User) {
+            $logger->error('Aucun utilisateur authentifié');
+            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $logger->error('Utilisateur non enseignant', [
+                'user' => $user->getEmail(),
+                'roles' => $user->getRoles()
+            ]);
+            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+        }
+
+        $prof = $this->entityManager->getRepository(Prof::class)->findOneBy(['user' => $user->getId()]);
+        if (!$prof) {
+            $logger->error('Aucune entité Prof trouvée pour cet utilisateur', ['user_id' => $user->getId()]);
+            return $this->json(['message' => 'Utilisateur non associé à un profil enseignant'], Response::HTTP_FORBIDDEN);
+        }
+
+        $ec = $ecRepository->find($id);
+        if (!$ec) {
+            $logger->warning('EC non trouvé', ['ec_id' => $id]);
+            return $this->json(['message' => 'EC non trouvé'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($ec->getProf()->getId() !== $prof->getId()) {
+            $logger->warning('Non autorisé à accéder aux supports de cet EC', [
+                'ec_id' => $id,
+                'prof_id' => $prof->getId()
+            ]);
+            return $this->json(['message' => 'Non autorisé à accéder aux supports de cet EC'], Response::HTTP_FORBIDDEN);
+        }
+
+        $supports = $this->getFormattedSupports($ec->getFichierSupports());
+        return $this->json($supports);
     }
 }

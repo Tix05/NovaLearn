@@ -14,6 +14,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
+
 /**
  * @ApiResource(
  *     attributes={
@@ -177,13 +178,21 @@ class Agenda
      */
     private $niveau;
 
-    #[ORM\OneToMany(mappedBy: 'agenda', targetEntity: Notification::class)]
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="agenda")
+     */
     private Collection $notifications;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Examen::class, mappedBy="agenda")
+     */
+    private Collection $examens;
 
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
         $this->notifications = new ArrayCollection();
+        $this->examens = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -395,4 +404,28 @@ class Agenda
 
         return $this;
     }
-}
+
+    public function getExamens(): Collection
+    {
+        return $this->examens;
+    }
+
+    public function addExamen(Examen $examen): self
+    {
+        if (!$this->examens->contains($examen)) {
+            $this->examens[] = $examen;
+            $examen->setAgenda($this);
+        }
+        return $this;
+    }
+
+    public function removeExamen(Examen $examen): self
+    {
+        if ($this->examens->removeElement($examen)) {
+            if ($examen->getAgenda() === $this) {
+                $examen->setAgenda(null);
+            }
+        }
+        return $this;
+    }
+    }

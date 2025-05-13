@@ -44,6 +44,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LogoutPage from './pages/page_etudiant/LogoutPage';
 import GenerateurDeDocument from './pages/page_admin/GenerateurDeDocument';
 import LogoutPageEnseignant from './pages/page_enseignant/LogoutPageEnseignant';
+import LogoutPageAdmin from './pages/page_admin/LogoutPageAdmin';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -150,6 +151,7 @@ function EnseignantRoutes() {
 function AdminRoutes() {
   return (
     <Routes>
+      <Route path="logout-admin" element={<LogoutPageAdmin />} />
       <Route path="login" element={<LoginAdmin />} />
       <Route path="dashboard" element={<DashboardAdmin />} />
       <Route path="forgot-password" element={<ForgotPasswordAdmin />} />

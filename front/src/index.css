@@ -276,3 +276,11 @@ body {
 .custom-fileupload-button .p-button:hover {
   background-color: #A83238 !important;
 }
+
+.custom-spinner .p-progress-spinner-circle {
+  stroke: #C23B42 !important;
+}
+
+.white-spinner .p-progress-spinner-circle {
+  stroke: #FFFFFF !important;
+}

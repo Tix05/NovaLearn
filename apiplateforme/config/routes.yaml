@@ -1,3 +1,4 @@
-#index:
-#    path: /
-#    controller: App\Controller\DefaultController::index
+api_examen:
+    resource: '../src/Controller/Api/ExamenController.php'
+    prefix: /api/examen
+    type: annotation

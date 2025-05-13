@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
@@ -9,58 +9,14 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { Calendar } from 'primereact/calendar';
 import LayoutAdmin from '../../components/LayoutAdmin';
-import { Trash2, Eye, Calendar, Send, Download, Printer } from 'lucide-react';
+import { Trash2, Eye, Send } from 'lucide-react';
+import { getTeacherExams, deleteTeacherExam, publishTeacherExam, previewTeacherExam } from '../../Services/gestionExamenService';
+import { getCurrentAdmin } from '../../Services/adminAuthService';
 
 export default function GestionExamen() {
-    // Examens des étudiants (onglet 1)
-    const [studentExams, setStudentExams] = useState([
-        {
-            id: 1,
-            matricule: 'ET001',
-            nomPrenom: 'Jean Dupont',
-            mention: 'Informatique',
-            niveau: 'Licence 2',
-            elementConstitutif: 'Programmation Web',
-            dateSoumission: '2023-05-15 14:30',
-            anneeUniversitaire: '2022-2023'
-        },
-        {
-            id: 2,
-            matricule: 'ET002',
-            nomPrenom: 'Marie Martin',
-            mention: 'Mathématiques',
-            niveau: 'Master 1',
-            elementConstitutif: 'Analyse complexe',
-            dateSoumission: '2023-06-20 10:15',
-            anneeUniversitaire: '2023-2024'
-        }
-    ]);
-
-    // Sujets d'examen des professeurs (onglet 2)
-    const [teacherExams, setTeacherExams] = useState([
-        {
-            id: 1,
-            nomPrenom: 'Prof. Ahmed Khan',
-            mention: 'Informatique',
-            niveau: 'Licence 3',
-            elementConstitutif: 'Base de données',
-            dateEnvoi: '2023-09-10 09:45',
-            anneeUniversitaire: '2023-2024',
-            statut: 'en_attente'
-        },
-        {
-            id: 2,
-            nomPrenom: 'Prof. Sophie Leroy',
-            mention: 'Physique',
-            niveau: 'Licence 1',
-            elementConstitutif: 'Mécanique du point',
-            dateEnvoi: '2023-09-15 11:20',
-            anneeUniversitaire: '2023-2024',
-            statut: 'publie'
-        }
-    ]);
-
+    const [teacherExams, setTeacherExams] = useState([]);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentionFilter, setMentionFilter] = useState('Tous');
     const [niveauFilter, setNiveauFilter] = useState('Tous');
@@ -68,111 +24,153 @@ export default function GestionExamen() {
     const [anneeUniversitaireFilter, setAnneeUniversitaireFilter] = useState('Tous');
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [publishDialogVisible, setPublishDialogVisible] = useState(false);
+    const [previewDialogVisible, setPreviewDialogVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
-    const [activeTabIndex, setActiveTabIndex] = useState(0);
+    const [previewData, setPreviewData] = useState(null);
+    const [activeTabIndex, setActiveTabIndex] = useState(1);
+    const [dateDebut, setDateDebut] = useState(null);
+    const [dateFin, setDateFin] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const toast = useRef(null);
 
-    // Options de filtre
-    const allMentions = Array.from(new Set([
-        ...studentExams.map(item => item.mention),
-        ...teacherExams.map(item => item.mention)
-    ]));
+    useEffect(() => {
+        const checkAuth = async () => {
+            const admin = getCurrentAdmin();
+            if (!admin || !admin.roles?.includes('ROLE_ADMIN')) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Accès refusé',
+                    detail: 'Vous devez être administrateur pour accéder à cette page',
+                    life: 3000,
+                });
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 3000);
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                const exams = await getTeacherExams();
+                // Filtrer pour exclure les fichiers temporaires
+                const filteredExams = exams.filter(exam =>
+                    exam.statut === 'en_attente' &&
+                    exam.fichier &&
+                    !exam.fichier.startsWith('temp_') &&
+                    !exam.fichier.includes('Temporary: DoNotDisplay')
+                );
+                setTeacherExams(filteredExams);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message || 'Erreur lors de la récupération des examens',
+                    life: 3000,
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    const allMentions = Array.from(new Set(teacherExams.map(item => item.mention)));
     const mentions = [{ label: 'Mention', value: 'Tous' }, ...allMentions.map(m => ({ label: m, value: m }))];
 
-    const allNiveaux = Array.from(new Set([
-        ...studentExams.map(item => item.niveau),
-        ...teacherExams.map(item => item.niveau)
-    ]));
+    const allNiveaux = Array.from(new Set(teacherExams.map(item => item.niveau)));
     const niveaux = [{ label: 'Niveau', value: 'Tous' }, ...allNiveaux.map(n => ({ label: n, value: n }))];
 
-    const allElements = Array.from(new Set([
-        ...studentExams.map(item => item.elementConstitutif),
-        ...teacherExams.map(item => item.elementConstitutif)
-    ]));
+    const allElements = Array.from(new Set(teacherExams.map(item => item.elementConstitutif)));
     const elementsConstitutifs = [{ label: 'Élément constitutif', value: 'Tous' }, ...allElements.map(c => ({ label: c, value: c }))];
 
     const anneesUniversitaires = [
         { label: 'Année universitaire', value: 'Tous' },
         { label: '2022-2023', value: '2022-2023' },
         { label: '2023-2024', value: '2023-2024' },
-        { label: '2024-2025', value: '2024-2025' }
+        { label: '2024-2025', value: '2024-2025' },
     ];
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
     };
 
-    // Actions pour les examens étudiants
-    const confirmDeleteStudentExam = (item) => {
-        setSelectedItem({ ...item, type: 'student' });
-        setDeleteDialogVisible(true);
-    };
-
-    const deleteStudentExam = () => {
-        setStudentExams(studentExams.filter(item => item.id !== selectedItem.id));
-        setDeleteDialogVisible(false);
-        showToast('success', `L'examen de ${selectedItem.nomPrenom} a été supprimé`);
-    };
-
-    // Actions pour les sujets professeurs
     const confirmDeleteTeacherExam = (item) => {
         setSelectedItem({ ...item, type: 'teacher' });
         setDeleteDialogVisible(true);
     };
 
+    const deleteTeacherExamAction = async () => {
+        try {
+            await deleteTeacherExam(selectedItem.id);
+            setTeacherExams(teacherExams.filter(item => item.id !== selectedItem.id));
+            setDeleteDialogVisible(false);
+            showToast('success', `Le sujet de ${selectedItem.nomPrenom} a été supprimé`);
+        } catch (error) {
+            showToast('error', error.message || 'Erreur lors de la suppression');
+        }
+    };
+
     const confirmPublishExam = (item) => {
         setSelectedItem(item);
+        setDateDebut(null);
+        setDateFin(null);
         setPublishDialogVisible(true);
     };
 
-    const deleteTeacherExam = () => {
-        setTeacherExams(teacherExams.filter(item => item.id !== selectedItem.id));
-        setDeleteDialogVisible(false);
-        showToast('success', `Le sujet de ${selectedItem.nomPrenom} a été supprimé`);
+    const handlePreviewExam = async () => {
+        if (!dateDebut || !dateFin) {
+            showToast('error', 'Veuillez sélectionner les dates de début et de fin');
+            return;
+        }
+        if (dateDebut >= dateFin) {
+            showToast('error', 'La date de fin doit être postérieure à la date de début');
+            return;
+        }
+
+        try {
+            const response = await previewTeacherExam(selectedItem.id, {
+                date_debut: dateDebut.toISOString(),
+                date_fin: dateFin.toISOString(),
+            });
+            setPreviewData(response.preview);
+            setPublishDialogVisible(false);
+            setPreviewDialogVisible(true);
+        } catch (error) {
+            showToast('error', error.message || 'Erreur lors de la prévisualisation');
+        }
     };
 
-    const publishExam = () => {
-        setTeacherExams(teacherExams.map(item =>
-            item.id === selectedItem.id ? { ...item, statut: 'publie' } : item
-        ));
-        setPublishDialogVisible(false);
-        showToast('success', `Le sujet de ${selectedItem.elementConstitutif} a été publié`);
+    const publishExam = async () => {
+        try {
+            await publishTeacherExam(selectedItem.id, {
+                date_debut: dateDebut.toISOString(),
+                date_fin: dateFin.toISOString(),
+            });
+            setTeacherExams(teacherExams.filter(item => item.id !== selectedItem.id));
+            setPreviewDialogVisible(false);
+            showToast('success', `Le sujet de ${selectedItem.elementConstitutif} a été publié`);
+        } catch (error) {
+            showToast('error', error.message || 'Erreur lors de la publication');
+        }
     };
 
     const showToast = (severity, detail) => {
         toast.current.show({
             severity,
-            summary: 'Succès',
+            summary: severity === 'success' ? 'Succès' : 'Erreur',
             detail,
-            life: 3000
+            life: 3000,
         });
     };
 
-    const handleDownload = (filename) => {
-        showToast('info', `Téléchargement de ${filename} en cours`);
-        // Implémentation réelle du téléchargement
-    };
-
-    const handlePrint = (item) => {
-        showToast('info', `Impression de ${item.elementConstitutif}`);
-    };
-
     const handleView = (item) => {
-        showToast('info', `Visualisation de ${item.elementConstitutif}`);
+        if (item.fichier) {
+            window.open(`http://localhost:8000${item.fichier}`, '_blank');
+        } else {
+            showToast('error', 'Aucun fichier disponible');
+        }
     };
-
-    // Filtrage des données
-    const filteredStudentExams = studentExams.filter(item =>
-        (mentionFilter === 'Tous' || item.mention === mentionFilter) &&
-        (niveauFilter === 'Tous' || item.niveau === niveauFilter) &&
-        (elementConstitutifFilter === 'Tous' || item.elementConstitutif === elementConstitutifFilter) &&
-        (anneeUniversitaireFilter === 'Tous' || item.anneeUniversitaire === anneeUniversitaireFilter) &&
-        (item.nomPrenom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.matricule.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.elementConstitutif.toLowerCase().includes(globalFilterValue.toLowerCase()))
-    );
 
     const filteredTeacherExams = teacherExams.filter(item =>
         (mentionFilter === 'Tous' || item.mention === mentionFilter) &&
@@ -183,36 +181,6 @@ export default function GestionExamen() {
             item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
             item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
             item.elementConstitutif.toLowerCase().includes(globalFilterValue.toLowerCase()))
-    );
-
-    // Templates d'actions
-    const studentExamActions = (rowData) => (
-        <div className='flex items-center gap-x-2'>
-            <Button
-                icon={<Download size={18} />}
-                rounded
-                severity="secondary"
-                onClick={() => handleDownload(rowData.elementConstitutif)}
-                tooltip="Télécharger"
-                tooltipOptions={{ position: 'top' }}
-            />
-            <Button
-                icon={<Printer size={18} />}
-                rounded
-                severity="info"
-                onClick={() => handlePrint(rowData)}
-                tooltip="Imprimer"
-                tooltipOptions={{ position: 'top' }}
-            />
-            <Button
-                icon={<Trash2 size={18} />}
-                rounded
-                severity="danger"
-                onClick={() => confirmDeleteStudentExam(rowData)}
-                tooltip="Supprimer"
-                tooltipOptions={{ position: 'top' }}
-            />
-        </div>
     );
 
     const teacherExamActions = (rowData) => (
@@ -226,13 +194,12 @@ export default function GestionExamen() {
                 tooltipOptions={{ position: 'top' }}
             />
             <Button
-                icon={<Calendar size={18} />}
+                icon={<Send size={18} />}
                 rounded
                 severity="success"
                 onClick={() => confirmPublishExam(rowData)}
                 tooltip="Publier dans agenda"
                 tooltipOptions={{ position: 'top' }}
-                disabled={rowData.statut === 'publie'}
             />
             <Button
                 icon={<Trash2 size={18} />}
@@ -246,8 +213,8 @@ export default function GestionExamen() {
     );
 
     const statusTemplate = (rowData) => (
-        <span className={`p-tag ${rowData.statut === 'publie' ? 'p-tag-success' : 'p-tag-warning'}`}>
-            {rowData.statut === 'publie' ? 'Publié' : 'En attente'}
+        <span className="p-tag p-tag-warning">
+            En attente
         </span>
     );
 
@@ -304,147 +271,180 @@ export default function GestionExamen() {
         </div>
     );
 
+    const deleteDialogFooter = (
+        <>
+            <Button
+                label="Non"
+                icon="pi pi-times"
+                onClick={() => setDeleteDialogVisible(false)}
+                className="p-button-text"
+            />
+            <Button
+                label="Oui"
+                icon="pi pi-check"
+                onClick={deleteTeacherExamAction}
+                severity="danger"
+                autoFocus
+            />
+        </>
+    );
+
+    const publishDialogFooter = (
+        <>
+            <Button
+                label="Annuler"
+                icon="pi pi-times"
+                onClick={() => setPublishDialogVisible(false)}
+                className="p-button-text"
+            />
+            <Button
+                label="Prévisualiser"
+                icon="pi pi-eye"
+                onClick={handlePreviewExam}
+                severity="info"
+                autoFocus
+            />
+        </>
+    );
+
+    const previewDialogFooter = (
+        <>
+            <Button
+                label="Annuler"
+                icon="pi pi-times"
+                onClick={() => setPreviewDialogVisible(false)}
+                className="p-button-text"
+            />
+            <Button
+                label="Confirmer la publication"
+                icon="pi pi-check"
+                onClick={publishExam}
+                severity="success"
+                autoFocus
+            />
+        </>
+    );
+
     return (
         <LayoutAdmin>
             <Toast ref={toast} position="top-right" />
             <div className="relative custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <div>
                     <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className='custom-tabview'>
-                        <TabPanel header="Examens des étudiants">
+                        <TabPanel header="Examens des étudiants" disabled>
                             <DataTable
-                                value={filteredStudentExams}
-                                paginator
-                                rows={10}
-                                dataKey="id"
-                                sortField="nomPrenom"
-                                sortOrder={1}
-                                header={renderHeader()}
-                                emptyMessage="Aucun examen étudiant trouvé."
-                                scrollable
-                                scrollHeight="flex"
-                            >
-                                <Column field="matricule" header="Matricule" sortable style={{ minWidth: '10rem' }} />
-                                <Column field="nomPrenom" header="Nom et Prénom" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="mention" header="Mention" sortable style={{ minWidth: '10rem' }} />
-                                <Column field="niveau" header="Niveau" sortable style={{ minWidth: '10rem' }} />
-                                <Column field="elementConstitutif" header="Élément constitutif" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="dateSoumission" header="Date de soumission" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="anneeUniversitaire" header="Année universitaire" sortable style={{ minWidth: '12rem' }} />
-                                <Column
-                                    body={studentExamActions}
-                                    header="Actions"
-                                    style={{ minWidth: '12rem' }}
-                                    exportable={false}
-                                />
-                            </DataTable>
+                                value={[]}
+                                emptyMessage="Non disponible"
+                            />
                         </TabPanel>
-
                         <TabPanel header="Sujets des professeurs">
-                            <DataTable
-                                value={filteredTeacherExams}
-                                paginator
-                                rows={10}
-                                dataKey="id"
-                                sortField="nomPrenom"
-                                sortOrder={1}
-                                header={renderHeader()}
-                                emptyMessage="Aucun sujet professeur trouvé."
-                                scrollable
-                                scrollHeight="flex"
-                            >
-                                <Column field="nomPrenom" header="Nom du professeur" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="mention" header="Mention" sortable style={{ minWidth: '10rem' }} />
-                                <Column field="niveau" header="Niveau" sortable style={{ minWidth: '10rem' }} />
-                                <Column field="elementConstitutif" header="Élément constitutif" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="dateEnvoi" header="Date d'envoi" sortable style={{ minWidth: '12rem' }} />
-                                <Column field="anneeUniversitaire" header="Année universitaire" sortable style={{ minWidth: '12rem' }} />
-                                <Column
-                                    field="statut"
-                                    header="Statut"
-                                    body={statusTemplate}
-                                    style={{ minWidth: '10rem' }}
-                                />
-                                <Column
-                                    body={teacherExamActions}
-                                    header="Actions"
-                                    style={{ minWidth: '12rem' }}
-                                    exportable={false}
-                                />
-                            </DataTable>
+                            {isLoading ? (
+                                <div className="flex justify-center items-center h-64">
+                                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                                </div>
+                            ) : (
+                                <DataTable
+                                    value={filteredTeacherExams}
+                                    paginator
+                                    rows={10}
+                                    dataKey="id"
+                                    sortField="nomPrenom"
+                                    sortOrder={1}
+                                    header={renderHeader()}
+                                    emptyMessage="Aucun sujet professeur en attente."
+                                    scrollable
+                                    scrollHeight="flex"
+                                >
+                                    <Column field="nomPrenom" header="Nom du professeur" sortable style={{ minWidth: '12rem' }} />
+                                    <Column field="mention" header="Mention" sortable style={{ minWidth: '10rem' }} />
+                                    <Column field="niveau" header="Niveau" sortable style={{ minWidth: '8rem' }} />
+                                    <Column field="elementConstitutif" header="Élément constitutif" sortable style={{ minWidth: '12rem' }} />
+                                    <Column field="anneeUniversitaire" header="Année universitaire" sortable style={{ minWidth: '10rem' }} />
+                                    <Column body={statusTemplate} header="Statut" style={{ minWidth: '8rem' }} />
+                                    <Column body={teacherExamActions} header="Actions" style={{ minWidth: '10rem' }} />
+                                </DataTable>
+                            )}
                         </TabPanel>
                     </TabView>
                 </div>
 
                 <Dialog
-                    visible={deleteDialogVisible}
-                    style={{ width: '450px' }}
                     header="Confirmer la suppression"
-                    modal
-                    footer={
-                        <>
-                            <Button
-                                label="Non"
-                                icon="pi pi-times"
-                                onClick={() => setDeleteDialogVisible(false)}
-                                className="p-button-text"
-                            />
-                            <Button
-                                label="Oui"
-                                icon="pi pi-check"
-                                onClick={selectedItem?.type === 'student' ? deleteStudentExam : deleteTeacherExam}
-                                severity="danger"
-                                autoFocus
-                            />
-                        </>
-                    }
+                    visible={deleteDialogVisible}
                     onHide={() => setDeleteDialogVisible(false)}
+                    footer={deleteDialogFooter}
+                    style={{ width: '30rem' }}
                 >
-                    <div className="flex align-items-center justify-content-center">
-                        <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem', color: '#f8bb86' }} />
-                        {selectedItem && (
-                            <span>
-                                Êtes-vous sûr de vouloir supprimer {selectedItem.type === 'student'
-                                    ? `l'examen de ${selectedItem.nomPrenom}`
-                                    : `le sujet de ${selectedItem.nomPrenom}`} ?
-                                <br />
-                                Cette action est irréversible.
-                            </span>
-                        )}
+                    <div className="flex items-center gap-3">
+                        <i className="pi pi-exclamation-triangle" style={{ fontSize: '2rem', color: 'red' }} />
+                        <span>
+                            Êtes-vous sûr de vouloir supprimer le sujet de <b>{selectedItem?.nomPrenom}</b> ?
+                        </span>
                     </div>
                 </Dialog>
 
                 <Dialog
+                    header="Publier l'examen"
                     visible={publishDialogVisible}
-                    style={{ width: '450px' }}
-                    header="Confirmer la publication"
-                    modal
-                    footer={
-                        <>
-                            <Button
-                                label="Annuler"
-                                icon="pi pi-times"
-                                onClick={() => setPublishDialogVisible(false)}
-                                className="p-button-text"
-                            />
-                            <Button
-                                label="Publier"
-                                icon="pi pi-check"
-                                onClick={publishExam}
-                                severity="success"
-                                autoFocus
-                            />
-                        </>
-                    }
                     onHide={() => setPublishDialogVisible(false)}
+                    footer={publishDialogFooter}
+                    style={{ width: '40rem' }}
                 >
-                    <div className="flex align-items-center justify-content-center">
-                        <i className="pi pi-info-circle mr-3" style={{ fontSize: '2rem', color: '#42A5F5' }} />
-                        {selectedItem && (
-                            <span>
-                                Êtes-vous sûr de vouloir publier le sujet <b>{selectedItem.elementConstitutif}</b> dans l'agenda ?
-                            </span>
-                        )}
+                    <div className="p-fluid">
+                        <div className="field mb-4">
+                            <label htmlFor="dateDebut">Date de début</label>
+                            <Calendar
+                                id="dateDebut"
+                                value={dateDebut}
+                                onChange={(e) => setDateDebut(e.value)}
+                                showTime
+                                hourFormat="24"
+                                dateFormat="dd/mm/yy"
+                                placeholder="Sélectionner la date de début"
+                                required
+                            />
+                        </div>
+                        <div className="field">
+                            <label htmlFor="dateFin">Date de fin</label>
+                            <Calendar
+                                id="dateFin"
+                                value={dateFin}
+                                onChange={(e) => setDateFin(e.value)}
+                                showTime
+                                hourFormat="24"
+                                dateFormat="dd/mm/yy"
+                                placeholder="Sélectionner la date de fin"
+                                required
+                            />
+                        </div>
                     </div>
+                </Dialog>
+
+                <Dialog
+                    header="Prévisualisation de l'examen"
+                    visible={previewDialogVisible}
+                    onHide={() => setPreviewDialogVisible(false)}
+                    footer={previewDialogFooter}
+                    style={{ width: '50rem' }}
+                >
+                    {previewData ? (
+                        <div className="space-y-4">
+                            <p><strong>Élément constitutif :</strong> {selectedItem?.elementConstitutif}</p>
+                            <p><strong>Professeur :</strong> {selectedItem?.nomPrenom}</p>
+                            <p><strong>Date de début :</strong> {dateDebut?.toLocaleString()}</p>
+                            <p><strong>Date de fin :</strong> {dateFin?.toLocaleString()}</p>
+                            <p><strong>Contenu :</strong></p>
+                            <embed
+                                src={`http://localhost:8000${selectedItem?.fichier}`}
+                                type="application/pdf"
+                                width="100%"
+                                height="400px"
+                                className="border rounded"
+                            />
+                        </div>
+                    ) : (
+                        <p>Chargement de la prévisualisation...</p>
+                    )}
                 </Dialog>
             </div>
         </LayoutAdmin>

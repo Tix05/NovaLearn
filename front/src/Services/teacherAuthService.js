@@ -180,9 +180,8 @@ export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, ur
             }
         });
 
-        // Remapper le type dans la réponse pour correspondre au frontend
         if (response.data.support) {
-            response.data.support.type = type; // Restaurer le type frontend
+            response.data.support.type = type;
         }
 
         return response.data;

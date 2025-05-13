@@ -222,6 +222,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private Collection $conversationParticipants;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Examen::class, mappedBy="auteur")
+     */
+    private Collection $examensCrees;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -234,6 +239,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->notifications = new ArrayCollection();
         $this->abonnementNotifications = new ArrayCollection();
         $this->conversationParticipants = new ArrayCollection();
+        $this->examensCrees = new ArrayCollection();
         $this->created_at = new \DateTimeImmutable();
     }
 
@@ -707,6 +713,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         if ($this->conversationParticipants->removeElement($conversationParticipant)) {
             if ($conversationParticipant->getUser() === $this) {
                 $conversationParticipant->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getExamensCrees(): Collection
+    {
+        return $this->examensCrees;
+    }
+
+    public function addExamensCree(Examen $examensCree): self
+    {
+        if (!$this->examensCrees->contains($examensCree)) {
+            $this->examensCrees[] = $examensCree;
+            $examensCree->setAuteur($this);
+        }
+        return $this;
+    }
+
+    public function removeExamensCree(Examen $examensCree): self
+    {
+        if ($this->examensCrees->removeElement($examensCree)) {
+            if ($examensCree->getAuteur() === $this) {
+                $examensCree->setAuteur(null);
             }
         }
         return $this;

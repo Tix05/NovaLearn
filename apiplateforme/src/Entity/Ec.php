@@ -143,6 +143,11 @@ class Ec
      */
     private $notificationGroupes;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Examen::class, mappedBy="ec")
+     */
+    private Collection $examens;
+
     public function __construct()
     {
         $this->bibliotheques = new ArrayCollection();
@@ -150,6 +155,7 @@ class Ec
         $this->fichierSupports = new ArrayCollection();
         $this->conversations = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
+        $this->examens = new ArrayCollection();
         $this->created_at = new \DateTimeImmutable();
     }
 
@@ -406,6 +412,31 @@ class Ec
 
         return $this;
     }
+
+    public function getExamens(): Collection
+    {
+        return $this->examens;
+    }
+
+    public function addExamen(Examen $examen): self
+    {
+        if (!$this->examens->contains($examen)) {
+            $this->examens[] = $examen;
+            $examen->setEc($this);
+        }
+        return $this;
+    }
+
+    public function removeExamen(Examen $examen): self
+    {
+        if ($this->examens->removeElement($examen)) {
+            if ($examen->getEc() === $this) {
+                $examen->setEc(null);
+            }
+        }
+        return $this;
+    }
+
     /**
      * @ORM\PreUpdate
      */
