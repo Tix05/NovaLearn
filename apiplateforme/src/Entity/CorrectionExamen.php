@@ -83,13 +83,19 @@ class CorrectionExamen
      */
     private ?Etudiant $etudiant = null;
 
+    /**
+     * @ORM\OneToMany(targetEntity=ReponseEtudiant::class, mappedBy="correctionExamen", cascade={"persist", "remove"})
+     * @Groups({"correction:read"})
+     */
+    private Collection $reponses;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->updatedAt = new \DateTime();
+        $this->reponses = new ArrayCollection();
     }
 
-    // Getters and setters...
 
     public function getId(): ?int
     {
@@ -159,6 +165,33 @@ class CorrectionExamen
     public function setEtudiant(?Etudiant $etudiant): self
     {
         $this->etudiant = $etudiant;
+        return $this;
+    }
+
+    /**
+     * @return Collection|ReponseEtudiant[]
+     */
+    public function getReponses(): Collection
+    {
+        return $this->reponses;
+    }
+
+    public function addReponse(ReponseEtudiant $reponse): self
+    {
+        if (!$this->reponses->contains($reponse)) {
+            $this->reponses[] = $reponse;
+            $reponse->setCorrectionExamen($this);
+        }
+        return $this;
+    }
+
+    public function removeReponse(ReponseEtudiant $reponse): self
+    {
+        if ($this->reponses->removeElement($reponse)) {
+            if ($reponse->getCorrectionExamen() === $this) {
+                $reponse->setCorrectionExamen(null);
+            }
+        }
         return $this;
     }
 

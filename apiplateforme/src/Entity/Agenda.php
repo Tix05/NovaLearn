@@ -71,24 +71,22 @@ class Agenda
     private $titre;
 
     /**
-     * @ORM\Column(type="date")
+     * @ORM\Column(type="datetime_immutable")
      * @Groups({"agenda:read", "agenda:write"})
      * @Assert\NotBlank
-     * @Assert\Type("\DateTimeInterface")
      */
-    private $date;
+    private ?\DateTimeImmutable $date = null;
 
     /**
-     * @ORM\Column(type="date")
+     * @ORM\Column(type="datetime_immutable")
      * @Groups({"agenda:read", "agenda:write"})
      * @Assert\NotBlank
-     * @Assert\Type("\DateTimeInterface")
      * @Assert\Expression(
      *     "this.getDate() <= this.getDateExpiration()",
      *     message="La date d'expiration doit être postérieure ou égale à la date de début"
      * )
      */
-    private $date_expiration;
+    private ?\DateTimeImmutable $date_expiration = null;
 
     /**
      * @ORM\Column(type="text")
@@ -212,30 +210,28 @@ class Agenda
         return $this;
     }
 
-    public function getDate(): ?\DateTimeInterface
+    public function getDate(): ?\DateTimeImmutable
     {
         return $this->date;
     }
 
-    public function setDate(\DateTimeInterface $date): self
+    public function setDate(\DateTimeImmutable $date): self
     {
         $this->date = $date;
-
         return $this;
     }
 
-    public function getDateExpiration(): ?\DateTimeInterface
+    public function getDateExpiration(): ?\DateTimeImmutable
     {
         return $this->date_expiration;
     }
 
-    public function setDateExpiration(\DateTimeInterface $date_expiration): self
+    public function setDateExpiration(\DateTimeImmutable $date_expiration): self
     {
         $this->date_expiration = $date_expiration;
-
         return $this;
     }
-
+    
     public function getDescription(): ?string
     {
         return $this->description;

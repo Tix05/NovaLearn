@@ -1,12 +1,9 @@
 <?php
 
-// src/Service/AgendaService.php
-
 namespace App\Service;
 
 use App\Entity\Etudiant;
 use App\Entity\Agenda;
-use App\Entity\User;
 use App\Repository\AgendaRepository;
 
 class AgendaService
@@ -28,21 +25,27 @@ class AgendaService
         $parcoursId = $parcours ? $parcours->getId() : null;
         $niveauId = $niveau ? $niveau->getId() : null;
 
+        // Récupérer les cours, examens et événements réels
         $cours = $this->agendaRepository->findByTypeAndFilters(
-            Agenda::TYPE_COURS,
+            'COURS',
             $mentionId,
             $parcoursId,
             $niveauId
         );
 
         $examens = $this->agendaRepository->findByTypeAndFilters(
-            Agenda::TYPE_EXAMEN,
+            'EXAMEN',
             $mentionId,
             $parcoursId,
             $niveauId
         );
 
-        $evenements = $this->agendaRepository->findByTypeAndFilters(Agenda::TYPE_EVENEMENT);
+        $evenements = $this->agendaRepository->findByTypeAndFilters(
+            'EVENEMENT',
+            $mentionId,
+            $parcoursId,
+            $niveauId
+        );
 
         return [
             'cours' => $this->formatAgendaItems($cours),
@@ -57,8 +60,8 @@ class AgendaService
             return [
                 'id' => $item->getId(),
                 'titre' => $item->getTitre(),
-                'date' => $item->getDate()->format('Y-m-d'),
-                'date_expiration' => $item->getDateExpiration()->format('Y-m-d'),
+                'date' => $item->getDate()->format('Y-m-d H:i:s'),
+                'date_expiration' => $item->getDateExpiration()->format('Y-m-d H:i:s'),
                 'description' => $item->getDescription(),
                 'image' => $item->getImage(),
                 'video' => $item->getVideo(),
@@ -67,7 +70,7 @@ class AgendaService
                 'nom_auteur' => $item->getNomAuteur(),
                 'mention' => $item->getMention() ? $item->getMention()->getName() : null,
                 'parcours' => $item->getParcours() ? $item->getParcours()->getName() : null,
-                'niveau' => $item->getNiveau() ? $item->getNiveau()->getNom() : null
+                'niveau' => $item->getNiveau() ? $item->getNiveau()->getNom() : null,
             ];
         }, $items);
     }

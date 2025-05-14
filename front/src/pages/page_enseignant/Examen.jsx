@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { MultiSelect } from 'primereact/multiselect';
+import { InputNumber } from 'primereact/inputnumber';
 import { createExamen, getEcSupports, submitExamenToAdmin } from '../../Services/examenService';
 
 function Examen() {
@@ -14,7 +15,10 @@ function Examen() {
     const [generatedFile, setGeneratedFile] = useState(null);
     const [generatedFileUrl, setGeneratedFileUrl] = useState(null);
     const [courseContent, setCourseContent] = useState('');
-    const [duration, setDuration] = useState('3600'); // Default to 3600 seconds
+    const [titre, setTitre] = useState('Examen'); // État pour le titre
+    const [description, setDescription] = useState(''); // État pour la description
+    const [hours, setHours] = useState(1);
+    const [minutes, setMinutes] = useState(0);
     const [mode, setMode] = useState('upload');
     const [aiMode, setAiMode] = useState('existing');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -95,7 +99,10 @@ function Examen() {
             setGeneratedFile(null);
             setGeneratedFileUrl(null);
             setCourseContent('');
-            setDuration('3600');
+            setTitre('Examen'); // Réinitialiser le titre
+            setDescription(''); // Réinitialiser la description
+            setHours(1);
+            setMinutes(0);
             setSelectedSupports([]);
             setTempFile(null);
             setQuestions([]);
@@ -103,9 +110,16 @@ function Examen() {
         } else {
             setSelectedFile(null);
             setGeneratedFileUrl(null);
-            setDuration('3600');
+            setTitre('Examen'); // Réinitialiser le titre
+            setDescription(''); // Réinitialiser la description
+            setHours(1);
+            setMinutes(0);
             setErrorMessage('');
         }
+    };
+
+    const calculateDurationInSeconds = () => {
+        return (hours * 3600) + (minutes * 60);
     };
 
     const handleSubmit = async (e) => {
@@ -137,11 +151,21 @@ function Examen() {
             });
             return;
         }
-        if (!duration || duration <= 0) {
+        if (!titre.trim()) {
             toast.current.show({
                 severity: 'error',
                 summary: 'Erreur',
-                detail: 'Veuillez entrer une durée valide (en secondes)',
+                detail: 'Veuillez entrer un titre pour l\'examen',
+                life: 3000,
+            });
+            return;
+        }
+        const durationInSeconds = calculateDurationInSeconds();
+        if (durationInSeconds <= 0) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Veuillez entrer une durée valide (au moins 1 minute)',
                 life: 3000,
             });
             return;
@@ -160,12 +184,13 @@ function Examen() {
 
             const response = await createExamen(
                 coursId,
-                'Examen',
+                titre,
+                description,
                 courseContent.trim(),
                 mode === 'upload' ? 'pdf' : 'ia_genere',
                 submitInstructions,
                 mode === 'ai' && aiMode === 'existing' && selectedSupports.length > 0 ? null : selectedFile,
-                duration
+                durationInSeconds
             );
 
             toast.current.show({
@@ -184,6 +209,9 @@ function Examen() {
             if (response.questions) {
                 setQuestions(response.questions);
             }
+            // Mettre à jour le titre et la description depuis la réponse
+            setTitre(response.titre);
+            setDescription(response.description);
         } catch (error) {
             setErrorMessage(error.message);
         } finally {
@@ -212,14 +240,15 @@ function Examen() {
 
             const response = await submitExamenToAdmin(
                 coursId,
-                'Examen',
+                titre, // Envoyer le titre
+                description, // Envoyer la description
                 courseContent.trim(),
                 mode === 'upload' ? 'pdf' : 'ia_genere',
                 submitInstructions,
                 generatedFile || selectedFile,
                 tempFile,
                 questions,
-                duration
+                calculateDurationInSeconds()
             );
 
             toast.current.show({
@@ -261,9 +290,9 @@ function Examen() {
     };
 
     return (
-        <LayoutEnseignant>
+        <LayoutEnseignant className="min-h-screen overflow-hidden">
             <Toast ref={toast} />
-            <div className="min-h-screen p-6">
+            <div className="custom-scrollbar p-6" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className="text-3xl font-semibold text-gray-700 mb-5">Création d'Examen</h1>
                 <div className="max-w-4xl mx-auto">
                     <div className="bg-white rounded-lg border-[1px] border-gray-400 shadow-lg p-6">
@@ -293,17 +322,58 @@ function Examen() {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-4">
                                 <label className="block text-sm font-medium text-gray-700">
-                                    Durée de l'examen (en secondes)
+                                    Titre de l'examen
                                 </label>
                                 <input
-                                    type="number"
-                                    value={duration}
-                                    onChange={(e) => setDuration(e.target.value)}
+                                    type="text"
+                                    value={titre}
+                                    onChange={(e) => setTitre(e.target.value)}
                                     className="w-full p-2 border rounded-md"
-                                    placeholder="Entrez la durée en secondes (par exemple, 3600 pour 1 heure)"
-                                    min="1"
+                                    placeholder="Entrez le titre de l'examen"
                                     required
                                 />
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Description de l'examen
+                                </label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="w-full h-24 p-2 border rounded-md resize-y"
+                                    placeholder="Entrez une description de l'examen (facultatif)"
+                                />
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Durée de l'examen
+                                </label>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-sm text-gray-600 mb-1">Heures</label>
+                                        <InputNumber
+                                            value={hours}
+                                            onValueChange={(e) => setHours(e.value || 0)}
+                                            min={0}
+                                            max={23}
+                                            showButtons
+                                            className="w-full"
+                                            inputClassName="p-2 border rounded-md"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-sm text-gray-600 mb-1">Minutes</label>
+                                        <InputNumber
+                                            value={minutes}
+                                            onValueChange={(e) => setMinutes(e.value || 0)}
+                                            min={0}
+                                            max={59}
+                                            showButtons
+                                            className="w-full"
+                                            inputClassName="p-2 border rounded-md"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             {mode === 'upload' ? (
                                 <div className="space-y-6">
@@ -467,7 +537,7 @@ function Examen() {
                                                     <span className="text-gray-600 text-center">
                                                         {selectedFile
                                                             ? selectedFile.name
-                                                            : 'Cliquez pour ajouter vos supports de cours en PDF'}
+                                                            : ' clique pour ajouter vos supports de cours en PDF'}
                                                     </span>
                                                     <span className="text-sm text-gray-500 mt-1">
                                                         Vous pouvez sélectionner un fichier

@@ -21,7 +21,7 @@ export function generatePdf(type, studentInfo) {
 
 function generatePdfContent(doc, type, studentInfo) {
     doc.setFontSize(20);
-    doc.setTextColor(34, 197, 94); // text-green-500
+    doc.setTextColor(34, 197, 94);
 
     const title = getDocumentTypeName(type);
     const titleWidth = doc.getTextWidth(title);

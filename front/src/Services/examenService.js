@@ -3,7 +3,7 @@ import { getTeacherToken } from './teacherAuthService';
 
 const API_URL = 'http://localhost:8000/api';
 
-export const createExamen = async (ecId, titre, description, type, instructions, file, duration) => {
+export const createExamen = async (ecId, titre, description, courseContent, type, instructions, file, duration) => {
     const formData = new FormData();
     formData.append('ec_id', ecId);
     formData.append('titre', titre);
@@ -16,20 +16,19 @@ export const createExamen = async (ecId, titre, description, type, instructions,
     }
 
     try {
-        const headers = {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${getTeacherToken()}`,
-        };
-
-        const response = await axios.post(`${API_URL}/examen/create`, formData, { headers });
+        const response = await axios.post(`${API_URL}/examen/create`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${getTeacherToken()}`,
+            },
+        });
         return response.data;
     } catch (error) {
-        const message = error.response?.data?.message || error.response?.data?.detail || error.message || 'Erreur lors de la création de l\'examen';
-        throw new Error(message);
+        throw new Error(error.response?.data?.message || 'Erreur lors de la création de l\'examen');
     }
 };
 
-export const submitExamenToAdmin = async (ecId, titre, description, type, instructions, file, tempFile, questions, duration) => {
+export const submitExamenToAdmin = async (ecId, titre, description, courseContent, type, instructions, file, tempFile, questions, duration) => {
     const formData = new FormData();
     formData.append('ec_id', ecId);
     formData.append('titre', titre);
@@ -44,16 +43,15 @@ export const submitExamenToAdmin = async (ecId, titre, description, type, instru
     }
 
     try {
-        const headers = {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${getTeacherToken()}`,
-        };
-
-        const response = await axios.post(`${API_URL}/examen/submit-to-admin`, formData, { headers });
+        const response = await axios.post(`${API_URL}/examen/submit-to-admin`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${getTeacherToken()}`,
+            },
+        });
         return response.data;
     } catch (error) {
-        const message = error.response?.data?.message || error.response?.data?.detail || error.message || 'Erreur lors de la soumission de l\'examen';
-        throw new Error(message);
+        throw new Error(error.response?.data?.message || 'Erreur lors de la soumission de l\'examen');
     }
 };
 

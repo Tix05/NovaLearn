@@ -11,18 +11,21 @@ import { Toast } from 'primereact/toast';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Calendar } from 'primereact/calendar';
 import LayoutAdmin from '../../components/LayoutAdmin';
-import { Trash2, Eye, Send } from 'lucide-react';
-import { getTeacherExams, deleteTeacherExam, publishTeacherExam, previewTeacherExam } from '../../Services/gestionExamenService';
+import { Trash2, Eye, Send, Download } from 'lucide-react';
+import { getTeacherExams, deleteTeacherExam, publishTeacherExam, previewTeacherExam, getStudentExams, deleteCorrection } from '../../Services/gestionExamenService';
 import { getCurrentAdmin } from '../../Services/adminAuthService';
 
 export default function GestionExamen() {
     const [teacherExams, setTeacherExams] = useState([]);
+    const [studentExams, setStudentExams] = useState([]);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentionFilter, setMentionFilter] = useState('Tous');
     const [niveauFilter, setNiveauFilter] = useState('Tous');
     const [elementConstitutifFilter, setElementConstitutifFilter] = useState('Tous');
     const [anneeUniversitaireFilter, setAnneeUniversitaireFilter] = useState('Tous');
+    const [statusFilter, setStatusFilter] = useState('Tous'); // Nouveau filtre pour le statut
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [deleteCorrectionDialogVisible, setDeleteCorrectionDialogVisible] = useState(false);
     const [publishDialogVisible, setPublishDialogVisible] = useState(false);
     const [previewDialogVisible, setPreviewDialogVisible] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -51,15 +54,18 @@ export default function GestionExamen() {
 
             setIsLoading(true);
             try {
-                const exams = await getTeacherExams();
-                // Filtrer pour exclure les fichiers temporaires
-                const filteredExams = exams.filter(exam =>
-                    exam.statut === 'en_attente' &&
+                // Récupérer les examens des professeurs
+                const teacherExamsData = await getTeacherExams();
+                const filteredTeacherExams = teacherExamsData.filter(exam =>
                     exam.fichier &&
                     !exam.fichier.startsWith('temp_') &&
                     !exam.fichier.includes('Temporary: DoNotDisplay')
                 );
-                setTeacherExams(filteredExams);
+                setTeacherExams(filteredTeacherExams);
+
+                // Récupérer les examens des étudiants
+                const studentExamsData = await getStudentExams();
+                setStudentExams(studentExamsData);
             } catch (error) {
                 toast.current.show({
                     severity: 'error',
@@ -75,13 +81,13 @@ export default function GestionExamen() {
         checkAuth();
     }, []);
 
-    const allMentions = Array.from(new Set(teacherExams.map(item => item.mention)));
+    const allMentions = Array.from(new Set([...teacherExams, ...studentExams].map(item => item.mention)));
     const mentions = [{ label: 'Mention', value: 'Tous' }, ...allMentions.map(m => ({ label: m, value: m }))];
 
-    const allNiveaux = Array.from(new Set(teacherExams.map(item => item.niveau)));
+    const allNiveaux = Array.from(new Set([...teacherExams, ...studentExams].map(item => item.niveau)));
     const niveaux = [{ label: 'Niveau', value: 'Tous' }, ...allNiveaux.map(n => ({ label: n, value: n }))];
 
-    const allElements = Array.from(new Set(teacherExams.map(item => item.elementConstitutif)));
+    const allElements = Array.from(new Set([...teacherExams, ...studentExams].map(item => item.elementConstitutif)));
     const elementsConstitutifs = [{ label: 'Élément constitutif', value: 'Tous' }, ...allElements.map(c => ({ label: c, value: c }))];
 
     const anneesUniversitaires = [
@@ -91,6 +97,13 @@ export default function GestionExamen() {
         { label: '2024-2025', value: '2024-2025' },
     ];
 
+    const statuts = [
+        { label: 'Tous', value: 'Tous' },
+        { label: 'En attente', value: 'en_attente' },
+        { label: 'Soumis', value: 'soumis' },
+        { label: 'Publié', value: 'publié' },
+    ];
+
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
     };
@@ -98,6 +111,11 @@ export default function GestionExamen() {
     const confirmDeleteTeacherExam = (item) => {
         setSelectedItem({ ...item, type: 'teacher' });
         setDeleteDialogVisible(true);
+    };
+
+    const confirmDeleteCorrection = (item) => {
+        setSelectedItem({ ...item, type: 'correction' });
+        setDeleteCorrectionDialogVisible(true);
     };
 
     const deleteTeacherExamAction = async () => {
@@ -111,6 +129,17 @@ export default function GestionExamen() {
         }
     };
 
+    const deleteCorrectionAction = async () => {
+        try {
+            await deleteCorrection(selectedItem.id);
+            setStudentExams(studentExams.filter(item => item.id !== selectedItem.id));
+            setDeleteCorrectionDialogVisible(false);
+            showToast('success', `La correction de ${selectedItem.etudiant_nom} a été supprimée`);
+        } catch (error) {
+            showToast('error', error.message || 'Erreur lors de la suppression');
+        }
+    };
+
     const confirmPublishExam = (item) => {
         setSelectedItem(item);
         setDateDebut(null);
@@ -119,12 +148,23 @@ export default function GestionExamen() {
     };
 
     const handlePreviewExam = async () => {
-        if (!dateDebut || !dateFin) {
-            showToast('error', 'Veuillez sélectionner les dates de début et de fin');
+        if (!selectedItem || !selectedItem.id) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Aucun examen sélectionné',
+                life: 3000,
+            });
             return;
         }
-        if (dateDebut >= dateFin) {
-            showToast('error', 'La date de fin doit être postérieure à la date de début');
+
+        if (!dateDebut || !dateFin) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Veuillez sélectionner les dates de début et de fin',
+                life: 3000,
+            });
             return;
         }
 
@@ -133,22 +173,40 @@ export default function GestionExamen() {
                 date_debut: dateDebut.toISOString(),
                 date_fin: dateFin.toISOString(),
             });
-            setPreviewData(response.preview);
-            setPublishDialogVisible(false);
+            console.log('Réponse de previewTeacherExam:', response);
+            setPreviewData(response);
             setPreviewDialogVisible(true);
+            setPublishDialogVisible(false);
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: response.message || 'Prévisualisation réussie',
+                life: 3000,
+            });
         } catch (error) {
-            showToast('error', error.message || 'Erreur lors de la prévisualisation');
+            console.error('Erreur dans handlePreviewExam:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur lors de la prévisualisation',
+                life: 3000,
+            });
         }
     };
 
     const publishExam = async () => {
         try {
-            await publishTeacherExam(selectedItem.id, {
+            const response = await publishTeacherExam(selectedItem.id, {
                 date_debut: dateDebut.toISOString(),
                 date_fin: dateFin.toISOString(),
             });
-            setTeacherExams(teacherExams.filter(item => item.id !== selectedItem.id));
+            setTeacherExams(teacherExams.map(item =>
+                item.id === selectedItem.id
+                    ? { ...item, statut: 'publié' }
+                    : item
+            ));
             setPreviewDialogVisible(false);
+            setPublishDialogVisible(false);
             showToast('success', `Le sujet de ${selectedItem.elementConstitutif} a été publié`);
         } catch (error) {
             showToast('error', error.message || 'Erreur lors de la publication');
@@ -164,9 +222,24 @@ export default function GestionExamen() {
         });
     };
 
-    const handleView = (item) => {
-        if (item.fichier) {
+    const handleView = (item, type) => {
+        if (type === 'teacher' && item.fichier) {
             window.open(`http://localhost:8000${item.fichier}`, '_blank');
+        } else if (type === 'student' && item.rapport) {
+            window.open(`http://localhost:8000${item.rapport}`, '_blank');
+        } else {
+            showToast('error', 'Aucun fichier disponible');
+        }
+    };
+
+    const handleDownload = (item) => {
+        if (item.rapport) {
+            const link = document.createElement('a');
+            link.href = `http://localhost:8000${item.rapport}`;
+            link.download = item.rapport.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         } else {
             showToast('error', 'Aucun fichier disponible');
         }
@@ -177,7 +250,19 @@ export default function GestionExamen() {
         (niveauFilter === 'Tous' || item.niveau === niveauFilter) &&
         (elementConstitutifFilter === 'Tous' || item.elementConstitutif === elementConstitutifFilter) &&
         (anneeUniversitaireFilter === 'Tous' || item.anneeUniversitaire === anneeUniversitaireFilter) &&
+        (statusFilter === 'Tous' || item.statut === statusFilter) &&
         (item.nomPrenom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.elementConstitutif.toLowerCase().includes(globalFilterValue.toLowerCase()))
+    );
+
+    const filteredStudentExams = studentExams.filter(item =>
+        (mentionFilter === 'Tous' || item.mention === mentionFilter) &&
+        (niveauFilter === 'Tous' || item.niveau === niveauFilter) &&
+        (elementConstitutifFilter === 'Tous' || item.elementConstitutif === elementConstitutifFilter) &&
+        (item.etudiant_nom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+            item.titre.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
             item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
             item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
             item.elementConstitutif.toLowerCase().includes(globalFilterValue.toLowerCase()))
@@ -189,18 +274,20 @@ export default function GestionExamen() {
                 icon={<Eye size={18} />}
                 rounded
                 severity="info"
-                onClick={() => handleView(rowData)}
+                onClick={() => handleView(rowData, 'teacher')}
                 tooltip="Voir"
                 tooltipOptions={{ position: 'top' }}
             />
-            <Button
-                icon={<Send size={18} />}
-                rounded
-                severity="success"
-                onClick={() => confirmPublishExam(rowData)}
-                tooltip="Publier dans agenda"
-                tooltipOptions={{ position: 'top' }}
-            />
+            {rowData.statut !== 'publié' && (
+                <Button
+                    icon={<Send size={18} />}
+                    rounded
+                    severity="success"
+                    onClick={() => confirmPublishExam(rowData)}
+                    tooltip="Publier dans agenda"
+                    tooltipOptions={{ position: 'top' }}
+                />
+            )}
             <Button
                 icon={<Trash2 size={18} />}
                 rounded
@@ -212,11 +299,55 @@ export default function GestionExamen() {
         </div>
     );
 
-    const statusTemplate = (rowData) => (
-        <span className="p-tag p-tag-warning">
-            En attente
-        </span>
+    const studentExamActions = (rowData) => (
+        <div className='flex items-center gap-x-2'>
+            <Button
+                icon={<Eye size={18} />}
+                rounded
+                severity="info"
+                onClick={() => handleView(rowData, 'student')}
+                tooltip="Voir"
+                tooltipOptions={{ position: 'top' }}
+            />
+            <Button
+                icon={<Download size={18} />}
+                rounded
+                severity="success"
+                onClick={() => handleDownload(rowData)}
+                tooltip="Télécharger"
+                tooltipOptions={{ position: 'top' }}
+            />
+            <Button
+                icon={<Trash2 size={18} />}
+                rounded
+                severity="danger"
+                onClick={() => confirmDeleteCorrection(rowData)}
+                tooltip="Supprimer"
+                tooltipOptions={{ position: 'top' }}
+            />
+        </div>
     );
+
+    const statusTemplate = (rowData) => {
+        const status = rowData.statut;
+        let className, label;
+
+        switch (status) {
+            case 'publié':
+                className = 'p-tag p-tag-success';
+                label = 'Publié';
+                break;
+            case 'en_attente':
+                className = 'p-tag p-tag-warning';
+                label = 'En attente';
+                break;
+            default:
+                className = 'p-tag p-tag-info';
+                label = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        return <span className={className}>{label}</span>;
+    };
 
     const renderHeader = () => (
         <div className="flex flex-col space-y-4">
@@ -266,6 +397,14 @@ export default function GestionExamen() {
                         placeholder="Année universitaire"
                         className="rounded font-poppins text-sm bg-white"
                     />
+                    <Dropdown
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.value)}
+                        options={statuts}
+                        optionLabel="label"
+                        placeholder="Statut"
+                        className="rounded font-poppins text-sm bg-white"
+                    />
                 </div>
             </div>
         </div>
@@ -283,6 +422,24 @@ export default function GestionExamen() {
                 label="Oui"
                 icon="pi pi-check"
                 onClick={deleteTeacherExamAction}
+                severity="danger"
+                autoFocus
+            />
+        </>
+    );
+
+    const deleteCorrectionDialogFooter = (
+        <>
+            <Button
+                label="Non"
+                icon="pi pi-times"
+                onClick={() => setDeleteCorrectionDialogVisible(false)}
+                className="p-button-text"
+            />
+            <Button
+                label="Oui"
+                icon="pi pi-check"
+                onClick={deleteCorrectionAction}
                 severity="danger"
                 autoFocus
             />
@@ -331,11 +488,34 @@ export default function GestionExamen() {
             <div className="relative custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <div>
                     <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className='custom-tabview'>
-                        <TabPanel header="Examens des étudiants" disabled>
-                            <DataTable
-                                value={[]}
-                                emptyMessage="Non disponible"
-                            />
+                        <TabPanel header="Examens des étudiants">
+                            {isLoading ? (
+                                <div className="flex justify-center items-center h-64">
+                                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                                </div>
+                            ) : (
+                                <DataTable
+                                    value={filteredStudentExams}
+                                    paginator
+                                    rows={10}
+                                    dataKey="id"
+                                    sortField="etudiant_nom"
+                                    sortOrder={1}
+                                    header={renderHeader()}
+                                    emptyMessage="Aucun examen étudiant disponible."
+                                    scrollable
+                                    scrollHeight="flex"
+                                >
+                                    <Column field="etudiant_nom" header="Nom de l'étudiant" sortable style={{ minWidth: '12rem' }} />
+                                    <Column field="titre" header="Titre de l'examen" sortable style={{ minWidth: '12rem' }} />
+                                    <Column field="mention" header="Mention" sortable style={{ minWidth: '10rem' }} />
+                                    <Column field="niveau" header="Niveau" sortable style={{ minWidth: '8rem' }} />
+                                    <Column field="elementConstitutif" header="Élément constitutif" sortable style={{ minWidth: '12rem' }} />
+                                    <Column field="note" header="Note" sortable style={{ minWidth: '8rem' }} />
+                                    <Column field="date_soumission" header="Date de soumission" sortable style={{ minWidth: '10rem' }} />
+                                    <Column body={studentExamActions} header="Actions" style={{ minWidth: '10rem' }} />
+                                </DataTable>
+                            )}
                         </TabPanel>
                         <TabPanel header="Sujets des professeurs">
                             {isLoading ? (
@@ -351,7 +531,7 @@ export default function GestionExamen() {
                                     sortField="nomPrenom"
                                     sortOrder={1}
                                     header={renderHeader()}
-                                    emptyMessage="Aucun sujet professeur en attente."
+                                    emptyMessage="Aucun sujet professeur disponible."
                                     scrollable
                                     scrollHeight="flex"
                                 >
@@ -379,6 +559,21 @@ export default function GestionExamen() {
                         <i className="pi pi-exclamation-triangle" style={{ fontSize: '2rem', color: 'red' }} />
                         <span>
                             Êtes-vous sûr de vouloir supprimer le sujet de <b>{selectedItem?.nomPrenom}</b> ?
+                        </span>
+                    </div>
+                </Dialog>
+
+                <Dialog
+                    header="Confirmer la suppression de la correction"
+                    visible={deleteCorrectionDialogVisible}
+                    onHide={() => setDeleteCorrectionDialogVisible(false)}
+                    footer={deleteCorrectionDialogFooter}
+                    style={{ width: '30rem' }}
+                >
+                    <div className="flex items-center gap-3">
+                        <i className="pi pi-exclamation-triangle" style={{ fontSize: '2rem', color: 'red' }} />
+                        <span>
+                            Êtes-vous sûr de vouloir supprimer la correction de <b>{selectedItem?.etudiant_nom}</b> ?
                         </span>
                     </div>
                 </Dialog>
@@ -427,23 +622,53 @@ export default function GestionExamen() {
                     footer={previewDialogFooter}
                     style={{ width: '50rem' }}
                 >
-                    {previewData ? (
+                    {previewData && previewData.data ? (
                         <div className="space-y-4">
-                            <p><strong>Élément constitutif :</strong> {selectedItem?.elementConstitutif}</p>
-                            <p><strong>Professeur :</strong> {selectedItem?.nomPrenom}</p>
-                            <p><strong>Date de début :</strong> {dateDebut?.toLocaleString()}</p>
-                            <p><strong>Date de fin :</strong> {dateFin?.toLocaleString()}</p>
-                            <p><strong>Contenu :</strong></p>
-                            <embed
-                                src={`http://localhost:8000${selectedItem?.fichier}`}
-                                type="application/pdf"
-                                width="100%"
-                                height="400px"
-                                className="border rounded"
-                            />
+                            <p><strong>Élément constitutif :</strong> {selectedItem?.elementConstitutif || 'Non spécifié'}</p>
+                            <p><strong>Professeur :</strong> {previewData.data.nom_auteur || 'Non spécifié'}</p>
+                            <p><strong>Mention :</strong> {previewData.data.mention_name || 'Non spécifiée'}</p>
+                            <p><strong>Niveau :</strong> {previewData.data.niveau_name || 'Non spécifié'}</p>
+                            <p><strong>Parcours :</strong> {previewData.data.parcours_name || 'Non spécifié'}</p>
+                            <p>
+                                <strong>Date de début :</strong>{' '}
+                                {previewData.data.date_debut
+                                    ? new Date(previewData.data.date_debut).toLocaleString()
+                                    : 'Non spécifiée'}
+                            </p>
+                            <p>
+                                <strong>Date de fin :</strong>{' '}
+                                {previewData.data.date_fin
+                                    ? new Date(previewData.data.date_fin).toLocaleString()
+                                    : 'Non spécifiée'}
+                            </p>
+                            <p><strong>Description :</strong> {previewData.data.description || 'Non spécifiée'}</p>
+                            {previewData.data.fichier ? (
+                                <div>
+                                    <embed
+                                        src={`http://localhost:8000/uploads/examens${previewData.data.fichier}`}
+                                        type="application/pdf"
+                                        width="100%"
+                                        height="400px"
+                                        className="border rounded"
+                                        onError={(e) => console.error('Erreur de chargement du PDF:', e)}
+                                    />
+                                    <p className="mt-2">
+                                        <a
+                                            href={`http://localhost:8000${previewData.data.fichier}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 underline"
+                                        >
+                                            Ouvrir le PDF dans un nouvel onglet
+                                        </a>
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-red-500">Aucun fichier PDF disponible pour cet examen.</p>
+                            )}
                         </div>
                     ) : (
-                        <p>Chargement de la prévisualisation...</p>
+                        <p className="text-red-500">Chargement de la prévisualisation ou données non disponibles...</p>
                     )}
                 </Dialog>
             </div>

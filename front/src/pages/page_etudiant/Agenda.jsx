@@ -1,3 +1,5 @@
+// src/pages/Agenda.js
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
@@ -7,11 +9,14 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { RadioButton } from 'primereact/radiobutton';
+import { Toast } from 'primereact/toast';
 import Layout from '../../components/Layout';
 import { getStudentAgenda } from '../../Services/agendaService';
+import axios from 'axios';
 
 const Agenda = () => {
     const navigate = useNavigate();
+    const toast = React.useRef(null);
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const [agendaData, setAgendaData] = useState({
         cours: [],
@@ -20,6 +25,7 @@ const Agenda = () => {
     });
     const [loading, setLoading] = useState(true);
     const [selectedExam, setSelectedExam] = useState(null);
+    const [examQuestions, setExamQuestions] = useState([]);
     const [showExamDialog, setShowExamDialog] = useState(false);
     const [showInstructions, setShowInstructions] = useState(true);
     const [examAnswers, setExamAnswers] = useState({});
@@ -38,94 +44,54 @@ const Agenda = () => {
         { label: 'Semestre', value: 'Semestre' },
     ];
 
-    // Données fictives pour les examens
-    const mockExamData = [
-        {
-            id: 1,
-            titre: "Examen d'Algorithmique",
-            duration: 3600, // 60 minutes en secondes
-            date: "2025-05-10",
-            description: "Examen sur les algorithmes de base",
-            type: "Examen",
-            mention: "Informatique",
-            parcours: "L1",
-            niveau: "Licence 1",
-            lienExamen: "exam/algorithmique",
-            nom_auteur: "Prof. Dupont",
-            questions: [
-                {
-                    id: 1,
-                    text: "Quel est le pire cas de complexité du tri rapide (QuickSort) ?",
-                    type: "radio",
-                    options: [
-                        { label: "O(n log n)", value: "O(n log n)" },
-                        { label: "O(n²)", value: "O(n²)" },
-                        { label: "O(n)", value: "O(n)" },
-                        { label: "O(log n)", value: "O(log n)" },
-                    ],
-                    correctAnswer: "O(n²)",
-                },
-                {
-                    id: 2,
-                    text: "Expliquez comment fonctionne l'algorithme de Dijkstra.",
-                    type: "essay",
-                },
-            ],
-        },
-        {
-            id: 2,
-            titre: "Examen de Base de données",
-            duration: 5400, // 90 minutes en secondes
-            date: "2025-05-12",
-            description: "Examen sur les bases de données relationnelles",
-            type: "Examen",
-            mention: "Informatique",
-            parcours: "L1",
-            niveau: "Licence 1",
-            lienExamen: "exam/bdd",
-            nom_auteur: "Prof. Martin",
-            questions: [
-                {
-                    id: 1,
-                    text: "Qu'est-ce qu'une clé primaire dans une base de données relationnelle ?",
-                    type: "radio",
-                    options: [
-                        { label: "Un index pour accélérer les recherches", value: "index" },
-                        { label: "Un champ unique identifiant chaque enregistrement", value: "primary_key" },
-                        { label: "Une contrainte de relation entre tables", value: "foreign_key" },
-                        { label: "Un champ facultatif pour les métadonnées", value: "metadata" },
-                    ],
-                    correctAnswer: "primary_key",
-                },
-                {
-                    id: 2,
-                    text: "Décrivez les avantages de la normalisation des bases de données.",
-                    type: "essay",
-                },
-            ],
-        },
-    ];
-
     useEffect(() => {
         const fetchAgendaData = async () => {
             try {
                 const data = await getStudentAgenda();
                 setAgendaData({
                     cours: data.cours,
-                    examens: mockExamData.map(exam => ({
+                    examens: data.examens.map(exam => ({
                         ...exam,
-                        hasLink: !!exam.lienExamen,
+                        hasLink: !!exam.url,
                     })),
                     evenements: data.evenements,
                 });
                 setLoading(false);
             } catch (error) {
-                console.error('Error loading agenda:', error);
+                console.error('Erreur lors du chargement de l\'agenda:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors de la récupération de l\'agenda',
+                    life: 3000,
+                });
                 setLoading(false);
             }
         };
         fetchAgendaData();
     }, []);
+
+    // Charger les questions de l'examen lorsque l'examen est sélectionné
+    const fetchExamQuestions = async (examId) => {
+        try {
+            const response = await axios.get(`http://localhost:8000/api/examen/${examId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            setExamQuestions(response.data.questions);
+            return response.data;
+        } catch (error) {
+            console.error('Erreur lors de la récupération des questions:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Erreur lors de la récupération des questions de l\'examen',
+                life: 3000,
+            });
+            return null;
+        }
+    };
 
     // Gestion du timer
     useEffect(() => {
@@ -166,41 +132,39 @@ const Agenda = () => {
         });
     };
 
-    const handleExamClick = (exam) => {
+    const handleExamClick = async (exam) => {
         if (exam.hasLink) {
-            console.log('Exam clicked:', exam);
-            setSelectedExam(exam);
-            setExamAnswers({});
-            setExamSubmitted(false);
-            setShowInstructions(true);
-            setTimeLeft(0);
-            setExamStarted(false);
-            setShowExamDialog(true);
+            console.log('Examen cliqué:', exam);
+            const examData = await fetchExamQuestions(exam.id);
+            if (examData) {
+                setSelectedExam({ ...exam, duration: examData.duree, questions: examData.questions });
+                setExamAnswers({});
+                setExamSubmitted(false);
+                setShowInstructions(true);
+                setTimeLeft(0);
+                setExamStarted(false);
+                setShowExamDialog(true);
+            }
         }
     };
 
     const handleStartExam = () => {
-        console.log('Starting exam');
+        console.log('Début de l\'examen');
         setShowInstructions(false);
         setTimeLeft(selectedExam.duration || 3600);
         setExamStarted(true);
-        // Supprimer l'examen de l'agenda après participation
-        setAgendaData(prev => ({
-            ...prev,
-            examens: prev.examens.filter(e => e.id !== selectedExam.id),
-        }));
     };
 
     const handleAnswerChange = (questionId, value) => {
-        console.log('Answer changed:', { questionId, value });
+        console.log('Réponse modifiée:', { questionId, value });
         setExamAnswers(prev => ({
             ...prev,
             [questionId]: value,
         }));
     };
 
-    const handleSubmitExam = (autoSubmit = false) => {
-        console.log('Initiating exam submission');
+    const handleSubmitExam = async (autoSubmit = false) => {
+        console.log('Initiation de la soumission de l\'examen');
         if (autoSubmit) {
             setConfirmMessage('Le temps est écoulé. Vos réponses vont être soumises automatiquement.');
             setConfirmAction('submit-auto');
@@ -212,48 +176,80 @@ const Agenda = () => {
     };
 
     const handleAbandonExam = () => {
-        console.log('Initiating exam abandonment');
+        console.log('Initiation de l\'abandon de l\'examen');
         setConfirmMessage('Êtes-vous sûr de vouloir abandonner l’examen ? Vos réponses ne seront pas enregistrées.');
         setConfirmAction('abandon');
         setShowConfirmDialog(true);
     };
 
-    const handleConfirmAction = () => {
-        console.log('Confirm action:', confirmAction);
+    const handleConfirmAction = async () => {
+        console.log('Action confirmée:', confirmAction);
         setShowConfirmDialog(false);
         if (confirmAction === 'submit' || confirmAction === 'submit-auto') {
-            console.log('Exam submitted:', examAnswers);
-            setExamSubmitted(true);
-            setExamStarted(false);
-            setAgendaData(prev => ({
-                ...prev,
-                examens: prev.examens.filter(e => e.id !== selectedExam.id),
-            }));
-            setTimeout(() => {
-                setShowExamDialog(false);
-                navigate('/etudiant/agenda');
-            }, 3000);
+            try {
+                const response = await axios.post(
+                    `http://localhost:8000/api/examen/${selectedExam.id}/submit`,
+                    { answers: examAnswers },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            'Content-Type': 'application/json',
+                        }
+                    }
+                );
+                console.log('Examen soumis:', response.data);
+                setExamSubmitted(true);
+                setExamStarted(false);
+                setAgendaData(prev => ({
+                    ...prev,
+                    examens: prev.examens.filter(e => e.id !== selectedExam.id),
+                }));
+                toast.current.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Examen soumis avec succès',
+                    life: 3000,
+                });
+                setTimeout(() => {
+                    setShowExamDialog(false);
+                    navigate('/etudiant/agenda');
+                }, 3000);
+            } catch (error) {
+                console.error('Erreur lors de la soumission:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.response?.data?.message || 'Erreur lors de la soumission de l\'examen',
+                    life: 3000,
+                });
+            }
         } else if (confirmAction === 'abandon') {
-            console.log('Exam abandoned');
+            console.log('Examen abandonné');
             setShowExamDialog(false);
             setExamStarted(false);
             setAgendaData(prev => ({
                 ...prev,
                 examens: prev.examens.filter(e => e.id !== selectedExam.id),
             }));
+            toast.current.show({
+                severity: 'warn',
+                summary: 'Abandon',
+                detail: 'Vous avez abandonné l\'examen',
+                life: 3000,
+            });
             navigate('/etudiant/agenda');
         }
     };
 
     const handleCancelConfirm = () => {
-        console.log('Action cancelled');
+        console.log('Action annulée');
         setShowConfirmDialog(false);
         setConfirmAction(null);
         setConfirmMessage('');
     };
 
     const handleDialogClose = () => {
-        console.log('Closing instructions dialog');
+        console.log('Fermeture du dialogue des instructions');
         setShowExamDialog(false);
         setSelectedExam(null);
         setShowInstructions(true);
@@ -292,7 +288,7 @@ const Agenda = () => {
                     <h1 className="text-xl font-semibold text-gray-800 truncate flex-1">
                         {item.titre}
                     </h1>
-                    <span className={`text-xs px-2 py-1 rounded ml-2 ${item.type === 'Examen' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                    <span className={`text-xs px-2 py-1 rounded ml-2 ${item.type === 'EXAMEN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                         {item.type}
                     </span>
                 </div>
@@ -370,7 +366,7 @@ const Agenda = () => {
             <div className="mb-4 p-3 bg-blue-50 border-round">
                 <div className="font-semibold">
                     <i className="pi pi-clock mr-2"></i>
-                    Durée de l'examen: {selectedExam?.duration / 60} minutes
+                    Durée de l'examen: {Math.floor(selectedExam?.duration / 60)} minutes
                 </div>
             </div>
             <p className="mb-3"><strong>Nombre de questions :</strong> {selectedExam?.questions.length}</p>
@@ -502,6 +498,7 @@ const Agenda = () => {
 
     return (
         <Layout>
+            <Toast ref={toast} />
             <div className="card custom-scrollbar h-[90vh] overflow-y-auto">
                 <TabView className="custom-tabview">
                     <TabPanel header="Cours" className="flex flex-col items-center">
@@ -538,7 +535,6 @@ const Agenda = () => {
                     </TabPanel>
                 </TabView>
 
-                {/* Dialog principale pour l'examen */}
                 <Dialog
                     visible={showExamDialog}
                     onHide={handleDialogClose}

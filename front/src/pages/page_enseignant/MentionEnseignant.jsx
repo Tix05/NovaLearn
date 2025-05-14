@@ -75,7 +75,7 @@ const MentionEnseignant = () => {
                 className="w-full text-gray-800 overflow-x-hidden custom-scrollbar"
                 style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}
             >
-                <h1 className="p-4 text-3xl font-normal">Mes mentions</h1>
+                <h1 className="p-4 text-3xl font-semibold text-gray-700">Mes mentions</h1>
                 <div className="grid grid-cols-2 gap-5 p-5 justify-center">
                     {mentions.map((mention, index) => (
                         <div
