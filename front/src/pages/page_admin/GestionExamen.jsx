@@ -14,6 +14,7 @@ import LayoutAdmin from '../../components/LayoutAdmin';
 import { Trash2, Eye, Send, Download } from 'lucide-react';
 import { getTeacherExams, deleteTeacherExam, publishTeacherExam, previewTeacherExam, getStudentExams, deleteCorrection } from '../../Services/gestionExamenService';
 import { getCurrentAdmin } from '../../Services/adminAuthService';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 export default function GestionExamen() {
     const [teacherExams, setTeacherExams] = useState([]);
@@ -23,7 +24,7 @@ export default function GestionExamen() {
     const [niveauFilter, setNiveauFilter] = useState('Tous');
     const [elementConstitutifFilter, setElementConstitutifFilter] = useState('Tous');
     const [anneeUniversitaireFilter, setAnneeUniversitaireFilter] = useState('Tous');
-    const [statusFilter, setStatusFilter] = useState('Tous'); // Nouveau filtre pour le statut
+    const [statusFilter, setStatusFilter] = useState('Tous');
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [deleteCorrectionDialogVisible, setDeleteCorrectionDialogVisible] = useState(false);
     const [publishDialogVisible, setPublishDialogVisible] = useState(false);
@@ -54,7 +55,6 @@ export default function GestionExamen() {
 
             setIsLoading(true);
             try {
-                // Récupérer les examens des professeurs
                 const teacherExamsData = await getTeacherExams();
                 const filteredTeacherExams = teacherExamsData.filter(exam =>
                     exam.fichier &&
@@ -63,7 +63,6 @@ export default function GestionExamen() {
                 );
                 setTeacherExams(filteredTeacherExams);
 
-                // Récupérer les examens des étudiants
                 const studentExamsData = await getStudentExams();
                 setStudentExams(studentExamsData);
             } catch (error) {
@@ -490,8 +489,8 @@ export default function GestionExamen() {
                     <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className='custom-tabview'>
                         <TabPanel header="Examens des étudiants">
                             {isLoading ? (
-                                <div className="flex justify-center items-center h-64">
-                                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                                <div className="flex justify-center items-center h-full">
+                                    <ProgressSpinner />
                                 </div>
                             ) : (
                                 <DataTable
@@ -519,8 +518,8 @@ export default function GestionExamen() {
                         </TabPanel>
                         <TabPanel header="Sujets des professeurs">
                             {isLoading ? (
-                                <div className="flex justify-center items-center h-64">
-                                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                                <div className="flex justify-center items-center h-[70vh] w-full">
+                                    <ProgressSpinner />
                                 </div>
                             ) : (
                                 <DataTable
