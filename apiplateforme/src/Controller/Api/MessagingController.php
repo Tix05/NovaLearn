@@ -12,19 +12,19 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 
-/**
- * @Route("/api/messaging")
- */
-class MessagingController extends AbstractController
-{
-    private $messagingService;
-    private $security;
-
-    public function __construct(MessagingService $messagingService, Security $security)
+    /**
+     * @Route("/api/messaging")
+     */
+    class MessagingController extends AbstractController
     {
-        $this->messagingService = $messagingService;
-        $this->security = $security;
-    }
+        private $messagingService;
+        private $security;
+
+        public function __construct(MessagingService $messagingService, Security $security)
+        {
+            $this->messagingService = $messagingService;
+            $this->security = $security;
+        }
 
     /**
      * @Route("/conversations", name="api_messaging_conversations", methods={"GET"})

@@ -9,8 +9,7 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import { RadioButton } from 'primereact/radiobutton';
 import { Toast } from 'primereact/toast';
 import Layout from '../../components/Layout';
-import { getStudentAgenda } from '../../Services/agendaService';
-import axios from 'axios';
+import { getStudentAgenda, fetchExamQuestions } from '../../Services/agendaService';
 
 const Agenda = () => {
     const navigate = useNavigate();
@@ -48,10 +47,7 @@ const Agenda = () => {
                 const data = await getStudentAgenda();
                 setAgendaData({
                     cours: data.cours,
-                    examens: data.examens.map(exam => ({
-                        ...exam,
-                        hasLink: !!exam.url,
-                    })),
+                    examens: data.examens,
                     evenements: data.evenements,
                 });
                 setLoading(false);
@@ -69,29 +65,6 @@ const Agenda = () => {
         fetchAgendaData();
     }, []);
 
-    // Charger les questions de l'examen lorsque l'examen est sélectionné
-    const fetchExamQuestions = async (examId) => {
-        try {
-            const response = await axios.get(`http://localhost:8000/api/examen/${examId}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            setExamQuestions(response.data.questions);
-            return response.data;
-        } catch (error) {
-            console.error('Erreur lors de la récupération des questions:', error);
-            toast.current.show({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: 'Erreur lors de la récupération des questions de l\'examen',
-                life: 3000,
-            });
-            return null;
-        }
-    };
-
-    // Gestion du timer
     useEffect(() => {
         let timer;
         if (examStarted && timeLeft > 0) {
@@ -99,7 +72,7 @@ const Agenda = () => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
                         clearInterval(timer);
-                        handleSubmitExam(true); // Soumission automatique
+                        handleSubmitExam(true);
                         return 0;
                     }
                     return prev - 1;
@@ -132,29 +105,38 @@ const Agenda = () => {
 
     const handleExamClick = async (exam) => {
         if (exam.hasLink) {
-            console.log('Examen cliqué:', exam);
-            const examData = await fetchExamQuestions(exam.id);
-            if (examData) {
-                setSelectedExam({ ...exam, duration: examData.duree, questions: examData.questions });
+            try {
+                const examData = await fetchExamQuestions(exam.examenId);
+                setExamQuestions(examData.questions);
+                setSelectedExam({
+                    ...exam,
+                    duration: examData.duree,
+                    questions: examData.questions
+                });
                 setExamAnswers({});
                 setExamSubmitted(false);
                 setShowInstructions(true);
                 setTimeLeft(0);
                 setExamStarted(false);
                 setShowExamDialog(true);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message,
+                    life: 3000,
+                });
             }
         }
     };
 
     const handleStartExam = () => {
-        console.log('Début de l\'examen');
         setShowInstructions(false);
         setTimeLeft(selectedExam.duration || 3600);
         setExamStarted(true);
     };
 
     const handleAnswerChange = (questionId, value) => {
-        console.log('Réponse modifiée:', { questionId, value });
         setExamAnswers(prev => ({
             ...prev,
             [questionId]: value,
@@ -162,7 +144,6 @@ const Agenda = () => {
     };
 
     const handleSubmitExam = async (autoSubmit = false) => {
-        console.log('Initiation de la soumission de l\'examen');
         if (autoSubmit) {
             setConfirmMessage('Le temps est écoulé. Vos réponses vont être soumises automatiquement.');
             setConfirmAction('submit-auto');
@@ -174,14 +155,12 @@ const Agenda = () => {
     };
 
     const handleAbandonExam = () => {
-        console.log('Initiation de l\'abandon de l\'examen');
-        setConfirmMessage('Êtes-vous sûr de vouloir abandonner l’examen ? Vos réponses ne seront pas enregistrées.');
+        setConfirmMessage('Êtes-vous sûr de vouloir abandonner l\'examen ? Vos réponses ne seront pas enregistrées.');
         setConfirmAction('abandon');
         setShowConfirmDialog(true);
     };
 
     const handleConfirmAction = async () => {
-        console.log('Action confirmée:', confirmAction);
         setShowConfirmDialog(false);
         if (confirmAction === 'submit' || confirmAction === 'submit-auto') {
             try {
@@ -195,7 +174,6 @@ const Agenda = () => {
                         }
                     }
                 );
-                console.log('Examen soumis:', response.data);
                 setExamSubmitted(true);
                 setExamStarted(false);
                 setAgendaData(prev => ({
@@ -222,7 +200,6 @@ const Agenda = () => {
                 });
             }
         } else if (confirmAction === 'abandon') {
-            console.log('Examen abandonné');
             setShowExamDialog(false);
             setExamStarted(false);
             setAgendaData(prev => ({
@@ -240,14 +217,12 @@ const Agenda = () => {
     };
 
     const handleCancelConfirm = () => {
-        console.log('Action annulée');
         setShowConfirmDialog(false);
         setConfirmAction(null);
         setConfirmMessage('');
     };
 
     const handleDialogClose = () => {
-        console.log('Fermeture du dialogue des instructions');
         setShowExamDialog(false);
         setSelectedExam(null);
         setShowInstructions(true);
@@ -458,7 +433,7 @@ const Agenda = () => {
         <Dialog
             visible={showConfirmDialog}
             onHide={handleCancelConfirm}
-            header={confirmAction === 'abandon' ? 'Confirmation d’abandon' : 'Confirmation de soumission'}
+            header={confirmAction === 'abandon' ? 'Confirmation d\'abandon' : 'Confirmation de soumission'}
             modal
             style={{ width: '400px' }}
             footer={

@@ -9,19 +9,19 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 
-/**
- * @Route("/api/ecs")
- */
-class EcController extends AbstractController
-{
-    private $ecRepository;
-    private $security;
-
-    public function __construct(EcRepository $ecRepository, Security $security)
+    /**
+     * @Route("/api/ecs")
+     */
+    class EcController extends AbstractController
     {
-        $this->ecRepository = $ecRepository;
-        $this->security = $security;
-    }
+        private $ecRepository;
+        private $security;
+
+        public function __construct(EcRepository $ecRepository, Security $security)
+        {
+            $this->ecRepository = $ecRepository;
+            $this->security = $security;
+        }
 
     /**
      * @Route("/profs_by_etudiant", name="api_ec_profs_by_etudiant", methods={"GET"})

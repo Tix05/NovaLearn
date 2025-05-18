@@ -11,19 +11,19 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 
-/**
- * @Route("/api/agenda")
- */
-class AgendaController extends AbstractController
-{
-    private $security;
-    private $agendaService;
-
-    public function __construct(Security $security, AgendaService $agendaService)
+    /**
+     * @Route("/api/agenda")
+     */
+    class AgendaController extends AbstractController
     {
-        $this->security = $security;
-        $this->agendaService = $agendaService;
-    }
+        private $security;
+        private $agendaService;
+
+        public function __construct(Security $security, AgendaService $agendaService)
+        {
+            $this->security = $security;
+            $this->agendaService = $agendaService;
+        }
 
     /**
      * @Route("/student", name="api_agenda_student", methods={"GET"})

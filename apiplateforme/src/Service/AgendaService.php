@@ -57,7 +57,7 @@ class AgendaService
     private function formatAgendaItems(array $items): array
     {
         return array_map(function ($item) {
-            return [
+            $data = [
                 'id' => $item->getId(),
                 'titre' => $item->getTitre(),
                 'date' => $item->getDate()->format('Y-m-d H:i:s'),
@@ -72,6 +72,13 @@ class AgendaService
                 'parcours' => $item->getParcours() ? $item->getParcours()->getName() : null,
                 'niveau' => $item->getNiveau() ? $item->getNiveau()->getNom() : null,
             ];
+
+            // Ajoutez l'ID de l'examen si l'item est lié à un examen
+            if ($item->getType() === 'EXAMEN' && $item->getExamens()->count() > 0) {
+                $data['examenId'] = $item->getExamens()->first()->getId();
+            }
+
+            return $data;
         }, $items);
     }
 }
