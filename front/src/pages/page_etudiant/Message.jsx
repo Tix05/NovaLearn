@@ -23,7 +23,6 @@ function Message() {
     const messagesEndRef = useRef(null);
     const currentUser = getCurrentUser();
 
-    // Nettoyer les états au démontage
     useEffect(() => {
         return () => {
             setConversations([]);
@@ -34,7 +33,6 @@ function Message() {
         };
     }, []);
 
-    // Charger les conversations et gérer le polling
     useEffect(() => {
         const fetchConversations = async () => {
             if (!currentUser) {
@@ -188,7 +186,7 @@ function Message() {
                             <button
                                 key={`${conv.type}-${conv.participants[0].id}`}
                                 onClick={() => setSelectedConversation(conv)}
-                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
+                                className={`w-full flex items-center space-x-3 p-2 rounded-md transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
                                     selectedConversation?.type === conv.type
                                     ? 'bg-blue-600 text-white'
                                     : 'text-gray-800 hover:bg-gray-300'
@@ -263,7 +261,7 @@ function Message() {
                         )}
                         <div ref={messagesEndRef} />
                     </div>
-                    <form onSubmit={handleSendMessage} className="p-4 bg-[#BF3037]">
+                    <form onSubmit={handleSendMessage} className="p-4">
                         <div className="flex items-center space-x-2">
                             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="text-gray-400 hover:text-gray-300">
                                 <Smile className="h-8 w-8" />
@@ -274,7 +272,7 @@ function Message() {
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder="Tapez un message..."
-                                className="flex-1 bg-white text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 font-semibold"
+                                className="flex-1 bg-white text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-gray-500 focus:ring-[1px] focus:ring-gray-500 font-semibold border-2"
                                 disabled={!selectedConversation}
                             />
                             <button

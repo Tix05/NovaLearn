@@ -33,7 +33,7 @@ const menuItems = [
     {
         to: '/admin/user-management',
         icons: <PiStudent size={25} />,
-        label: 'Gestion des usagers'
+        label: 'Gestion des utilisateurs'
     },
     {
         to: '/admin/exam-management',
