@@ -15,8 +15,8 @@ function Examen() {
     const [generatedFile, setGeneratedFile] = useState(null);
     const [generatedFileUrl, setGeneratedFileUrl] = useState(null);
     const [courseContent, setCourseContent] = useState('');
-    const [titre, setTitre] = useState('Examen'); // État pour le titre
-    const [description, setDescription] = useState(''); // État pour la description
+    const [titre, setTitre] = useState('Examen');
+    const [description, setDescription] = useState('');
     const [hours, setHours] = useState(1);
     const [minutes, setMinutes] = useState(0);
     const [mode, setMode] = useState('upload');
@@ -99,8 +99,8 @@ function Examen() {
             setGeneratedFile(null);
             setGeneratedFileUrl(null);
             setCourseContent('');
-            setTitre('Examen'); // Réinitialiser le titre
-            setDescription(''); // Réinitialiser la description
+            setTitre('Examen');
+            setDescription('');
             setHours(1);
             setMinutes(0);
             setSelectedSupports([]);
@@ -110,8 +110,8 @@ function Examen() {
         } else {
             setSelectedFile(null);
             setGeneratedFileUrl(null);
-            setTitre('Examen'); // Réinitialiser le titre
-            setDescription(''); // Réinitialiser la description
+            setTitre('Examen');
+            setDescription('');
             setHours(1);
             setMinutes(0);
             setErrorMessage('');
@@ -209,7 +209,6 @@ function Examen() {
             if (response.questions) {
                 setQuestions(response.questions);
             }
-            // Mettre à jour le titre et la description depuis la réponse
             setTitre(response.titre);
             setDescription(response.description);
         } catch (error) {
@@ -240,8 +239,8 @@ function Examen() {
 
             const response = await submitExamenToAdmin(
                 coursId,
-                titre, // Envoyer le titre
-                description, // Envoyer la description
+                titre,
+                description,
                 courseContent.trim(),
                 mode === 'upload' ? 'pdf' : 'ia_genere',
                 submitInstructions,
@@ -290,13 +289,13 @@ function Examen() {
     };
 
     return (
-        <LayoutEnseignant className="min-h-screen overflow-hidden">
-            <Toast ref={toast} />
-            <div className="custom-scrollbar p-6" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className="text-3xl font-semibold text-gray-700 mb-5">Création d'Examen</h1>
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-white rounded-lg border-[1px] border-gray-400 shadow-lg p-6">
-                        <div className="flex gap-4 mb-8">
+        <LayoutEnseignant>
+            <Toast ref={toast} position='bottom-right' />
+            <div>
+                <h1 className="text-3xl font-semibold text-gray-700 p-4">Création d'Examen</h1>
+                <div className="w-full h-screen flex flex-col">
+                    <div className="bg-white py-6 px-[10vw]">
+                        <div className="flex gap-4 mb-6">
                             <button
                                 onClick={() => { setMode('upload'); setErrorMessage(''); }}
                                 className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${mode === 'upload'
@@ -319,8 +318,8 @@ function Examen() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-3">
                                 <label className="block text-sm font-medium text-gray-700">
                                     Titre de l'examen
                                 </label>
@@ -333,22 +332,22 @@ function Examen() {
                                     required
                                 />
                             </div>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <label className="block text-sm font-medium text-gray-700">
                                     Description de l'examen
                                 </label>
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full h-24 p-2 border rounded-md resize-y"
+                                    className="w-full h-20 p-2 border rounded-md resize-y"
                                     placeholder="Entrez une description de l'examen (facultatif)"
                                 />
                             </div>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <label className="block text-sm font-medium text-gray-700">
                                     Durée de l'examen
                                 </label>
-                                <div className="flex gap-4">
+                                <div className="flex gap-4 pb-10">
                                     <div className="flex-1">
                                         <label className="block text-sm text-gray-600 mb-1">Heures</label>
                                         <InputNumber
@@ -358,7 +357,7 @@ function Examen() {
                                             max={23}
                                             showButtons
                                             className="w-full"
-                                            inputClassName="p-2 border rounded-md"
+                                            inputClassName="p-2 border"
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -370,14 +369,14 @@ function Examen() {
                                             max={59}
                                             showButtons
                                             className="w-full"
-                                            inputClassName="p-2 border rounded-md"
+                                            inputClassName="p-2 border"
                                         />
                                     </div>
                                 </div>
                             </div>
                             {mode === 'upload' ? (
-                                <div className="space-y-6">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                <div className="space-y-4">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                                         <input
                                             type="file"
                                             accept=".pdf"
@@ -401,15 +400,17 @@ function Examen() {
                                         <div className="space-y-4">
                                             <div className="mb-4">
                                                 <p className="text-gray-600 mb-2">Prévisualisation du PDF :</p>
-                                                <embed
-                                                    src={generatedFileUrl}
-                                                    type="application/pdf"
-                                                    width="100%"
-                                                    height="400px"
-                                                    className="border rounded"
-                                                />
+                                                <div className="h-64 overflow-y-auto border rounded">
+                                                    <embed
+                                                        src={generatedFileUrl}
+                                                        type="application/pdf"
+                                                        width="100%"
+                                                        height="100%"
+                                                        className="min-h-full"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="flex w-full items-center justify-center pt-5">
+                                            <div className="flex w-full items-center justify-center pt-4">
                                                 <button
                                                     type="button"
                                                     onClick={handleSendToAdmin}
@@ -428,15 +429,15 @@ function Examen() {
                                             </div>
                                         </div>
                                     )}
-                                    <p className="text-gray-600 text-md text-center mt-4">
+                                    <p className="text-gray-600 text-sm text-center mt-4">
                                         Instructions : À chaque question, précisez la réponse correcte parmi les options pour les questions de type radio, attribuez des points à chaque question, et fournissez la réponse exacte pour les questions ouvertes.
                                     </p>
                                     {errorMessage && (
-                                        <p className="text-red-500 text-md mt-4">{errorMessage}</p>
+                                        <p className="text-red-500 text-sm mt-4 mb-10">{errorMessage}</p>
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4 items-center justify-center">
                                         <button
                                             type="button"
@@ -512,8 +513,8 @@ function Examen() {
                                             <textarea
                                                 value={courseContent}
                                                 onChange={(e) => setCourseContent(e.target.value)}
-                                                className="w-full h-40 p-2 border rounded-md resize-y"
-                                                placeholder="Entrez vos instructions pour la génération de l'examen (par exemple, nombre de questions, type de questions, niveau de difficulté)..."
+                                                className="w-full h-24 p-2 border rounded-md resize-none"
+                                                placeholder="Entrez vos instructions pour la génération de l'examen..."
                                             />
                                         </div>
                                     ) : (
@@ -537,7 +538,7 @@ function Examen() {
                                                     <span className="text-gray-600 text-center">
                                                         {selectedFile
                                                             ? selectedFile.name
-                                                            : ' clique pour ajouter vos supports de cours en PDF'}
+                                                            : 'Cliquez pour ajouter vos supports de cours en PDF'}
                                                     </span>
                                                     <span className="text-sm text-gray-500 mt-1">
                                                         Vous pouvez sélectionner un fichier
@@ -550,14 +551,14 @@ function Examen() {
                                             <textarea
                                                 value={courseContent}
                                                 onChange={(e) => setCourseContent(e.target.value)}
-                                                className="w-full h-40 p-2 border rounded-md resize-y"
-                                                placeholder="Entrez vos instructions pour la génération de l'examen (par exemple, nombre de questions, type de questions, niveau de difficulté)..."
+                                                className="w-full p-2 border rounded-md"
+                                                placeholder="Entrez vos instructions pour la génération de l'examen..."
                                             />
                                         </div>
                                     )}
 
                                     {!generatedFile ? (
-                                        <div className="flex w-full items-center justify-center pt-5">
+                                        <div className="flex w-full items-center justify-center pt-4">
                                             <button
                                                 type="submit"
                                                 className="w-80 bg-[#DC3545] text-white py-2 px-6 rounded-full hover:bg-[#C82333] transition-colors flex items-center justify-center gap-2"
@@ -574,8 +575,8 @@ function Examen() {
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-6">
-                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                        <div className="space-y-4">
+                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                                                 <p className="text-green-600 font-semibold mb-4">
                                                     Examen généré : {generatedFile.name}
                                                 </p>
@@ -589,13 +590,13 @@ function Examen() {
                                                         >
                                                             Télécharger ou voir le PDF
                                                         </a>
-                                                        <div className="mt-4">
+                                                        <div className="h-64 overflow-y-auto border rounded mt-4">
                                                             <embed
                                                                 src={generatedFileUrl}
                                                                 type="application/pdf"
                                                                 width="100%"
-                                                                height="400px"
-                                                                className="border rounded"
+                                                                height="100%"
+                                                                className="min-h-full"
                                                             />
                                                         </div>
                                                     </div>
@@ -620,7 +621,7 @@ function Examen() {
                                                     </span>
                                                 </label>
                                             </div>
-                                            <div className="flex w-full items-center justify-center pt-5">
+                                            <div className="flex w-full items-center justify-center pt-4">
                                                 <button
                                                     type="button"
                                                     onClick={handleSendToAdmin}
@@ -640,7 +641,7 @@ function Examen() {
                                         </div>
                                     )}
                                     {errorMessage && (
-                                        <p className="text-red-500 text-sm mt-4">{errorMessage}</p>
+                                        <p className="text-red-500 text-sm mt-4 mb-10">{errorMessage}</p>
                                     )}
                                 </div>
                             )}

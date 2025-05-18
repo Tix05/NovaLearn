@@ -484,7 +484,7 @@ export default function GestionExamen() {
 
     return (
         <LayoutAdmin>
-            <Toast ref={toast} position="top-right" />
+            <Toast ref={toast} position="bottom-right" />
             <div className="relative custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <div>
                     <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)} className='custom-tabview'>
@@ -645,23 +645,13 @@ export default function GestionExamen() {
                             {previewData.data.fichier ? (
                                 <div>
                                     <embed
-                                        src={`http://localhost:8000/uploads/examens${previewData.data.fichier}`}
+                                        src={`http://localhost:8000/uploads/examens/${previewData.data.fichier}`}
                                         type="application/pdf"
                                         width="100%"
                                         height="400px"
                                         className="border rounded"
                                         onError={(e) => console.error('Erreur de chargement du PDF:', e)}
                                     />
-                                    <p className="mt-2">
-                                        <a
-                                            href={`http://localhost:8000${previewData.data.fichier}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 underline"
-                                        >
-                                            Ouvrir le PDF dans un nouvel onglet
-                                        </a>
-                                    </p>
                                 </div>
                             ) : (
                                 <p className="text-red-500">Aucun fichier PDF disponible pour cet examen.</p>
