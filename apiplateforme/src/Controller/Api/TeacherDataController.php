@@ -195,6 +195,7 @@ class TeacherDataController extends AbstractController
         $titre = $data['titre'] ?? null;
         $type = $data['type'] ?? null;
         $url = $data['url'] ?? null;
+        $mimeType = $data['mimeType'] ?? null;
 
         if (!$ecId || !$titre || !$type) {
             $logger->warning('Données manquantes', ['ec_id' => $ecId, 'titre' => $titre, 'type' => $type]);
@@ -233,9 +234,57 @@ class TeacherDataController extends AbstractController
                 return $this->json(['message' => 'Aucun fichier fourni'], Response::HTTP_BAD_REQUEST);
             }
 
+            // Validation des types MIME
+            $validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+            $validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
+            if ($type === 'VIDEO' && !in_array($mimeType, $validVideoTypes)) {
+                $logger->warning('Type de fichier vidéo non supporté', ['mimeType' => $mimeType]);
+                return $this->json(['message' => 'Format vidéo non supporté. Formats acceptés : MP4, WebM, OGG'], Response::HTTP_BAD_REQUEST);
+            }
+            if ($type === 'AUDIO' && !in_array($mimeType, $validAudioTypes)) {
+                $logger->warning('Type de fichier audio non supporté', ['mimeType' => $mimeType]);
+                return $this->json(['message' => 'Format audio non supporté. Formats acceptés : MP3, WAV, OGG'], Response::HTTP_BAD_REQUEST);
+            }
+
             $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            $filePath = $this->getParameter('supports_directory') . '/' . $fileName;
             $file->move($this->getParameter('supports_directory'), $fileName);
-            $support->setFichier($fileName);
+
+            // Compression pour les vidéos
+            if ($type === 'VIDEO') {
+                try {
+                    $compressedFileName = 'compressed_' . $fileName;
+                    $compressedFilePath = $this->getParameter('supports_directory') . '/' . $compressedFileName;
+
+                    // Exécution directe de FFmpeg via exec()
+                    $ffmpegPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe'; // Ajustez ce chemin selon votre installation
+                    $command = sprintf(
+                        '%s -i %s -vcodec libx264 -b:v 1000k -acodec aac -b:a 128k %s',
+                        escapeshellarg($ffmpegPath),
+                        escapeshellarg($filePath),
+                        escapeshellarg($compressedFilePath)
+                    );
+                    $logger->info('Exécution de la commande FFmpeg', ['command' => $command]);
+                    exec($command, $output, $returnVar);
+
+                    if ($returnVar !== 0) {
+                        $logger->error('Erreur lors de la compression vidéo', ['output' => $output, 'return_var' => $returnVar]);
+                        return $this->json(['message' => 'Erreur lors de la compression vidéo'], Response::HTTP_INTERNAL_SERVER_ERROR);
+                    }
+
+                    $support->setFichier($compressedFileName);
+
+                    // Supprimer le fichier original
+                    if (file_exists($filePath)) {
+                        unlink($filePath);
+                    }
+                } catch (\Exception $e) {
+                    $logger->error('Erreur lors de la compression vidéo', ['error' => $e->getMessage(), 'file' => $filePath]);
+                    return $this->json(['message' => 'Erreur lors de la compression de la vidéo : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+                }
+            } else {
+                $support->setFichier($fileName);
+            }
         }
 
         $entityManager->persist($support);
@@ -248,10 +297,11 @@ class TeacherDataController extends AbstractController
             'support' => [
                 'id' => $support->getId(),
                 'titre' => $support->getTitre(),
-                'type' => $support->getType(),
+                'type' => $this->mapSupportType($support->getType()),
                 'url' => $support->getUrl(),
                 'fichier' => $support->getFichier(),
-                'date_ajout' => $support->getDateAjout()->format('Y-m-d'),
+                'date_ajout' => $support->getDateAjout()->format('Y-m-d H:i:s'),
+                'estPublique' => $support->isEstPublique()
             ]
         ], Response::HTTP_CREATED);
     }

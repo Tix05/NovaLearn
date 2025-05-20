@@ -5,6 +5,7 @@ import { InputText } from "primereact/inputtext";
 import { FileUpload } from 'primereact/fileupload';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { ProgressBar } from 'primereact/progressbar';
 import { useParams } from 'react-router-dom';
 import { IoIosDocument } from 'react-icons/io';
 import { FaFileAudio, FaFileVideo, FaLink } from 'react-icons/fa6';
@@ -22,8 +23,13 @@ const AjoutSupport = () => {
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentions, setMentions] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0); // État pour la progression
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
+
+    // Types MIME valides pour vidéo et audio
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    const validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
 
     useEffect(() => {
         const fetchData = async () => {
@@ -34,7 +40,6 @@ const AjoutSupport = () => {
                 showToast('error', 'Erreur', err.message);
             }
         };
-
         fetchData();
     }, []);
 
@@ -52,36 +57,29 @@ const AjoutSupport = () => {
     }
 
     const supportTypes = [
-        {
-            name: 'document',
-            icon: <IoIosDocument className='text-2xl' />,
-            accept: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
-            label: 'Document'
-        },
-        {
-            name: 'video',
-            icon: <FaFileVideo className='text-2xl' />,
-            accept: 'video/*',
-            label: 'Vidéo'
-        },
-        {
-            name: 'audio',
-            icon: <FaFileAudio className='text-2xl' />,
-            accept: 'audio/*',
-            label: 'Audio'
-        },
-        {
-            name: 'lien',
-            icon: <FaLink className='text-2xl' />,
-            accept: null,
-            label: 'Lien'
-        }
+        { name: 'document', icon: <IoIosDocument className='text-2xl' />, accept: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx', label: 'Document' },
+        { name: 'video', icon: <FaFileVideo className='text-2xl' />, accept: 'video/mp4,video/webm,video/ogg', label: 'Vidéo' },
+        { name: 'audio', icon: <FaFileAudio className='text-2xl' />, accept: 'audio/mpeg,audio/wav,audio/ogg', label: 'Audio' },
+        { name: 'lien', icon: <FaLink className='text-2xl' />, accept: null, label: 'Lien' }
     ];
 
     const handleFileSelect = (e, type) => {
+        const file = e.files[0];
+        if (!file) return;
+
+        // Validation des types MIME
+        if (type === 'video' && !validVideoTypes.includes(file.type)) {
+            showToast('error', 'Erreur', 'Format vidéo non supporté. Formats acceptés : MP4, WebM, OGG.');
+            return;
+        }
+        if (type === 'audio' && !validAudioTypes.includes(file.type)) {
+            showToast('error', 'Erreur', 'Format audio non supporté. Formats acceptés : MP3, WAV, OGG.');
+            return;
+        }
+
         setSelectedFiles(prev => ({
             ...prev,
-            [type]: e.files[0]
+            [type]: file
         }));
     };
 
@@ -115,7 +113,8 @@ const AjoutSupport = () => {
             return;
         }
 
-        setIsSubmitting(true); // Activer l'état de chargement
+        setIsSubmitting(true);
+        setUploadProgress(0); // Réinitialiser la progression
 
         try {
             const response = await addTeacherSupport(
@@ -123,12 +122,12 @@ const AjoutSupport = () => {
                 titre,
                 currentType,
                 currentType !== 'lien' ? selectedFiles[currentType] : null,
-                null,
+                selectedFiles[currentType]?.type || null, // Envoyer le type MIME
                 currentType === 'lien' ? linkUrl : null,
-                true
+                true,
+                (progress) => setUploadProgress(progress) // Callback pour la progression
             );
 
-            // Mise à jour manuelle de l'état pour refléter le nouveau support
             setMentions(prev => {
                 return prev.map(mention => {
                     if (mention.id === parseInt(mentionId)) {
@@ -153,7 +152,7 @@ const AjoutSupport = () => {
                                                                 url: response.support.url,
                                                                 fichier: response.support.fichier,
                                                                 date_ajout: response.support.date_ajout,
-                                                                estPublique: true // Ajouter pour cohérence
+                                                                estPublique: true
                                                             }
                                                         ]
                                                     };
@@ -178,18 +177,13 @@ const AjoutSupport = () => {
         } catch (error) {
             showToast('error', 'Erreur', error.message);
         } finally {
-            setIsSubmitting(false); // Désactiver l'état de chargement
+            setIsSubmitting(false);
+            setUploadProgress(0);
         }
     };
 
     const showToast = (severity, summary, detail) => {
-        toast.current.show({
-            severity,
-            summary,
-            detail,
-            life: 3000,
-            position: 'bottom-right'
-        });
+        toast.current.show({ severity, summary, detail, life: 3000, position: 'bottom-right' });
     };
 
     const onGlobalFilterChange = (e) => {
@@ -215,10 +209,8 @@ const AjoutSupport = () => {
     return (
         <LayoutEnseignant>
             <Toast ref={toast} position="bottom-right" className="mb-5 mr-5" />
-
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-2xl font-semibold text-gray-800 p-3'>Ajouter un support pour le cours {cours?.titre}</h1>
-
                 <TabView
                     activeIndex={activeIndex}
                     onTabChange={(e) => setActiveIndex(e.index)}
@@ -271,7 +263,7 @@ const AjoutSupport = () => {
                                                             mode="basic"
                                                             name={`file_${type.name}`}
                                                             accept={type.accept}
-                                                            maxFileSize={10000000}
+                                                            maxFileSize={100000000} // 100MB
                                                             chooseLabel="Sélectionner un fichier"
                                                             onSelect={(e) => handleFileSelect(e, type.name)}
                                                             auto
@@ -282,6 +274,13 @@ const AjoutSupport = () => {
                                                 </div>
                                             </div>
                                         </div>
+                                        {isSubmitting && (
+                                            <ProgressBar
+                                                value={uploadProgress}
+                                                className="mb-3"
+                                                showValue={true}
+                                            />
+                                        )}
                                         <div className="flex gap-3 justify-end w-full">
                                             <Button
                                                 label="Annuler"
@@ -299,7 +298,6 @@ const AjoutSupport = () => {
                                         </div>
                                     </div>
                                 </form>
-
                                 <div className='flex flex-col shadow-md w-full border-[1px] rounded-lg'>
                                     <div className='p-3 font-semibold text-lg text-white bg-[#C23B42] rounded-t-lg flex items-center gap-2'>
                                         {type.icon}
@@ -316,12 +314,7 @@ const AjoutSupport = () => {
                                             emptyMessage={`Aucun ${type.label} trouvé`}
                                             className='p-datatable-sm'
                                         >
-                                            <Column
-                                                field="titre"
-                                                header="Titre"
-                                                sortable
-                                                style={{ minWidth: '10rem' }}
-                                            />
+                                            <Column field="titre" header="Titre" sortable style={{ minWidth: '10rem' }} />
                                             <Column
                                                 field="fichier"
                                                 header={type.name === 'lien' ? 'URL' : 'Fichier'}
@@ -329,12 +322,7 @@ const AjoutSupport = () => {
                                                 sortable
                                                 style={{ minWidth: '5rem' }}
                                             />
-                                            <Column
-                                                field="date_ajout"
-                                                header="Date d'ajout"
-                                                sortable
-                                                style={{ minWidth: '8rem' }}
-                                            />
+                                            <Column field="date_ajout" header="Date d'ajout" sortable style={{ minWidth: '8rem' }} />
                                         </DataTable>
                                     </div>
                                 </div>

@@ -143,7 +143,7 @@ export const getTeacherMentions = async () => {
     }
 };
 
-export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, url, isPublic) => {
+export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, url, isPublic, onProgress) => {
     const token = getTeacherToken();
     if (!token) {
         throw new Error('Aucun token trouvé');
@@ -177,6 +177,10 @@ export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, ur
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data'
+            },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                if (onProgress) onProgress(percentCompleted);
             }
         });
 
@@ -186,7 +190,7 @@ export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, ur
 
         return response.data;
     } catch (error) {
-        let errorMessage = 'Erreur lors de l\'ajout du support';
+        let errorMessage = "Erreur lors de l'ajout du support";
         if (error.response) {
             errorMessage = error.response.data?.message || errorMessage;
         } else if (error.request) {
