@@ -13,6 +13,7 @@ use App\Entity\Notification;
 use App\Entity\NotificationGroupe;
 use App\Entity\CorrectionExamen;
 use App\Entity\ReponseEtudiant;
+use App\Entity\EtudiantExamenStatut;
 use App\Service\GeminiService;
 use App\Service\PdfExtractorService;
 use App\Repository\ExamenRepository;
@@ -27,6 +28,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Psr\Log\LoggerInterface;
 use TCPDF;
+use App\Entity\Etudiant;
 
 class ExamenController extends AbstractController
 {
@@ -633,7 +635,7 @@ class ExamenController extends AbstractController
                     'parcours_name' => $parcours ? $parcours->getName() : null,
                     'type' => Agenda::TYPE_EXAMEN,
                     'fichier' => $examen->getFichier(),
-                    'statut' => 'publié', // Indiquer le statut dans la prévisualisation
+                    'statut' => 'publie', // Indiquer le statut dans la prévisualisation
                 ];
 
                 return $this->json([
@@ -698,20 +700,26 @@ class ExamenController extends AbstractController
     {
         $user = $this->security->getUser();
         if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
-            $this->logger->error('Accès non autorisé pour soumission étudiant', ['user' => $user ? $user->getEmail() : 'anonyme']);
             return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
         $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
         if (!$etudiant) {
-            $this->logger->warning('Aucune donnée étudiante trouvée', ['user' => $user->getEmail()]);
             return $this->json(['message' => 'Aucune donnée étudiante trouvée'], 404);
         }
 
         $examen = $this->examenRepository->find($id);
         if (!$examen) {
-            $this->logger->warning('Examen non trouvé', ['examen_id' => $id]);
             return $this->json(['message' => 'Examen non trouvé'], 404);
+        }
+
+        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)->findOneBy([
+            'etudiant' => $etudiant,
+            'examen' => $examen,
+        ]);
+
+        if (!$statutExamen || $statutExamen->getStatut() !== 'EN_COURS') {
+            return $this->json(['message' => 'Examen non démarré ou déjà soumis/abandonné'], 400);
         }
 
         $data = json_decode($request->getContent(), true);
@@ -745,15 +753,12 @@ class ExamenController extends AbstractController
             $this->entityManager->persist($reponse);
         }
 
-        // Supprimer l'entrée de l'agenda
-        $agenda = $examen->getAgenda();
-        if ($agenda) {
-            $this->entityManager->remove($agenda);
-            $examen->setAgenda(null);
-        }
+        // Mettre à jour le statut de l'examen
+        $statutExamen->setStatut('SOUMIS');
+        $statutExamen->setTempsRestant(0);
+        $this->entityManager->persist($statutExamen);
 
         $this->entityManager->persist($correctionExamen);
-        $this->entityManager->persist($examen);
         $this->entityManager->flush();
 
         $this->logger->info('Examen soumis et corrigé', ['examen_id' => $id, 'etudiant_id' => $etudiant->getId()]);
@@ -913,99 +918,128 @@ class ExamenController extends AbstractController
         return $fileName;
     }
 
-    /**
-     * @Route("/{id}", name="api_examen_get", methods={"GET"}, requirements={"id"="\d+"})
-     */
-    public function getExamen(string $id): JsonResponse
-    {
-        $this->logger->info('Requête reçue pour /api/examen/{id}', ['id' => $id]);
+ /**
+ * @Route("/teacher", name="api_examen_teacher", methods={"GET"})
+ */
+public function getTeacherExams(): JsonResponse
+{
+    $this->logger->info('Requête reçue pour /api/examen/teacher');
 
-        if (!is_numeric($id) || (int)$id <= 0) {
-            $this->logger->warning('ID non valide fourni', ['id' => $id]);
-            return $this->json(['message' => 'ID invalide, un entier positif est requis'], 400);
-        }
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
+        $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
+        return $this->json(['message' => 'Accès non autorisé'], 403);
+    }
 
-        $examen = $this->examenRepository->find((int)$id);
-        if (!$examen) {
-            $this->logger->warning('Examen non trouvé', ['examen_id' => $id]);
-            return $this->json(['message' => 'Examen non trouvé'], 404);
-        }
+    try {
+        $currentYear = $this->entityManager->getRepository(Years::class)
+            ->findOneBy(['current' => true]);
+        $anneeUniversitaire = $currentYear ? $currentYear->getYear() : 'N/A';
 
-        $questions = array_map(function ($question) {
-            $options = $question->getOptions()->map(function ($option) {
-                return [
-                    'label' => $option->getTexte(),
-                    'value' => $option->getValeur()
-                ];
-            })->toArray();
-
+        $examens = $this->examenRepository->findAll();
+        $data = array_map(function ($examen) use ($anneeUniversitaire) {
+            $statut = $examen->getStatut() === 'soumis' ? 'en_attente' : $examen->getStatut();
             return [
-                'id' => $question->getId(),
-                'text' => $question->getTexte(),
-                'type' => $question->getType(),
-                'options' => $options,
-                'correctAnswer' => $question->getReponseCorrecte(),
-                'points' => $question->getPoints()
+                'id' => $examen->getId(),
+                'nomPrenom' => $examen->getAuteur()->getName(),
+                'mention' => $examen->getEc()->getUe()->getMention() 
+                    ? $examen->getEc()->getUe()->getMention()->getName() 
+                    : 'N/A',
+                'niveau' => $examen->getEc()->getUe()->getSemestre() 
+                    ? $examen->getEc()->getUe()->getSemestre()->getNiveau()->getNom() 
+                    : 'N/A',
+                'elementConstitutif' => $examen->getEc()->getName(),
+                'dateEnvoi' => $examen->getDateCreation()->format('Y-m-d H:i'),
+                'anneeUniversitaire' => $anneeUniversitaire,
+                'statut' => $statut, 
+                'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
             ];
-        }, $examen->getQuestions()->toArray());
+        }, $examens);
 
-        $this->logger->info('Examen récupéré', ['examen_id' => $id]);
-        return $this->json([
-            'id' => $examen->getId(),
-            'titre' => $examen->getTitre(),
-            'description' => $examen->getDescription(),
-            'duree' => $examen->getDuree(),
-            'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
-            'questions' => $questions
-        ], 200);
+        $this->logger->info('Examens des enseignants récupérés', ['count' => count($data)]);
+        return $this->json($data, 200);
+    } catch (\Exception $e) {
+        $this->logger->error('Erreur lors de la récupération des examens: ' . $e->getMessage(), ['exception' => $e]);
+        return $this->json(['message' => 'Erreur serveur: ' . $e->getMessage()], 500);
+    }
+}
+
+/**
+ * @Route("/{id<\d+>}", name="api_examen_get", methods={"GET"})
+ */
+public function getExamen(int $id): JsonResponse
+{
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+        return $this->json(['message' => 'Accès non autorisé'], 403);
     }
 
-    /**
-     * @Route("/teacher", name="api_examen_teacher", methods={"GET"})
-     */
-    public function getTeacherExams(): JsonResponse
-    {
-        $this->logger->info('Requête reçue pour /api/examen/teacher');
+    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+    if (!$etudiant) {
+        return $this->json(['message' => 'Étudiant non trouvé'], 404);
+    }
 
-        $user = $this->security->getUser();
-        if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-            $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
-            return $this->json(['message' => 'Accès non autorisé'], 403);
-        }
+    $examen = $this->examenRepository->find($id);
+    if (!$examen) {
+        return $this->json(['message' => 'Examen non trouvé'], 404);
+    }
 
-        try {
-            $currentYear = $this->entityManager->getRepository(Years::class)
-                ->findOneBy(['current' => true]);
-            $anneeUniversitaire = $currentYear ? $currentYear->getYear() : 'N/A';
+    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+        ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
 
-            // Récupérer tous les examens, pas seulement ceux en "soumis"
-            $examens = $this->examenRepository->findAll();
-            $data = array_map(function ($examen) use ($anneeUniversitaire) {
-                $statut = $examen->getStatut() === 'soumis' ? 'en_attente' : $examen->getStatut();
+    $questions = [];
+    foreach ($examen->getQuestions() as $question) {
+        $questionData = [
+            'id' => $question->getId(),
+            'text' => $question->getTexte(),
+            'type' => $question->getType(),
+            'points' => $question->getPoints(),
+        ];
+
+        if ($question->getType() === 'radio') {
+            $questionData['options'] = array_map(function ($option) {
                 return [
-                    'id' => $examen->getId(),
-                    'nomPrenom' => $examen->getAuteur()->getName(),
-                    'mention' => $examen->getEc()->getUe()->getMention() 
-                        ? $examen->getEc()->getUe()->getMention()->getName() 
-                        : 'N/A',
-                    'niveau' => $examen->getEc()->getUe()->getSemestre() 
-                        ? $examen->getEc()->getUe()->getSemestre()->getNiveau()->getNom() 
-                        : 'N/A',
-                    'elementConstitutif' => $examen->getEc()->getName(),
-                    'dateEnvoi' => $examen->getDateCreation()->format('Y-m-d H:i'),
-                    'anneeUniversitaire' => $anneeUniversitaire,
-                    'statut' => $statut, // "en_attente" pour soumis, "publié" pour publié
-                    'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
+                    'value' => $option->getValeur(),
+                    'text' => $option->getTexte()
                 ];
-            }, $examens);
-
-            $this->logger->info('Examens des enseignants récupérés', ['count' => count($data)]);
-            return $this->json($data, 200);
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la récupération des examens: ' . $e->getMessage(), ['exception' => $e]);
-            return $this->json(['message' => 'Erreur serveur: ' . $e->getMessage()], 500);
+            }, $question->getOptions()->toArray());
         }
+
+        $questions[] = $questionData;
     }
+
+    $response = [
+        'id' => $examen->getId(),
+        'titre' => $examen->getTitre(),
+        'description' => $examen->getDescription(),
+        'duree' => $examen->getDuree(),
+        'statut' => $examen->getStatut(),
+        'questions' => $questions,
+        'date_publication' => $examen->getDatePublication()?->format('Y-m-d H:i:s'),
+        'date_expiration' => $examen->getDateExpiration()?->format('Y-m-d H:i:s')
+    ];
+
+    if ($statutExamen) {
+        $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
+        
+        $response['statut'] = $statutExamen->getStatut();
+        $response['temps_restant'] = $tempsRestant;
+        $response['reponses'] = $statutExamen->getReponses() ?? [];
+        $response['debut_examen'] = $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s');
+    } else {
+        $response['statut'] = 'DISPONIBLE';
+        $response['temps_restant'] = $examen->getDuree();
+        $response['reponses'] = [];
+    }
+
+    $this->logger->debug('Réponse getExamen', [
+        'examen_id' => $id,
+        'etudiant_id' => $etudiant->getId(),
+        'statut' => $response['statut']
+    ]);
+
+    return $this->json($response);
+}
 
     /**
      * @Route("/{id}", name="api_examen_delete", methods={"DELETE"})
@@ -1032,7 +1066,6 @@ class ExamenController extends AbstractController
             $examensDir = $uploadsDir . '/examens';
             $tempDir = $uploadsDir . '/temp';
 
-            // Supprimer le fichier final
             if ($examen->getFichier()) {
                 $filePath = $examensDir . '/' . $examen->getFichier();
                 if (file_exists($filePath)) {
@@ -1044,7 +1077,6 @@ class ExamenController extends AbstractController
                 }
             }
 
-            // Supprimer le fichier temporaire associé
             $tempFileName = 'temp_' . $examen->getFichier();
             $tempFilePath = $tempDir . '/' . $tempFileName;
             if (file_exists($tempFilePath)) {
@@ -1181,4 +1213,260 @@ class ExamenController extends AbstractController
             return $this->json(['message' => 'Erreur lors de la vérification: ' . $e->getMessage()], 500);
         }
     }
+
+ /**
+ * @Route("/{id}/start", name="api_examen_start", methods={"POST"})
+ */
+public function startExamen(int $id): JsonResponse
+{
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+        return $this->json(['message' => 'Accès non autorisé'], 403);
+    }
+
+    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+    if (!$etudiant) {
+        return $this->json(['message' => 'Étudiant non trouvé'], 404);
+    }
+
+    $examen = $this->examenRepository->find($id);
+    if (!$examen) {
+        return $this->json(['message' => 'Examen non trouvé'], 404);
+    }
+
+    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+        ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
+
+    if ($statutExamen) {
+        if ($statutExamen->getStatut() === EtudiantExamenStatut::STATUT_EN_COURS) {
+            $statutExamen->initialiserTempsRestant($examen->getDuree());
+            $this->entityManager->flush();
+
+            return $this->json([
+                'message' => 'Examen déjà en cours',
+                'temps_restant' => $statutExamen->getTempsRestant(),
+                'reponses' => $statutExamen->getReponses() ?? []
+            ]);
+        }
+
+        return $this->json(['message' => 'Examen déjà soumis ou abandonné'], 400);
+    }
+
+    $statutExamen = new EtudiantExamenStatut();
+    $statutExamen->setEtudiant($etudiant);
+    $statutExamen->setExamen($examen);
+    $statutExamen->setStatut(EtudiantExamenStatut::STATUT_EN_COURS);
+    $statutExamen->setDebutExamen(new \DateTime());
+    $statutExamen->initialiserTempsRestant($examen->getDuree());
+
+    $this->entityManager->persist($statutExamen);
+    $this->entityManager->flush();
+
+    return $this->json([
+        'message' => 'Examen démarré',
+        'temps_restant' => $statutExamen->getTempsRestant(),
+        'reponses' => []
+    ]);
+}
+
+    /**
+ * @Route("/{id}/abandon", name="api_examen_abandon", methods={"POST"})
+ */
+public function abandonExamen(int $id): JsonResponse
+{
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+        return $this->json(['message' => 'Accès non autorisé'], 403);
+    }
+
+    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+    if (!$etudiant) {
+        return $this->json(['message' => 'Aucune donnée étudiante trouvée'], 404);
+    }
+
+    $examen = $this->examenRepository->find($id);
+    if (!$examen) {
+        return $this->json(['message' => 'Examen non trouvé'], 404);
+    }
+
+    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)->findOneBy([
+        'etudiant' => $etudiant,
+        'examen' => $examen,
+    ]);
+
+    if (!$statutExamen || $statutExamen->getStatut() !== 'EN_COURS') {
+        return $this->json(['message' => 'Examen non démarré ou déjà soumis/abandonné'], 400);
+    }
+
+    $statutExamen->setStatut('ABANDONNE');
+    $statutExamen->setTempsRestant(0);
+    $this->entityManager->persist($statutExamen);
+    $this->entityManager->flush();
+
+    return $this->json(['message' => 'Examen abandonné'], 200);
+}
+
+/**
+ * @Route("/{id}/save-progress", name="api_examen_save_progress", methods={"POST"})
+ */
+public function saveExamProgress(int $id, Request $request): JsonResponse
+{
+    try {
+        // 1. Authentification
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+            return $this->json(['message' => 'Accès non autorisé'], 403);
+        }
+
+        // 2. Récupération de l'étudiant
+        $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+        if (!$etudiant) {
+            return $this->json(['message' => 'Étudiant non trouvé'], 404);
+        }
+
+        // 3. Récupération de l'examen
+        $examen = $this->examenRepository->find($id);
+        if (!$examen) {
+            return $this->json(['message' => 'Examen non trouvé'], 404);
+        }
+
+        // 4. Vérification du statut
+        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+            ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
+
+        if (!$statutExamen || $statutExamen->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
+            return $this->json(['message' => 'Examen non démarré ou terminé'], 400);
+        }
+
+        // 5. Calcul du temps restant actuel
+        $statutExamen->initialiserTempsRestant($examen->getDuree());
+        if ($statutExamen->getTempsRestant() <= 0) {
+            $statutExamen->setStatut(EtudiantExamenStatut::STATUT_SOUMIS);
+            $this->entityManager->persist($statutExamen);
+            $this->entityManager->flush();
+            return $this->json(['message' => 'Le temps est écoulé, examen soumis automatiquement'], 400);
+        }
+
+        // 6. Traitement des données
+        $data = json_decode($request->getContent(), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return $this->json(['message' => 'Données JSON invalides'], 400);
+        }
+
+        $answers = $data['answers'] ?? [];
+        $tempsRestant = $data['temps_restant'] ?? $statutExamen->getTempsRestant();
+
+        // 7. Validation du temps restant
+        $tempsRestant = max(0, min($examen->getDuree(), (int)$tempsRestant));
+
+        // 8. Mise à jour de l'entité
+        $statutExamen->setReponses($answers);
+        $statutExamen->setTempsRestant($tempsRestant);
+
+        // 9. Sauvegarde
+        $this->entityManager->persist($statutExamen);
+        $this->entityManager->flush();
+
+        // 10. Réponse
+        return $this->json([
+            'message' => 'Progression sauvegardée',
+            'temps_restant' => $statutExamen->getTempsRestant(),
+            'derniere_activite' => $statutExamen->getDerniereActivite()->format('Y-m-d H:i:s')
+        ]);
+
+    } catch (\Exception $e) {
+        $this->logger->error('Erreur saveExamProgress: ' . $e->getMessage(), [
+            'exception' => $e,
+            'examen_id' => $id,
+            'user_id' => $user ? $user->getId() : null
+        ]);
+        
+        return $this->json([
+            'message' => 'Erreur lors de la sauvegarde',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * @Route("/{id}/get-time", name="api_examen_get_time", methods={"GET"})
+ */
+public function getExamTime(int $id): JsonResponse
+{
+    try {
+        // Vérification authentification
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+            throw new \Exception('Accès non autorisé');
+        }
+
+        $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+        if (!$etudiant) {
+            throw new \Exception('Étudiant non trouvé');
+        }
+
+        $examen = $this->examenRepository->find($id);
+        if (!$examen) {
+            throw new \Exception('Examen non trouvé');
+        }
+
+        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+            ->findOneBy([
+                'etudiant' => $etudiant,
+                'examen' => $id
+            ]);
+
+        if (!$statutExamen) {
+            throw new \Exception('Aucun statut d\'examen trouvé');
+        }
+
+        // Calculer et persister le temps restant
+        $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
+        $this->entityManager->persist($statutExamen);
+        $this->entityManager->flush();
+
+        // Journalisation pour débogage
+        $this->logger->debug('Statut examen', [
+            'statut' => $statutExamen->getStatut(),
+            'temps_restant' => $tempsRestant,
+            'debut_examen' => $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s'),
+            'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s')
+        ]);
+
+        return $this->json([
+            'temps_restant' => $tempsRestant,
+            'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s'),
+            'statut' => $statutExamen->getStatut()
+        ]);
+
+    } catch (\Exception $e) {
+        $this->logger->error('Erreur getExamTime', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return $this->json(['message' => $e->getMessage()], 500);
+    }
+}
+
+private function calculerTempsRestant(EtudiantExamenStatut $statut): int
+{
+    if ($statut->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
+        return 0;
+    }
+
+    $dureeExamen = $statut->getExamen()->getDuree() ?? 3600;
+    
+    // Si pas encore commencé
+    if (!$statut->getDebutExamen()) {
+        return $dureeExamen;
+    }
+
+    // Calcul basé sur le temps écoulé depuis le début
+    $now = new \DateTime();
+    $tempsEcoule = $now->getTimestamp() - $statut->getDebutExamen()->getTimestamp();
+    $tempsRestant = $dureeExamen - $tempsEcoule;
+
+    // Protection contre les valeurs négatives
+    return max(0, $tempsRestant);
+}
 }

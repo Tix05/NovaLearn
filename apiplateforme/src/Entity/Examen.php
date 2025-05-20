@@ -180,6 +180,11 @@ class Examen
      */
     private Collection $corrections;
 
+    /**
+     * @ORM\OneToMany(targetEntity=EtudiantExamenStatut::class, mappedBy="examen", orphanRemoval=true)
+     */
+    private $etudiantExamenStatuts;
+
     public function __construct()
     {
         $this->dateCreation = new \DateTime();
@@ -188,6 +193,7 @@ class Examen
         $this->questions = new ArrayCollection();
         $this->reponsesEtudiants = new ArrayCollection();
         $this->corrections = new ArrayCollection();
+        $this->etudiantExamenStatuts = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -419,6 +425,36 @@ class Examen
                 $correction->setExamen(null);
             }
         }
+        return $this;
+    }
+
+    /**
+     * @return Collection|EtudiantExamenStatut[]
+     */
+    public function getEtudiantExamenStatuts(): Collection
+    {
+        return $this->etudiantExamenStatuts;
+    }
+
+    public function addEtudiantExamenStatut(EtudiantExamenStatut $etudiantExamenStatut): self
+    {
+        if (!$this->etudiantExamenStatuts->contains($etudiantExamenStatut)) {
+            $this->etudiantExamenStatuts[] = $etudiantExamenStatut;
+            $etudiantExamenStatut->setExamen($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEtudiantExamenStatut(EtudiantExamenStatut $etudiantExamenStatut): self
+    {
+        if ($this->etudiantExamenStatuts->removeElement($etudiantExamenStatut)) {
+            // set the owning side to null (unless already changed)
+            if ($etudiantExamenStatut->getExamen() === $this) {
+                $etudiantExamenStatut->setExamen(null);
+            }
+        }
+
         return $this;
     }
 

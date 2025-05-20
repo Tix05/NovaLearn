@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Divider } from 'primereact/divider';
 import { Dropdown } from 'primereact/dropdown';
@@ -8,12 +8,137 @@ import { Dialog } from 'primereact/dialog';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { RadioButton } from 'primereact/radiobutton';
 import { Toast } from 'primereact/toast';
+import { debounce } from 'lodash';
 import Layout from '../../components/Layout';
-import { getStudentAgenda, fetchExamQuestions } from '../../Services/agendaService';
+import {
+    getStudentAgenda,
+    fetchExamQuestions,
+    startExam,
+    submitExam,
+    abandonExam,
+    saveExamProgress,
+    getExamStatus,
+    getExamTime
+} from '../../Services/agendaService';
+
+const useExamTimer = (examId, initialDuration) => {
+    const [timeLeft, setTimeLeft] = useState(initialDuration);
+    const lastSyncRef = useRef(null);
+    const isMounted = useRef(true);
+
+    const syncWithServer = useCallback(async () => {
+        if (!examId) return;
+
+        try {
+            const response = await getExamTime(examId);
+            console.debug('Sync server response:', {
+                examId,
+                temps_restant: response.temps_restant,
+                statut: response.statut,
+                derniere_activite: response.derniere_activite
+            });
+
+            if (response.statut !== 'EN_COURS') {
+                console.debug('Examen non EN_COURS, mise à 0 du timer:', response.statut);
+                setTimeLeft(0);
+                return;
+            }
+
+            const serverTime = response.temps_restant;
+            if (serverTime === undefined || serverTime < 0) {
+                console.warn('Temps restant invalide du serveur:', serverTime);
+                return;
+            }
+
+            setTimeLeft(serverTime);
+            lastSyncRef.current = Date.now();
+
+            localStorage.setItem(`examTime_${examId}`, JSON.stringify({
+                time: serverTime,
+                lastSync: Date.now(),
+                serverTime
+            }));
+        } catch (error) {
+            console.error('Erreur de synchronisation:', error);
+            const cached = localStorage.getItem(`examTime_${examId}`);
+            if (cached) {
+                const { time, lastSync } = JSON.parse(cached);
+                const elapsed = Math.floor((Date.now() - lastSync) / 1000);
+                const adjustedCachedTime = Math.max(0, time - elapsed);
+                console.debug('Restauration depuis cache:', { time, elapsed, adjustedCachedTime });
+                setTimeLeft(adjustedCachedTime);
+            }
+        }
+    }, [examId]);
+
+    useEffect(() => {
+        let timer;
+        const updateTimer = () => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    console.debug('Temps écoulé, arrêt du timer');
+                    clearInterval(timer);
+                    return 0;
+                }
+                console.debug('Décrémentation timeLeft:', prev - 1);
+                return prev - 1;
+            });
+        };
+
+        if (timeLeft > 0) {
+            timer = setInterval(updateTimer, 1000);
+        }
+
+        return () => {
+            console.debug('Nettoyage timer');
+            clearInterval(timer);
+        };
+    }, [timeLeft]);
+
+    useEffect(() => {
+        isMounted.current = true;
+        syncWithServer();
+
+        const syncInterval = setInterval(() => {
+            if (isMounted.current) {
+                console.debug('Synchronisation périodique pour examId:', examId);
+                syncWithServer();
+            }
+        }, 10000);
+
+        return () => {
+            isMounted.current = false;
+            console.debug('Nettoyage intervalle synchronisation');
+            clearInterval(syncInterval);
+        };
+    }, [examId, syncWithServer]);
+
+    useEffect(() => {
+        if (!examId || timeLeft <= 0) return;
+
+        const saveInterval = setInterval(async () => {
+            try {
+                console.debug('Sauvegarde automatique:', { examId, timeLeft });
+                await saveExamProgress(examId, {}, timeLeft);
+                localStorage.setItem(`examTimeLeft_${examId}`, timeLeft);
+                localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
+            } catch (error) {
+                console.error('Échec sauvegarde automatique:', error);
+            }
+        }, 10000);
+
+        return () => {
+            console.debug('Nettoyage intervalle sauvegarde');
+            clearInterval(saveInterval);
+        };
+    }, [examId, timeLeft]);
+
+    return [timeLeft, setTimeLeft];
+};
 
 const Agenda = () => {
     const navigate = useNavigate();
-    const toast = React.useRef(null);
+    const toast = useRef(null);
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const [agendaData, setAgendaData] = useState({
         cours: [],
@@ -27,11 +152,12 @@ const Agenda = () => {
     const [showInstructions, setShowInstructions] = useState(true);
     const [examAnswers, setExamAnswers] = useState({});
     const [examSubmitted, setExamSubmitted] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(0);
     const [examStarted, setExamStarted] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
+
+    const [timeLeft, setTimeLeft] = useExamTimer(selectedExam?.id, selectedExam?.duration || 3600);
 
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
@@ -45,14 +171,63 @@ const Agenda = () => {
         const fetchAgendaData = async () => {
             try {
                 const data = await getStudentAgenda();
+
+                const examensWithStatus = await Promise.all(
+                    data.examens.map(async (exam) => {
+                        try {
+                            const statusData = await getExamStatus(exam.examenId);
+                            return {
+                                ...exam,
+                                statut: statusData.statut || 'DISPONIBLE',
+                                temps_restant: statusData.temps_restant || exam.duree || 3600
+                            };
+                        } catch (error) {
+                            return {
+                                ...exam,
+                                statut: 'DISPONIBLE',
+                                temps_restant: exam.duree || 3600
+                            };
+                        }
+                    })
+                );
+
                 setAgendaData({
-                    cours: data.cours,
-                    examens: data.examens,
-                    evenements: data.evenements,
+                    cours: data.cours || [],
+                    examens: examensWithStatus,
+                    evenements: data.evenements || [],
                 });
+
+                const ongoingExamId = localStorage.getItem('ongoingExamId');
+                if (ongoingExamId) {
+                    try {
+                        const examData = await getExamStatus(ongoingExamId);
+                        if (examData.statut === 'EN_COURS') {
+                            const exam = examensWithStatus.find(e => e.examenId === parseInt(ongoingExamId));
+                            if (exam) {
+                                const examDetails = await fetchExamQuestions(ongoingExamId);
+
+                                setSelectedExam({
+                                    ...exam,
+                                    id: ongoingExamId,
+                                    duration: examDetails.duree || 3600,
+                                    questions: examDetails.questions || [],
+                                });
+                                setExamStarted(true);
+                                setExamAnswers(examData.reponses || {});
+                                setExamQuestions(examDetails.questions || []);
+                                setShowExamDialog(true);
+                                setShowInstructions(false);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Erreur restauration examen:', error);
+                        localStorage.removeItem('ongoingExamId');
+                        localStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
+                        localStorage.removeItem(`examLastSave_${ongoingExamId}`);
+                    }
+                }
                 setLoading(false);
             } catch (error) {
-                console.error('Erreur lors du chargement de l\'agenda:', error);
                 toast.current.show({
                     severity: 'error',
                     summary: 'Erreur',
@@ -65,22 +240,23 @@ const Agenda = () => {
         fetchAgendaData();
     }, []);
 
-    useEffect(() => {
-        let timer;
-        if (examStarted && timeLeft > 0) {
-            timer = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        handleSubmitExam(true);
-                        return 0;
-                    }
-                    return prev - 1;
+    const debouncedSaveProgress = useRef(
+        debounce(async (examId, answers, tempsRestant) => {
+            try {
+                await saveExamProgress(examId, answers, tempsRestant);
+                localStorage.setItem(`examTimeLeft_${examId}`, tempsRestant);
+                localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
+            } catch (error) {
+                console.error('Erreur sauvegarde progression:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors de la sauvegarde de la progression',
+                    life: 3000,
                 });
-            }, 1000);
-        }
-        return () => clearInterval(timer);
-    }, [examStarted, timeLeft]);
+            }
+        }, 2000)
+    ).current;
 
     const filterData = (data) => {
         if (periodeFilter === 'Tout') return data;
@@ -89,11 +265,20 @@ const Agenda = () => {
         const endDate = new Date(today);
 
         switch (periodeFilter) {
-            case 'Semaine': endDate.setDate(today.getDate() + 7); break;
-            case 'Mois': endDate.setMonth(today.getMonth() + 1); break;
-            case 'Trimestre': endDate.setMonth(today.getMonth() + 3); break;
-            case 'Semestre': endDate.setMonth(today.getMonth() + 6); break;
-            default: return data;
+            case 'Semaine':
+                endDate.setDate(today.getDate() + 7);
+                break;
+            case 'Mois':
+                endDate.setMonth(today.getMonth() + 1);
+                break;
+            case 'Trimestre':
+                endDate.setMonth(today.getMonth() + 3);
+                break;
+            case 'Semestre':
+                endDate.setMonth(today.getMonth() + 6);
+                break;
+            default:
+                return data;
         }
 
         return data.filter(item => {
@@ -104,44 +289,85 @@ const Agenda = () => {
     };
 
     const handleExamClick = async (exam) => {
-        if (exam.hasLink) {
-            try {
-                const examData = await fetchExamQuestions(exam.examenId);
-                setExamQuestions(examData.questions);
-                setSelectedExam({
-                    ...exam,
-                    duration: examData.duree,
-                    questions: examData.questions
-                });
-                setExamAnswers({});
-                setExamSubmitted(false);
-                setShowInstructions(true);
-                setTimeLeft(0);
-                setExamStarted(false);
-                setShowExamDialog(true);
-            } catch (error) {
+        try {
+            const examData = await fetchExamQuestions(exam.examenId);
+            setExamQuestions(examData.questions || []);
+            setSelectedExam({
+                ...exam,
+                duration: examData.duree || 3600,
+                questions: examData.questions || [],
+                id: exam.examenId,
+            });
+
+            if (examData.statut === 'EN_COURS') {
+                setExamAnswers(examData.reponses || {});
+                setTimeLeft(examData.temps_restant);
+                setExamStarted(true);
+                setShowInstructions(false);
+                localStorage.setItem('ongoingExamId', exam.examenId);
+                localStorage.setItem(`examTimeLeft_${exam.examenId}`, examData.temps_restant);
+            } else if (examData.statut === 'SOUMIS' || examData.statut === 'ABANDONNE') {
                 toast.current.show({
-                    severity: 'error',
-                    summary: 'Erreur',
-                    detail: error.message,
+                    severity: 'warn',
+                    summary: 'Examen terminé',
+                    detail: 'Cet examen a déjà été soumis ou abandonné.',
                     life: 3000,
                 });
+                return;
+            } else {
+                setExamAnswers({});
+                setTimeLeft(examData.duree || 3600);
+                setExamStarted(false);
+                setShowInstructions(true);
             }
+
+            setExamSubmitted(false);
+            setShowExamDialog(true);
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Impossible de charger les données de l\'examen.',
+                life: 3000,
+            });
         }
     };
 
-    const handleStartExam = () => {
-        setShowInstructions(false);
-        setTimeLeft(selectedExam.duration || 3600);
-        setExamStarted(true);
+    const handleStartExam = async () => {
+        try {
+            const response = await startExam(selectedExam.id);
+            setShowInstructions(false);
+            setTimeLeft(response.temps_restant || selectedExam.duration);
+            setExamAnswers(response.reponses || {});
+            setExamStarted(true);
+            localStorage.setItem('ongoingExamId', selectedExam.id);
+            localStorage.setItem(`examTimeLeft_${selectedExam.id}`, response.temps_restant || selectedExam.duration);
+            localStorage.setItem(`examLastSave_${selectedExam.id}`, new Date().toISOString());
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: response.message || 'Examen démarré',
+                life: 3000,
+            });
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur lors du démarrage de l\'examen',
+                life: 3000,
+            });
+        }
     };
 
-    const handleAnswerChange = (questionId, value) => {
-        setExamAnswers(prev => ({
-            ...prev,
-            [questionId]: value,
-        }));
-    };
+    const handleAnswerChange = useCallback((questionId, value) => {
+        setExamAnswers(prev => {
+            const newAnswers = { ...prev, [questionId]: value };
+            if (selectedExam) {
+                debouncedSaveProgress(selectedExam.id, newAnswers, timeLeft);
+            }
+            return newAnswers;
+        });
+    }, [selectedExam, timeLeft, debouncedSaveProgress]);
 
     const handleSubmitExam = async (autoSubmit = false) => {
         if (autoSubmit) {
@@ -164,22 +390,17 @@ const Agenda = () => {
         setShowConfirmDialog(false);
         if (confirmAction === 'submit' || confirmAction === 'submit-auto') {
             try {
-                const response = await axios.post(
-                    `http://localhost:8000/api/examen/${selectedExam.id}/submit`,
-                    { answers: examAnswers },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                            'Content-Type': 'application/json',
-                        }
-                    }
-                );
+                await debouncedSaveProgress.flush();
+                const response = await submitExam(selectedExam.id, examAnswers);
                 setExamSubmitted(true);
                 setExamStarted(false);
                 setAgendaData(prev => ({
                     ...prev,
-                    examens: prev.examens.filter(e => e.id !== selectedExam.id),
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id),
                 }));
+                localStorage.removeItem('ongoingExamId');
+                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
                 toast.current.show({
                     severity: 'success',
                     summary: 'Succès',
@@ -191,7 +412,6 @@ const Agenda = () => {
                     navigate('/etudiant/agenda');
                 }, 3000);
             } catch (error) {
-                console.error('Erreur lors de la soumission:', error);
                 toast.current.show({
                     severity: 'error',
                     summary: 'Erreur',
@@ -200,19 +420,32 @@ const Agenda = () => {
                 });
             }
         } else if (confirmAction === 'abandon') {
-            setShowExamDialog(false);
-            setExamStarted(false);
-            setAgendaData(prev => ({
-                ...prev,
-                examens: prev.examens.filter(e => e.id !== selectedExam.id),
-            }));
-            toast.current.show({
-                severity: 'warn',
-                summary: 'Abandon',
-                detail: 'Vous avez abandonné l\'examen',
-                life: 3000,
-            });
-            navigate('/etudiant/agenda');
+            try {
+                await abandonExam(selectedExam.id);
+                setShowExamDialog(false);
+                setExamStarted(false);
+                setAgendaData(prev => ({
+                    ...prev,
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id),
+                }));
+                localStorage.removeItem('ongoingExamId');
+                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                toast.current.show({
+                    severity: 'warn',
+                    summary: 'Abandon',
+                    detail: 'Vous avez abandonné l\'examen',
+                    life: 3000,
+                });
+                navigate('/etudiant/agenda');
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.response?.data?.message || 'Erreur lors de l\'abandon de l\'examen',
+                    life: 3000,
+                });
+            }
         }
     };
 
@@ -223,6 +456,15 @@ const Agenda = () => {
     };
 
     const handleDialogClose = () => {
+        if (examStarted && !examSubmitted) {
+            toast.current.show({
+                severity: 'warn',
+                summary: 'Attention',
+                detail: 'Vous ne pouvez pas quitter l\'examen sans soumettre ou abandonner.',
+                life: 3000,
+            });
+            return;
+        }
         setShowExamDialog(false);
         setSelectedExam(null);
         setShowInstructions(true);
@@ -230,6 +472,9 @@ const Agenda = () => {
         setExamSubmitted(false);
         setTimeLeft(0);
         setExamStarted(false);
+        localStorage.removeItem('ongoingExamId');
+        localStorage.removeItem(`examTimeLeft_${selectedExam?.id}`);
+        localStorage.removeItem(`examLastSave_${selectedExam?.id}`);
     };
 
     const formatTime = (seconds) => {
@@ -240,9 +485,9 @@ const Agenda = () => {
 
     const renderItem = (item, isExam = false) => (
         <div
-            key={item.id}
-            className={`flex flex-col md:flex-row border-[1px] mb-4 w-full md:w-4/5 rounded-lg bg-white shadow-md ${isExam && item.hasLink ? 'hover:shadow-lg transition-shadow cursor-pointer' : ''}`}
-            onClick={isExam && item.hasLink ? () => handleExamClick(item) : undefined}
+            key={item.examenId || item.id}
+            className={`flex flex-col md:flex-row border-[1px] mb-4 w-full md:w-4/5 rounded-lg bg-white shadow-md ${isExam ? 'hover:shadow-lg transition-shadow cursor-pointer' : ''}`}
+            onClick={isExam ? () => handleExamClick(item) : undefined}
         >
             <div className="flex flex-col p-4 text-center md:w-28 flex-shrink-0">
                 <h1 className="text-5xl font-bold text-gray-800">{new Date(item.date).getDate()}</h1>
@@ -262,18 +507,9 @@ const Agenda = () => {
                         {item.titre}
                     </h1>
                     <span className={`text-xs px-2 py-1 rounded ml-2 ${item.type === 'EXAMEN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {item.type}
+                        {item.statut === 'EN_COURS' ? 'EN COURS' : item.statut === 'SOUMIS' ? 'SOUMIS' : item.statut === 'ABANDONNE' ? 'ABANDONNÉ' : item.type}
                     </span>
                 </div>
-
-                {isExam && item.hasLink && (
-                    <div className="mb-2 flex items-center">
-                        <i className="pi pi-link mr-2 text-blue-500"></i>
-                        <span className="text-sm font-medium text-blue-600">
-                            Cliquez pour accéder à l'examen
-                        </span>
-                    </div>
-                )}
 
                 <div className="mb-3">
                     <p className="text-gray-600 whitespace-pre-wrap break-words">
@@ -310,10 +546,33 @@ const Agenda = () => {
                     </div>
                 )}
 
-                <div className="mt-3 pt-2 border-t border-gray-100">
+                <div className="mt-3 pt-2 border-t border-gray-200">
                     <p className="text-sm font-medium text-gray-700">
                         Publié par: {item.nom_auteur}
                     </p>
+                    {isExam && (
+                        <div className="mt-2">
+                            {item.statut === 'EN_COURS' ? (
+                                <Link
+                                    to="#"
+                                    onClick={(e) => { e.preventDefault(); handleExamClick(item); }}
+                                    className="text-green-600 hover:underline"
+                                >
+                                    Reprendre l'examen
+                                </Link>
+                            ) : item.statut === 'SOUMIS' || item.statut === 'ABANDONNE' ? (
+                                <span className="text-gray-500">Terminé</span>
+                            ) : (
+                                <Link
+                                    to="#"
+                                    onClick={(e) => { e.preventDefault(); handleExamClick(item); }}
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    Participer à l'examen
+                                </Link>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -343,6 +602,9 @@ const Agenda = () => {
                 </div>
             </div>
             <p className="mb-3"><strong>Nombre de questions :</strong> {selectedExam?.questions.length}</p>
+            {selectedExam?.questions.length === 0 && (
+                <p className="mb-3 text-red-500"><strong>Erreur :</strong> Aucune question disponible. Veuillez contacter l'administrateur pour vérifier les données de l'examen.</p>
+            )}
             <p className="mb-3"><strong>Instructions :</strong></p>
             <ul className="list-disc ml-5 mb-4 flex-1">
                 <li>Lisez attentivement chaque question avant de répondre.</li>
@@ -377,6 +639,7 @@ const Agenda = () => {
                         <div key={question.id} className="mb-5 p-3 border-1 border-round surface-card">
                             <h3 className="text-lg font-medium mb-3">
                                 Question {index + 1}: {question.text}
+                                <span className="text-sm text-gray-500 ml-2">({question.points} point{question.points > 1 ? 's' : ''})</span>
                             </h3>
 
                             {question.type === 'radio' ? (
@@ -391,7 +654,7 @@ const Agenda = () => {
                                                 checked={examAnswers[question.id] === option.value}
                                             />
                                             <label htmlFor={`${question.id}-${option.value}`} className="ml-2">
-                                                {option.label}
+                                                {option.text}
                                             </label>
                                         </div>
                                     ))}
@@ -408,7 +671,7 @@ const Agenda = () => {
                         </div>
                     ))
                 ) : (
-                    <p className="text-gray-500">Aucune question disponible pour cet examen.</p>
+                    <p className="text-red-500">Aucune question disponible pour cet examen. Veuillez contacter l'administrateur pour vérifier les données.</p>
                 )}
             </div>
 
@@ -424,6 +687,7 @@ const Agenda = () => {
                     icon="pi pi-send"
                     className="p-button-raised p-button-danger w-60"
                     onClick={() => handleSubmitExam(false)}
+                    disabled={selectedExam?.questions?.length === 0}
                 />
             </div>
         </div>

@@ -22,8 +22,13 @@ class AgendaRepository extends ServiceEntityRepository
     public function findByTypeAndFilters(?string $type, ?int $mentionId, ?int $parcoursId, ?int $niveauId): array
 {
     $qb = $this->createQueryBuilder('a')
-        ->andWhere('a.date_expiration >= :now')
-        ->setParameter('now', new \DateTimeImmutable());
+        ->leftJoin('a.mention', 'm')
+        ->leftJoin('a.parcours', 'p')
+        ->leftJoin('a.niveau', 'n');
+
+    // Retirez le filtre de date ou ajustez-le pour le débogage
+    // ->andWhere('a.date_expiration >= :now')
+    // ->setParameter('now', new \DateTimeImmutable());
 
     if ($type) {
         $qb->andWhere('a.type = :type')
@@ -31,17 +36,17 @@ class AgendaRepository extends ServiceEntityRepository
     }
 
     if ($mentionId) {
-        $qb->andWhere('a.mention = :mentionId')
+        $qb->andWhere('m.id = :mentionId OR m.id IS NULL')
            ->setParameter('mentionId', $mentionId);
     }
 
     if ($parcoursId) {
-        $qb->andWhere('a.parcours = :parcoursId')
+        $qb->andWhere('p.id = :parcoursId OR p.id IS NULL')
            ->setParameter('parcoursId', $parcoursId);
     }
 
     if ($niveauId) {
-        $qb->andWhere('a.niveau = :niveauId')
+        $qb->andWhere('n.id = :niveauId OR n.id IS NULL')
            ->setParameter('niveauId', $niveauId);
     }
 
