@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Notebook as Robot, Send, FileText, Database, CheckCircle } from 'lucide-react';
+import { FiChevronDown } from 'react-icons/fi';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { useParams } from 'react-router-dom';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { MultiSelect } from 'primereact/multiselect';
 import { InputNumber } from 'primereact/inputnumber';
 import { createExamen, getEcSupports, submitExamenToAdmin } from '../../Services/examenService';
 
 function Examen() {
     const { mentionId, semestreId, coursId } = useParams();
     const toast = useRef(null);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState([]); // Changé de selectedFile à selectedFiles
     const [generatedFile, setGeneratedFile] = useState(null);
     const [generatedFileUrl, setGeneratedFileUrl] = useState(null);
     const [courseContent, setCourseContent] = useState('');
@@ -29,6 +29,7 @@ function Examen() {
     const [tempFile, setTempFile] = useState(null);
     const [questions, setQuestions] = useState([]);
     const [errorMessage, setErrorMessage] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     useEffect(() => {
         if (aiMode === 'existing' && coursId) {
@@ -54,22 +55,25 @@ function Examen() {
     }, [aiMode, coursId]);
 
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.type !== 'application/pdf') {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            const invalidFiles = files.filter(file => file.type !== 'application/pdf');
+            if (invalidFiles.length > 0) {
                 toast.current.show({
                     severity: 'error',
                     summary: 'Erreur',
-                    detail: 'Veuillez sélectionner un fichier PDF',
+                    detail: 'Veuillez sélectionner uniquement des fichiers PDF',
                     life: 3000,
                 });
                 return;
             }
-            setSelectedFile(file);
-            setGeneratedFileUrl(URL.createObjectURL(file));
+            setSelectedFiles(files);
+            if (mode === 'upload') {
+                setGeneratedFileUrl(URL.createObjectURL(files[0])); // Afficher uniquement le premier fichier pour la prévisualisation
+            }
             setErrorMessage('');
         } else {
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setGeneratedFileUrl(null);
             setErrorMessage('');
         }
@@ -95,7 +99,7 @@ function Examen() {
 
     const resetForm = (isAiMode) => {
         if (isAiMode) {
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setGeneratedFile(null);
             setGeneratedFileUrl(null);
             setCourseContent('');
@@ -108,7 +112,7 @@ function Examen() {
             setQuestions([]);
             setErrorMessage('');
         } else {
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setGeneratedFileUrl(null);
             setTitre('Examen');
             setDescription('');
@@ -133,16 +137,16 @@ function Examen() {
             });
             return;
         }
-        if (mode === 'ai' && aiMode === 'new' && !selectedFile) {
+        if (mode === 'ai' && aiMode === 'new' && selectedFiles.length === 0) {
             toast.current.show({
                 severity: 'error',
                 summary: 'Erreur',
-                detail: 'Veuillez sélectionner un fichier PDF',
+                detail: 'Veuillez sélectionner au moins un fichier PDF',
                 life: 3000,
             });
             return;
         }
-        if (mode === 'upload' && !selectedFile) {
+        if (mode === 'upload' && selectedFiles.length === 0) {
             toast.current.show({
                 severity: 'error',
                 summary: 'Erreur',
@@ -189,7 +193,7 @@ function Examen() {
                 courseContent.trim(),
                 mode === 'upload' ? 'pdf' : 'ia_genere',
                 submitInstructions,
-                mode === 'ai' && aiMode === 'existing' && selectedSupports.length > 0 ? null : selectedFile,
+                mode === 'ai' && aiMode === 'existing' ? null : selectedFiles,
                 durationInSeconds
             );
 
@@ -219,7 +223,7 @@ function Examen() {
     };
 
     const handleSendToAdmin = async () => {
-        if (!selectedFile && !tempFile && !generatedFile) {
+        if (!selectedFiles.length && !tempFile && !generatedFile) {
             toast.current.show({
                 severity: 'error',
                 summary: 'Erreur',
@@ -244,7 +248,7 @@ function Examen() {
                 courseContent.trim(),
                 mode === 'upload' ? 'pdf' : 'ia_genere',
                 submitInstructions,
-                generatedFile || selectedFile,
+                generatedFile || (mode === 'upload' ? selectedFiles[0] : null),
                 tempFile,
                 questions,
                 calculateDurationInSeconds()
@@ -269,24 +273,64 @@ function Examen() {
         }
     };
 
-    const supportOptionTemplate = (option) => {
+    const CustomMultiSelect = ({ options, value, onChange, placeholder }) => {
+        const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
+
+        const handleSelect = (option) => {
+            const isSelected = value.some((item) => item.id === option.id);
+            if (isSelected) {
+                onChange(value.filter((item) => item.id !== option.id));
+            } else {
+                onChange([...value, option]);
+            }
+        };
+
         return (
-            <div className="flex items-center">
-                <span>{option.titre} ({option.type})</span>
+            <div className="relative w-full">
+                <div
+                    className="justify-between p-2 border rounded-md bg-white cursor-pointer items-center flex"
+                    onClick={toggleDropdown}
+                    style={{ borderColor: '#d1d5db', minHeight: '40px' }}
+                >
+                    <span className="text-gray-700 font-semibold">
+                        {value.length > 0
+                            ? value.map((item) => item.titre).join(', ')
+                            : placeholder}
+                    </span>
+                    <FiChevronDown
+                        className={` text-gray-700 transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                        size={20}
+                    />
+                </div>
+                {isDropdownOpen && (
+                    <div
+                        className="absolute w-full text-gray-700 font-semibold mt-1 border rounded-md bg-white shadow-lg max-h-60 overflow-y-auto z-10"
+                        style={{ borderColor: '#d1d5db' }}
+                    >
+                        {options.length === 0 ? (
+                            <div className="p-2 text-gray-500">Aucun support disponible</div>
+                        ) : (
+                            options.map((option) => (
+                                <label
+                                    key={option.id}
+                                    className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={value.some((item) => item.id === option.id)}
+                                        onChange={() => handleSelect(option)}
+                                        className="mr-2"
+                                    />
+                                    <span>{option.titre} ({option.type})</span>
+                                </label>
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
 
-    const selectedSupportTemplate = (option) => {
-        if (option) {
-            return (
-                <div className="flex items-center">
-                    <span>{option.titre}</span>
-                </div>
-            );
-        }
-        return <span>Choisir des supports</span>;
-    };
 
     return (
         <LayoutEnseignant>
@@ -383,6 +427,7 @@ function Examen() {
                                             onChange={handleFileChange}
                                             className="hidden"
                                             id="file-upload"
+                                            multiple={false} // Un seul fichier pour le mode upload
                                         />
                                         <label
                                             htmlFor="file-upload"
@@ -390,13 +435,13 @@ function Examen() {
                                         >
                                             <Upload size={40} className="text-gray-400 mb-4" />
                                             <span className="text-gray-600">
-                                                {selectedFile
-                                                    ? selectedFile.name
+                                                {selectedFiles.length > 0
+                                                    ? selectedFiles[0].name
                                                     : "Cliquez pour télécharger l'examen en PDF"}
                                             </span>
                                         </label>
                                     </div>
-                                    {selectedFile && (
+                                    {selectedFiles.length > 0 && (
                                         <div className="space-y-4">
                                             <div className="mb-4">
                                                 <p className="text-gray-600 mb-2">Prévisualisation du PDF :</p>
@@ -495,16 +540,11 @@ function Examen() {
                                                     Aucun support PDF disponible pour cet EC.
                                                 </p>
                                             ) : (
-                                                <MultiSelect
-                                                    value={selectedSupports}
+                                                <CustomMultiSelect
                                                     options={supports}
-                                                    onChange={(e) => setSelectedSupports(e.value || [])}
-                                                    optionLabel="titre"
+                                                    value={selectedSupports}
+                                                    onChange={(value) => setSelectedSupports(value || [])}
                                                     placeholder="Choisir des supports"
-                                                    maxSelectedLabels={3}
-                                                    className="w-full"
-                                                    itemTemplate={supportOptionTemplate}
-                                                    selectedItemTemplate={selectedSupportTemplate}
                                                 />
                                             )}
                                             <label className="block text-sm font-medium text-gray-700 mt-4">
@@ -529,6 +569,7 @@ function Examen() {
                                                     onChange={handleFileChange}
                                                     className="hidden"
                                                     id="course-upload"
+                                                    multiple // Permettre la sélection multiple
                                                 />
                                                 <label
                                                     htmlFor="course-upload"
@@ -536,15 +577,25 @@ function Examen() {
                                                 >
                                                     <Upload size={32} className="text-gray-400 mb-3" />
                                                     <span className="text-gray-600 text-center">
-                                                        {selectedFile
-                                                            ? selectedFile.name
+                                                        {selectedFiles.length > 0
+                                                            ? selectedFiles.map(file => file.name).join(', ')
                                                             : 'Cliquez pour ajouter vos supports de cours en PDF'}
                                                     </span>
                                                     <span className="text-sm text-gray-500 mt-1">
-                                                        Vous pouvez sélectionner un fichier
+                                                        Vous pouvez sélectionner plusieurs fichiers PDF
                                                     </span>
                                                 </label>
                                             </div>
+                                            {selectedFiles.length > 0 && (
+                                                <div className="mt-4">
+                                                    <p className="text-gray-600 mb-2">Fichiers sélectionnés :</p>
+                                                    <ul className="list-disc pl-5 text-gray-600">
+                                                        {selectedFiles.map((file, index) => (
+                                                            <li key={index}>{file.name}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
                                             <label className="block text-sm font-medium text-gray-700">
                                                 Instructions supplémentaires
                                             </label>

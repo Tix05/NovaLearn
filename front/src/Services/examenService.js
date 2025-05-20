@@ -3,7 +3,7 @@ import { getTeacherToken } from './teacherAuthService';
 
 const API_URL = 'http://localhost:8000/api';
 
-export const createExamen = async (ecId, titre, description, courseContent, type, instructions, file, duration) => {
+export const createExamen = async (ecId, titre, description, courseContent, type, instructions, files, duration) => {
     const formData = new FormData();
     formData.append('ec_id', ecId);
     formData.append('titre', titre);
@@ -11,8 +11,14 @@ export const createExamen = async (ecId, titre, description, courseContent, type
     formData.append('type', type);
     formData.append('instructions', instructions);
     formData.append('duree', duration);
-    if (file) {
-        formData.append('file', file);
+    if (files) {
+        if (Array.isArray(files)) {
+            files.forEach((file, index) => {
+                formData.append(`files[${index}]`, file);
+            });
+        } else {
+            formData.append('files[0]', files);
+        }
     }
 
     try {
