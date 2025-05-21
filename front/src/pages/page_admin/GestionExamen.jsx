@@ -100,7 +100,7 @@ export default function GestionExamen() {
         { label: 'Tous', value: 'Tous' },
         { label: 'En attente', value: 'en_attente' },
         { label: 'Soumis', value: 'soumis' },
-        { label: 'Publié', value: 'publie' },
+        { label: 'Publié', value: 'publié' },
     ];
 
     const onGlobalFilterChange = (e) => {
@@ -201,7 +201,7 @@ export default function GestionExamen() {
             });
             setTeacherExams(teacherExams.map(item =>
                 item.id === selectedItem.id
-                    ? { ...item, statut: 'publie' }
+                    ? { ...item, statut: 'publié' }
                     : item
             ));
             setPreviewDialogVisible(false);
@@ -277,7 +277,7 @@ export default function GestionExamen() {
                 tooltip="Voir"
                 tooltipOptions={{ position: 'top' }}
             />
-            {rowData.statut !== 'publie' && (
+            {rowData.statut !== 'publié' && (
                 <Button
                     icon={<Send size={18} />}
                     rounded
@@ -332,7 +332,7 @@ export default function GestionExamen() {
         let className, label;
 
         switch (status) {
-            case 'publie':
+            case 'publié':
                 className = 'p-tag p-tag-success';
                 label = 'Publié';
                 break;
