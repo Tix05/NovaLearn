@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Etudiant;
+use App\Entity\Agenda;
 use App\Entity\EtudiantExamenStatut;
 use App\Repository\AgendaRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -69,22 +70,29 @@ class AgendaService
     }
 
     private function formatAgendaItems(array $items): array
-    {
-        return array_map(function ($item) {
-            return [
-                'id' => $item->getId(),
-                'titre' => $item->getTitre(),
-                'description' => $item->getDescription(),
-                'date' => $item->getDate()->format('c'), // ISO 8601 format for frontend
-                'type' => $item->getType(),
-                'mention' => $item->getMention() ? $item->getMention()->getName() : null,
-                'parcours' => $item->getParcours() ? $item->getParcours()->getName() : null,
-                'niveau' => $item->getNiveau() ? $item->getNiveau()->getNom() : null,
-                'nom_auteur' => $item->getNomAuteur() ?: 'Anonyme',
-                'image' => $item->getImage() ? '/uploads/agenda/' . $item->getImage() : null,
-                'video' => $item->getVideo() ? '/uploads/agenda/' . $item->getVideo() : null,
-                'examenId' => $item->getExamens()->first() ? $item->getExamens()->first()->getId() : null,
-            ];
-        }, $items);
-    }
+{
+    return array_map(function ($item) {
+        $formattedItem = [
+            'id' => $item->getId(),
+            'titre' => $item->getTitre(),
+            'description' => $item->getDescription(),
+            'date' => $item->getDate()->format('c'),
+            'type' => $item->getType(),
+            'mention' => $item->getMention() ? $item->getMention()->getName() : null,
+            'parcours' => $item->getParcours() ? $item->getParcours()->getName() : null,
+            'niveau' => $item->getNiveau() ? $item->getNiveau()->getNom() : null,
+            'nom_auteur' => $item->getNomAuteur() ?: 'Anonyme',
+            'examenId' => $item->getExamens()->first() ? $item->getExamens()->first()->getId() : null,
+        ];
+
+        // Ne pas inclure image/video/url pour les examens
+        if ($item->getType() !== Agenda::TYPE_EXAMEN) {
+            $formattedItem['image'] = $item->getImage() ? '/uploads/agenda/images/' . $item->getImage() : null;
+            $formattedItem['video'] = $item->getVideo() ? '/uploads/agenda/videos/' . $item->getVideo() : null;
+            $formattedItem['url'] = $item->getUrl();
+        }
+
+        return $formattedItem;
+    }, $items);
+}
 }

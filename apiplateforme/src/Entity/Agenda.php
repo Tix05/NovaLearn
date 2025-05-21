@@ -13,6 +13,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
 
 /**
@@ -185,6 +186,26 @@ class Agenda
      * @ORM\OneToMany(targetEntity=Examen::class, mappedBy="agenda")
      */
     private Collection $examens;
+
+    /**
+     * @Vich\UploadableField(mapping="agenda_image", fileNameProperty="image")
+     * @Assert\File(
+     *     maxSize="5M",
+     *     mimeTypes={"image/jpeg", "image/png", "image/gif"}
+     * )
+     * @Groups({"agenda:write"})
+     */
+    private $imageFile;
+
+    /**
+     * @Vich\UploadableField(mapping="agenda_video", fileNameProperty="video")
+     * @Assert\File(
+     *     maxSize="50M",
+     *     mimeTypes={"video/mp4", "video/quicktime", "video/x-msvideo"}
+     * )
+     * @Groups({"agenda:write"})
+     */
+    private $videoFile;
 
     public function __construct()
     {
@@ -424,4 +445,32 @@ class Agenda
         }
         return $this;
     }
+
+    public function setImageFile($imageFile = null): void
+    {
+        $this->imageFile = $imageFile;
+
+        if (null !== $imageFile) {
+            $this->updated_at = new \DateTimeImmutable();
+        }
     }
+
+    public function getImageFile()
+    {
+        return $this->imageFile;
+    }
+
+    public function setVideoFile($videoFile = null): void
+    {
+        $this->videoFile = $videoFile;
+
+        if (null !== $videoFile) {
+            $this->updated_at = new \DateTimeImmutable();
+        }
+    }
+
+    public function getVideoFile()
+    {
+        return $this->videoFile;
+    }
+}

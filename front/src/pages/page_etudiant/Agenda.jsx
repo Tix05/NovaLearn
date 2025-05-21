@@ -522,17 +522,22 @@ const Agenda = () => {
                     )}
                 </div>
 
-                {item.image && (
+                {/* Afficher l'image seulement si ce n'est pas un examen */}
+                {!isExam && item.image && (
                     <div className="mt-3">
                         <img
                             src={item.image}
                             alt={item.titre}
                             className="w-full h-auto rounded-lg border border-gray-200"
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                            }}
                         />
                     </div>
                 )}
 
-                {item.video && (
+                {/* Afficher la vidéo seulement si ce n'est pas un examen */}
+                {!isExam && item.video && (
                     <div className="mt-3">
                         <div className="relative pt-[56.25%] bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
                             <video
@@ -543,6 +548,20 @@ const Agenda = () => {
                                 Votre navigateur ne supporte pas la lecture de vidéos.
                             </video>
                         </div>
+                    </div>
+                )}
+
+                {/* Afficher l'URL seulement si ce n'est pas un examen */}
+                {!isExam && item.url && (
+                    <div className="mt-3">
+                        <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline break-all"
+                        >
+                            {item.url}
+                        </a>
                     </div>
                 )}
 
