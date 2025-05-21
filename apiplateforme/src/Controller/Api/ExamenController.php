@@ -19,6 +19,7 @@ use App\Service\PdfExtractorService;
 use App\Repository\ExamenRepository;
 use App\Repository\EtudiantRepository;
 use App\Repository\AgendaRepository;
+use App\Repository\CorrectionExamenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -59,412 +60,412 @@ class ExamenController extends AbstractController
     }
 
     /**
- * @Route("/create", name="api_examen_create", methods={"POST"})
- */
-public function createExamen(Request $request): JsonResponse
-{
-    $this->logger->info('Requête reçue pour /api/examen/create', [
-        'method' => $request->getMethod(),
-        'uri' => $request->getUri(),
-    ]);
+     * @Route("/create", name="api_examen_create", methods={"POST"})
+     */
+    public function createExamen(Request $request): JsonResponse
+    {
+        $this->logger->info('Requête reçue pour /api/examen/create', [
+            'method' => $request->getMethod(),
+            'uri' => $request->getUri(),
+        ]);
 
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-        $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
+            return $this->json(['message' => 'Accès non autorisé'], 403);
+        }
 
-    $data = $request->request->all();
-    $files = $request->files->get('files'); // Changement de 'file' à 'files'
-    $this->logger->info('Données reçues pour créer examen', [
-        'data' => $data,
-        'files' => $files ? array_map(fn($file) => $file->getClientOriginalName(), (array)$files) : null
-    ]);
+        $data = $request->request->all();
+        $files = $request->files->get('files'); // Changement de 'file' à 'files'
+        $this->logger->info('Données reçues pour créer examen', [
+            'data' => $data,
+            'files' => $files ? array_map(fn($file) => $file->getClientOriginalName(), (array)$files) : null
+        ]);
 
-    $ecId = $data['ec_id'] ?? null;
-    $type = $data['type'] ?? 'pdf';
-    $instructions = $data['instructions'] ?? '';
-    $titre = $data['titre'] ?? 'Examen';
-    $description = $data['description'] ?? '';
-    $duration = isset($data['duree']) && is_numeric($data['duree']) && $data['duree'] > 0 && $data['duree'] <= 86400 ? (int)$data['duree'] : 3600;
+        $ecId = $data['ec_id'] ?? null;
+        $type = $data['type'] ?? 'pdf';
+        $instructions = $data['instructions'] ?? '';
+        $titre = $data['titre'] ?? 'Examen';
+        $description = $data['description'] ?? '';
+        $duration = isset($data['duree']) && is_numeric($data['duree']) && $data['duree'] > 0 && $data['duree'] <= 86400 ? (int)$data['duree'] : 3600;
 
-    if (!$ecId) {
-        $this->logger->warning('EC ID manquant');
-        return $this->json(['message' => 'EC ID requis'], 400);
-    }
+        if (!$ecId) {
+            $this->logger->warning('EC ID manquant');
+            return $this->json(['message' => 'EC ID requis'], 400);
+        }
 
-    $ec = $this->entityManager->getRepository(Ec::class)->find($ecId);
-    if (!$ec || $ec->getProf()->getUser()->getId() !== $user->getId()) {
-        $this->logger->warning('EC non trouvé ou non autorisé', ['ec_id' => $ecId]);
-        return $this->json(['message' => 'EC non trouvé ou non autorisé'], 403);
-    }
+        $ec = $this->entityManager->getRepository(Ec::class)->find($ecId);
+        if (!$ec || $ec->getProf()->getUser()->getId() !== $user->getId()) {
+            $this->logger->warning('EC non trouvé ou non autorisé', ['ec_id' => $ecId]);
+            return $this->json(['message' => 'EC non trouvé ou non autorisé'], 403);
+        }
 
-    $this->logger->info('EC trouvé', ['ec_id' => $ecId]);
+        $this->logger->info('EC trouvé', ['ec_id' => $ecId]);
 
-    $examen = new Examen();
-    $examen->setTitre($titre);
-    $examen->setDescription($description);
-    $examen->setType($type);
-    $examen->setStatut('brouillon');
-    $examen->setDuree($duration);
-    $examen->setAuteur($user);
-    $examen->setEc($ec);
+        $examen = new Examen();
+        $examen->setTitre($titre);
+        $examen->setDescription($description);
+        $examen->setType($type);
+        $examen->setStatut('brouillon');
+        $examen->setDuree($duration);
+        $examen->setAuteur($user);
+        $examen->setEc($ec);
 
-    try {
-        $questions = [];
-        $pdfContent = '';
-        $tempFileName = null;
+        try {
+            $questions = [];
+            $pdfContent = '';
+            $tempFileName = null;
 
-        if ($type === 'ia_genere') {
-            if (strpos($instructions, 'Utiliser les supports:') === 0) {
-                $this->logger->info('Traitement des supports existants', ['instructions' => $instructions]);
-                $supportPart = substr($instructions, strlen('Utiliser les supports: '));
-                $supportPart = preg_replace('/[\r\n].*/s', '', $supportPart);
-                $supportTitres = array_map('trim', explode(',', $supportPart));
-                $supportDetails = [];
+            if ($type === 'ia_genere') {
+                if (strpos($instructions, 'Utiliser les supports:') === 0) {
+                    $this->logger->info('Traitement des supports existants', ['instructions' => $instructions]);
+                    $supportPart = substr($instructions, strlen('Utiliser les supports: '));
+                    $supportPart = preg_replace('/[\r\n].*/s', '', $supportPart);
+                    $supportTitres = array_map('trim', explode(',', $supportPart));
+                    $supportDetails = [];
 
-                foreach ($supportTitres as $supportTitre) {
-                    if (empty($supportTitre)) {
-                        $this->logger->warning('Titre de support vide', ['supportTitre' => $supportTitre]);
-                        continue;
+                    foreach ($supportTitres as $supportTitre) {
+                        if (empty($supportTitre)) {
+                            $this->logger->warning('Titre de support vide', ['supportTitre' => $supportTitre]);
+                            continue;
+                        }
+
+                        $support = $this->entityManager->getRepository(FichierSupport::class)->findOneBy([
+                            'titre' => $supportTitre,
+                            'ec' => $ec,
+                        ]);
+
+                        $this->logger->info('Recherche du support', [
+                            'titre' => $supportTitre,
+                            'ec_id' => $ecId,
+                            'support_trouvé' => $support ? 'oui' : 'non'
+                        ]);
+
+                        if (!$support || !$support->getFichier() || !str_ends_with($support->getFichier(), '.pdf')) {
+                            $this->logger->error('Support non trouvé ou invalide', ['titre' => $supportTitre, 'ec_id' => $ecId]);
+                            return $this->json(['message' => "Support '$supportTitre' non trouvé ou n'est pas un PDF"], 404);
+                        }
+
+                        $filePath = $this->getParameter('supports_directory') . '/' . $support->getFichier();
+                        $this->logger->info('Vérification du fichier support', [
+                            'file_path' => $filePath,
+                            'existe' => file_exists($filePath) ? 'oui' : 'non'
+                        ]);
+
+                        if (!file_exists($filePath)) {
+                            $this->logger->error('Fichier support non trouvé', ['file' => $filePath]);
+                            return $this->json(['message' => "Fichier pour support '$supportTitre' introuvable"], 404);
+                        }
+
+                        $pdfContent .= $this->pdfExtractorService->extractText($filePath) . "\n";
+                        $supportDetails[] = "Support: {$supportTitre} (Type: {$support->getType()})";
                     }
 
-                    $support = $this->entityManager->getRepository(FichierSupport::class)->findOneBy([
-                        'titre' => $supportTitre,
-                        'ec' => $ec,
-                    ]);
-
-                    $this->logger->info('Recherche du support', [
-                        'titre' => $supportTitre,
-                        'ec_id' => $ecId,
-                        'support_trouvé' => $support ? 'oui' : 'non'
-                    ]);
-
-                    if (!$support || !$support->getFichier() || !str_ends_with($support->getFichier(), '.pdf')) {
-                        $this->logger->error('Support non trouvé ou invalide', ['titre' => $supportTitre, 'ec_id' => $ecId]);
-                        return $this->json(['message' => "Support '$supportTitre' non trouvé ou n'est pas un PDF"], 404);
+                    if (empty($supportDetails)) {
+                        $this->logger->error('Aucun support valide spécifié');
+                        return $this->json(['message' => 'Aucun support valide spécifié'], 400);
                     }
 
-                    $filePath = $this->getParameter('supports_directory') . '/' . $support->getFichier();
-                    $this->logger->info('Vérification du fichier support', [
-                        'file_path' => $filePath,
-                        'existe' => file_exists($filePath) ? 'oui' : 'non'
-                    ]);
+                    $instructions = implode("\n", $supportDetails) . "\n" . preg_replace('/^Utiliser les supports:[^\n]*\n?/s', '', $instructions);
+                } elseif ($files) {
+                    $this->logger->info('Traitement des fichiers PDF uploadés', ['file_count' => count((array)$files)]);
+                    $files = (array)$files; // Convertir en tableau si ce n'est pas déjà le cas
+                    foreach ($files as $index => $file) {
+                        if (!$file instanceof UploadedFile || $file->getClientOriginalExtension() !== 'pdf') {
+                            $this->logger->error('Fichier non valide ou non PDF', ['index' => $index, 'filename' => $file ? $file->getClientOriginalName() : 'null']);
+                            return $this->json(['message' => "Le fichier à l'index $index n'est pas un PDF valide"], 400);
+                        }
 
-                    if (!file_exists($filePath)) {
-                        $this->logger->error('Fichier support non trouvé', ['file' => $filePath]);
-                        return $this->json(['message' => "Fichier pour support '$supportTitre' introuvable"], 404);
+                        $tempFileName = 'temp_' . md5(uniqid()) . '_' . $index . '.pdf';
+                        $file->move($this->getParameter('uploads_directory') . '/temp', $tempFileName);
+                        $filePath = $this->getParameter('uploads_directory') . '/temp/' . $tempFileName;
+                        $pdfContent .= $this->pdfExtractorService->extractText($filePath) . "\n";
+                        $this->logger->info('Contenu PDF extrait', ['filename' => $tempFileName, 'content_length' => strlen($pdfContent)]);
+
+                        // Supprimer le fichier temporaire après extraction
+                        if (file_exists($filePath)) {
+                            unlink($filePath);
+                        }
                     }
-
-                    $pdfContent .= $this->pdfExtractorService->extractText($filePath) . "\n";
-                    $supportDetails[] = "Support: {$supportTitre} (Type: {$support->getType()})";
+                } else {
+                    $this->logger->error('Aucun fichier ou support valide fourni pour type ia_genere', ['type' => $type]);
+                    return $this->json(['message' => 'Aucun fichier PDF ou support valide fourni'], 400);
                 }
 
-                if (empty($supportDetails)) {
-                    $this->logger->error('Aucun support valide spécifié');
-                    return $this->json(['message' => 'Aucun support valide spécifié'], 400);
+                $instructions = "À chaque question, précisez la réponse correcte parmi les options pour les questions de type radio, attribuez des points à chaque question, et fournissez la réponse exacte pour les questions ouvertes.\n" . $instructions;
+                $questions = $this->geminiService->generateExamQuestions($pdfContent, $instructions);
+                $this->logger->info('Questions générées', ['question_count' => count($questions)]);
+            } elseif ($files && count((array)$files) === 1) {
+                $file = is_array($files) ? reset($files) : $files;
+                if (!$file instanceof UploadedFile || $file->getClientOriginalExtension() !== 'pdf') {
+                    $this->logger->error('Fichier PDF requis pour type pdf', ['type' => $type]);
+                    return $this->json(['message' => 'Fichier PDF requis'], 400);
                 }
-
-                $instructions = implode("\n", $supportDetails) . "\n" . preg_replace('/^Utiliser les supports:[^\n]*\n?/s', '', $instructions);
-            } elseif ($files) {
-                $this->logger->info('Traitement des fichiers PDF uploadés', ['file_count' => count((array)$files)]);
-                $files = (array)$files; // Convertir en tableau si ce n'est pas déjà le cas
-                foreach ($files as $index => $file) {
-                    if (!$file instanceof UploadedFile || $file->getClientOriginalExtension() !== 'pdf') {
-                        $this->logger->error('Fichier non valide ou non PDF', ['index' => $index, 'filename' => $file ? $file->getClientOriginalName() : 'null']);
-                        return $this->json(['message' => "Le fichier à l'index $index n'est pas un PDF valide"], 400);
-                    }
-
-                    $tempFileName = 'temp_' . md5(uniqid()) . '_' . $index . '.pdf';
-                    $file->move($this->getParameter('uploads_directory') . '/temp', $tempFileName);
-                    $filePath = $this->getParameter('uploads_directory') . '/temp/' . $tempFileName;
-                    $pdfContent .= $this->pdfExtractorService->extractText($filePath) . "\n";
-                    $this->logger->info('Contenu PDF extrait', ['filename' => $tempFileName, 'content_length' => strlen($pdfContent)]);
-
-                    // Supprimer le fichier temporaire après extraction
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                }
+                $this->logger->info('Traitement du fichier PDF temporaire', ['filename' => $file->getClientOriginalName()]);
+                $tempFileName = 'temp_' . md5(uniqid()) . '.pdf';
+                $file->move($this->getParameter('uploads_directory') . '/temp', $tempFileName);
             } else {
-                $this->logger->error('Aucun fichier ou support valide fourni pour type ia_genere', ['type' => $type]);
-                return $this->json(['message' => 'Aucun fichier PDF ou support valide fourni'], 400);
+                $this->logger->error('Un seul fichier PDF requis pour type pdf', ['type' => $type]);
+                return $this->json(['message' => 'Un seul fichier PDF requis pour le type pdf'], 400);
             }
 
-            $instructions = "À chaque question, précisez la réponse correcte parmi les options pour les questions de type radio, attribuez des points à chaque question, et fournissez la réponse exacte pour les questions ouvertes.\n" . $instructions;
-            $questions = $this->geminiService->generateExamQuestions($pdfContent, $instructions);
-            $this->logger->info('Questions générées', ['question_count' => count($questions)]);
-        } elseif ($files && count((array)$files) === 1) {
-            $file = is_array($files) ? reset($files) : $files;
-            if (!$file instanceof UploadedFile || $file->getClientOriginalExtension() !== 'pdf') {
-                $this->logger->error('Fichier PDF requis pour type pdf', ['type' => $type]);
-                return $this->json(['message' => 'Fichier PDF requis'], 400);
+            if ($type === 'ia_genere' && !empty($questions)) {
+                $tempFileName = $this->generateExamPdf($examen, $questions);
             }
-            $this->logger->info('Traitement du fichier PDF temporaire', ['filename' => $file->getClientOriginalName()]);
-            $tempFileName = 'temp_' . md5(uniqid()) . '.pdf';
-            $file->move($this->getParameter('uploads_directory') . '/temp', $tempFileName);
-        } else {
-            $this->logger->error('Un seul fichier PDF requis pour type pdf', ['type' => $type]);
-            return $this->json(['message' => 'Un seul fichier PDF requis pour le type pdf'], 400);
-        }
 
-        if ($type === 'ia_genere' && !empty($questions)) {
-            $tempFileName = $this->generateExamPdf($examen, $questions);
+            return $this->json([
+                'message' => 'Prévisualisation de l\'examen générée',
+                'temp_file' => $tempFileName ? '/uploads/temp/' . $tempFileName : null,
+                'questions' => $questions,
+                'titre' => $titre,
+                'description' => $description,
+                'duree' => $duration
+            ], 200);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la création de l\'examen: ' . $e->getMessage(), ['exception' => $e]);
+            return $this->json(['message' => 'Erreur serveur lors de la création de l\'examen: ' . $e->getMessage()], 500);
         }
-
-        return $this->json([
-            'message' => 'Prévisualisation de l\'examen générée',
-            'temp_file' => $tempFileName ? '/uploads/temp/' . $tempFileName : null,
-            'questions' => $questions,
-            'titre' => $titre,
-            'description' => $description,
-            'duree' => $duration
-        ], 200);
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur lors de la création de l\'examen: ' . $e->getMessage(), ['exception' => $e]);
-        return $this->json(['message' => 'Erreur serveur lors de la création de l\'examen: ' . $e->getMessage()], 500);
     }
-}
 
     /**
- * @Route("/submit-to-admin", name="api_examen_submit_to_admin", methods={"POST"})
- */
-public function submitExamenToAdmin(Request $request): JsonResponse
-{
-    $this->logger->info('Requête reçue pour /api/examen/submit-to-admin', [
-        'method' => $request->getMethod(),
-        'uri' => $request->getUri(),
-    ]);
+     * @Route("/submit-to-admin", name="api_examen_submit_to_admin", methods={"POST"})
+     */
+    public function submitExamenToAdmin(Request $request): JsonResponse
+    {
+        $this->logger->info('Requête reçue pour /api/examen/submit-to-admin', [
+            'method' => $request->getMethod(),
+            'uri' => $request->getUri(),
+        ]);
 
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-        $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
-
-    $data = $request->request->all();
-    $file = $request->files->get('file');
-    $tempFile = $data['temp_file'] ?? null;
-    $this->logger->info('Données reçues pour soumettre examen', [
-        'data' => $data,
-        'file' => $file ? $file->getClientOriginalName() : null,
-        'temp_file' => $tempFile
-    ]);
-
-    $ecId = $data['ec_id'] ?? null;
-    $type = $data['type'] ?? 'pdf';
-    $instructions = $data['instructions'] ?? '';
-    $titre = $data['titre'] ?? 'Examen';
-    $description = $data['description'] ?? '';
-    $questionsData = json_decode($data['questions'] ?? '[]', true);
-    $duration = isset($data['duree']) && is_numeric($data['duree']) && $data['duree'] > 0 && $data['duree'] <= 86400 ? (int)$data['duree'] : 3600;
-
-    if (!$ecId) {
-        $this->logger->warning('EC ID manquant');
-        return $this->json(['message' => 'EC ID requis'], 400);
-    }
-
-    $ec = $this->entityManager->getRepository(Ec::class)->find($ecId);
-    if (!$ec || $ec->getProf()->getUser()->getId() !== $user->getId()) {
-        $this->logger->warning('EC non trouvé ou non autorisé', ['ec_id' => $ecId]);
-        return $this->json(['message' => 'EC non trouvé ou non autorisé'], 403);
-    }
-
-    $examen = new Examen();
-    $examen->setTitre($titre);
-    $examen->setDescription($description);
-    $examen->setType($type);
-    $examen->setStatut('soumis');
-    $examen->setDuree($duration);
-    $examen->setAuteur($user);
-    $examen->setEc($ec);
-
-    try {
-        $fileName = null;
-        $filePath = null;
-        $uploadsDir = $this->getParameter('uploads_directory');
-        $examensDir = $uploadsDir . '/examens';
-        $tempDir = $uploadsDir . '/temp';
-
-        // Vérifier les permissions et l'existence des dossiers
-        if (!is_dir($examensDir) || !is_writable($examensDir)) {
-            $this->logger->error('Dossier examens inaccessible ou non écrivable', ['dir' => $examensDir]);
-            return $this->json(['message' => 'Dossier examens inaccessible ou non écrivable'], 500);
-        }
-        if (!is_dir($tempDir) || !is_writable($tempDir)) {
-            $this->logger->error('Dossier temporaire inaccessible ou non écrivable', ['dir' => $tempDir]);
-            return $this->json(['message' => 'Dossier temporaire inaccessible ou non écrivable'], 500);
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
+            return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
-        if ($file instanceof UploadedFile && $file->getClientOriginalExtension() === 'pdf') {
-            $fileName = md5(uniqid()) . '.pdf';
-            $filePath = $examensDir . '/' . $fileName;
-            $file->move($examensDir, $fileName);
-            $this->logger->info('Fichier téléversé déplacé', [
-                'source' => $file->getClientOriginalName(),
-                'destination' => $filePath
-            ]);
-        } elseif ($tempFile) {
-            $tempFilePath = $tempDir . str_replace('/uploads/temp', '', $tempFile);
-            if (!file_exists($tempFilePath)) {
-                $this->logger->error('Fichier temporaire non trouvé', ['temp_file' => $tempFilePath]);
-                return $this->json(['message' => 'Fichier temporaire non trouvé'], 404);
+        $data = $request->request->all();
+        $file = $request->files->get('file');
+        $tempFile = $data['temp_file'] ?? null;
+        $this->logger->info('Données reçues pour soumettre examen', [
+            'data' => $data,
+            'file' => $file ? $file->getClientOriginalName() : null,
+            'temp_file' => $tempFile
+        ]);
+
+        $ecId = $data['ec_id'] ?? null;
+        $type = $data['type'] ?? 'pdf';
+        $instructions = $data['instructions'] ?? '';
+        $titre = $data['titre'] ?? 'Examen';
+        $description = $data['description'] ?? '';
+        $questionsData = json_decode($data['questions'] ?? '[]', true);
+        $duration = isset($data['duree']) && is_numeric($data['duree']) && $data['duree'] > 0 && $data['duree'] <= 86400 ? (int)$data['duree'] : 3600;
+
+        if (!$ecId) {
+            $this->logger->warning('EC ID manquant');
+            return $this->json(['message' => 'EC ID requis'], 400);
+        }
+
+        $ec = $this->entityManager->getRepository(Ec::class)->find($ecId);
+        if (!$ec || $ec->getProf()->getUser()->getId() !== $user->getId()) {
+            $this->logger->warning('EC non trouvé ou non autorisé', ['ec_id' => $ecId]);
+            return $this->json(['message' => 'EC non trouvé ou non autorisé'], 403);
+        }
+
+        $examen = new Examen();
+        $examen->setTitre($titre);
+        $examen->setDescription($description);
+        $examen->setType($type);
+        $examen->setStatut('soumis');
+        $examen->setDuree($duration);
+        $examen->setAuteur($user);
+        $examen->setEc($ec);
+
+        try {
+            $fileName = null;
+            $filePath = null;
+            $uploadsDir = $this->getParameter('uploads_directory');
+            $examensDir = $uploadsDir . '/examens';
+            $tempDir = $uploadsDir . '/temp';
+
+            // Vérifier les permissions et l'existence des dossiers
+            if (!is_dir($examensDir) || !is_writable($examensDir)) {
+                $this->logger->error('Dossier examens inaccessible ou non écrivable', ['dir' => $examensDir]);
+                return $this->json(['message' => 'Dossier examens inaccessible ou non écrivable'], 500);
+            }
+            if (!is_dir($tempDir) || !is_writable($tempDir)) {
+                $this->logger->error('Dossier temporaire inaccessible ou non écrivable', ['dir' => $tempDir]);
+                return $this->json(['message' => 'Dossier temporaire inaccessible ou non écrivable'], 500);
             }
 
-            // Vérifications du fichier temporaire
-            clearstatcache();
-            $tempFileSize = filesize($tempFilePath);
-            if ($tempFileSize === 0) {
-                $this->logger->error('Fichier temporaire vide', ['temp_file' => $tempFilePath]);
-                return $this->json(['message' => 'Fichier temporaire vide'], 400);
-            }
-
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $tempFilePath);
-            finfo_close($finfo);
-            if ($mime !== 'application/pdf') {
-                $this->logger->error('Le fichier temporaire n\'est pas un PDF', ['file' => $tempFilePath, 'mime' => $mime]);
-                return $this->json(['message' => 'Le fichier temporaire n\'est pas un PDF'], 400);
-            }
-
-            try {
-                $pdfContent = $this->pdfExtractorService->extractText($tempFilePath);
-                $this->logger->info('Contenu extrait du fichier temporaire', [
-                    'temp_file' => $tempFilePath,
-                    'size' => $tempFileSize,
-                    'content_length' => strlen($pdfContent)
-                ]);
-                if (empty($pdfContent)) {
-                    $this->logger->warning('Contenu du fichier temporaire vide', ['temp_file' => $tempFilePath]);
-                    return $this->json(['message' => 'Contenu du fichier temporaire vide'], 400);
-                }
-            } catch (\Exception $e) {
-                $this->logger->error('Erreur lors de l\'extraction du contenu du fichier temporaire', [
-                    'file' => $tempFilePath,
-                    'error' => $e->getMessage()
-                ]);
-                return $this->json(['message' => 'Fichier temporaire corrompu: ' . $e->getMessage()], 400);
-            }
-
-            $fileName = str_replace('temp_', '', basename($tempFilePath));
-            $filePath = $examensDir . '/' . $fileName;
-
-            if (!copy($tempFilePath, $filePath)) {
-                $this->logger->error('Échec de la copie du fichier', [
-                    'source' => $tempFilePath,
+            if ($file instanceof UploadedFile && $file->getClientOriginalExtension() === 'pdf') {
+                $fileName = md5(uniqid()) . '.pdf';
+                $filePath = $examensDir . '/' . $fileName;
+                $file->move($examensDir, $fileName);
+                $this->logger->info('Fichier téléversé déplacé', [
+                    'source' => $file->getClientOriginalName(),
                     'destination' => $filePath
                 ]);
-                return $this->json(['message' => 'Échec de la copie du fichier'], 500);
-            }
+            } elseif ($tempFile) {
+                $tempFilePath = $tempDir . str_replace('/uploads/temp', '', $tempFile);
+                if (!file_exists($tempFilePath)) {
+                    $this->logger->error('Fichier temporaire non trouvé', ['temp_file' => $tempFilePath]);
+                    return $this->json(['message' => 'Fichier temporaire non trouvé'], 404);
+                }
 
-            if (!unlink($tempFilePath)) {
-                $this->logger->warning('Échec de la suppression du fichier temporaire', ['file' => $tempFilePath]);
-            }
-        } else {
-            $this->logger->error('Aucun fichier fourni pour soumission');
-            return $this->json(['message' => 'Fichier PDF requis'], 400);
-        }
+                // Vérifications du fichier temporaire
+                clearstatcache();
+                $tempFileSize = filesize($tempFilePath);
+                if ($tempFileSize === 0) {
+                    $this->logger->error('Fichier temporaire vide', ['temp_file' => $tempFilePath]);
+                    return $this->json(['message' => 'Fichier temporaire vide'], 400);
+                }
 
-        // Régénération pour ia_genere si nécessaire
-        if ($type === 'ia_genere' && !empty($questionsData)) {
-            try {
-                $newFileName = $this->generateExamPdf($examen, $questionsData);
-                $newFilePath = $tempDir . '/' . $newFileName;
-                $fileName = str_replace('temp_', '', $newFileName);
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $tempFilePath);
+                finfo_close($finfo);
+                if ($mime !== 'application/pdf') {
+                    $this->logger->error('Le fichier temporaire n\'est pas un PDF', ['file' => $tempFilePath, 'mime' => $mime]);
+                    return $this->json(['message' => 'Le fichier temporaire n\'est pas un PDF'], 400);
+                }
+
+                try {
+                    $pdfContent = $this->pdfExtractorService->extractText($tempFilePath);
+                    $this->logger->info('Contenu extrait du fichier temporaire', [
+                        'temp_file' => $tempFilePath,
+                        'size' => $tempFileSize,
+                        'content_length' => strlen($pdfContent)
+                    ]);
+                    if (empty($pdfContent)) {
+                        $this->logger->warning('Contenu du fichier temporaire vide', ['temp_file' => $tempFilePath]);
+                        return $this->json(['message' => 'Contenu du fichier temporaire vide'], 400);
+                    }
+                } catch (\Exception $e) {
+                    $this->logger->error('Erreur lors de l\'extraction du contenu du fichier temporaire', [
+                        'file' => $tempFilePath,
+                        'error' => $e->getMessage()
+                    ]);
+                    return $this->json(['message' => 'Fichier temporaire corrompu: ' . $e->getMessage()], 400);
+                }
+
+                $fileName = str_replace('temp_', '', basename($tempFilePath));
                 $filePath = $examensDir . '/' . $fileName;
 
-                if (!copy($newFilePath, $filePath)) {
-                    $this->logger->error('Échec de la copie du fichier régénéré', [
-                        'source' => $newFilePath,
+                if (!copy($tempFilePath, $filePath)) {
+                    $this->logger->error('Échec de la copie du fichier', [
+                        'source' => $tempFilePath,
                         'destination' => $filePath
                     ]);
-                    return $this->json(['message' => 'Échec de la copie du fichier régénéré'], 500);
+                    return $this->json(['message' => 'Échec de la copie du fichier'], 500);
                 }
 
-                clearstatcache();
-                $fileSize = filesize($filePath);
-                if ($fileSize === 0) {
-                    $this->logger->error('Fichier régénéré vide', ['file' => $filePath]);
-                    return $this->json(['message' => 'Fichier régénéré vide'], 500);
+                if (!unlink($tempFilePath)) {
+                    $this->logger->warning('Échec de la suppression du fichier temporaire', ['file' => $tempFilePath]);
                 }
+            } else {
+                $this->logger->error('Aucun fichier fourni pour soumission');
+                return $this->json(['message' => 'Fichier PDF requis'], 400);
+            }
 
+            // Régénération pour ia_genere si nécessaire
+            if ($type === 'ia_genere' && !empty($questionsData)) {
+                try {
+                    $newFileName = $this->generateExamPdf($examen, $questionsData);
+                    $newFilePath = $tempDir . '/' . $newFileName;
+                    $fileName = str_replace('temp_', '', $newFileName);
+                    $filePath = $examensDir . '/' . $fileName;
+
+                    if (!copy($newFilePath, $filePath)) {
+                        $this->logger->error('Échec de la copie du fichier régénéré', [
+                            'source' => $newFilePath,
+                            'destination' => $filePath
+                        ]);
+                        return $this->json(['message' => 'Échec de la copie du fichier régénéré'], 500);
+                    }
+
+                    clearstatcache();
+                    $fileSize = filesize($filePath);
+                    if ($fileSize === 0) {
+                        $this->logger->error('Fichier régénéré vide', ['file' => $filePath]);
+                        return $this->json(['message' => 'Fichier régénéré vide'], 500);
+                    }
+
+                    $pdfContent = $this->pdfExtractorService->extractText($filePath);
+                    if (empty($pdfContent)) {
+                        $this->logger->error('Contenu du fichier régénéré vide', ['file' => $filePath]);
+                        return $this->json(['message' => 'Contenu du fichier régénéré vide'], 500);
+                    }
+
+                    $this->logger->info('Fichier régénéré avec succès', ['file' => $filePath, 'size' => $fileSize]);
+                    unlink($newFilePath);
+                } catch (\Exception $e) {
+                    $this->logger->warning('Échec de la régénération du PDF', ['error' => $e->getMessage()]);
+                }
+            }
+
+            $erreursAnalyse = [];
+            if ($type === 'pdf' && $filePath) {
                 $pdfContent = $this->pdfExtractorService->extractText($filePath);
-                if (empty($pdfContent)) {
-                    $this->logger->error('Contenu du fichier régénéré vide', ['file' => $filePath]);
-                    return $this->json(['message' => 'Contenu du fichier régénéré vide'], 500);
+                $this->logger->info('Contenu PDF extrait pour analyse', ['length' => strlen($pdfContent)]);
+
+                $erreursAnalyse = $this->geminiService->analyzePdfErrors($pdfContent);
+                $this->logger->info('Analyse des erreurs terminée', ['erreurs' => $erreursAnalyse]);
+
+                foreach ($erreursAnalyse as $erreur) {
+                    if (isset($erreur['critical']) && $erreur['critical']) {
+                        $this->logger->warning('Erreur critique détectée, envoi bloqué', ['erreur' => $erreur['error']]);
+                        return $this->json([
+                            'message' => $erreur['error'],
+                            'erreurs_analyse' => implode('; ', array_column($erreursAnalyse, 'error'))
+                        ], 400);
+                    }
                 }
 
-                $this->logger->info('Fichier régénéré avec succès', ['file' => $filePath, 'size' => $fileSize]);
-                unlink($newFilePath);
-            } catch (\Exception $e) {
-                $this->logger->warning('Échec de la régénération du PDF', ['error' => $e->getMessage()]);
+                $fixedInstructions = 'À chaque question, précisez la réponse correcte parmi les options pour les questions de type radio, attribuez des points à chaque question, et fournissez la réponse exacte pour les questions ouvertes.';
+                $questionsData = $this->geminiService->generateExamQuestions($pdfContent, $fixedInstructions);
+                $this->logger->info('Questions générées pour PDF', ['question_count' => count($questionsData)]);
             }
-        }
 
-        $erreursAnalyse = [];
-        if ($type === 'pdf' && $filePath) {
-            $pdfContent = $this->pdfExtractorService->extractText($filePath);
-            $this->logger->info('Contenu PDF extrait pour analyse', ['length' => strlen($pdfContent)]);
+            $examen->setFichier($fileName);
 
-            $erreursAnalyse = $this->geminiService->analyzePdfErrors($pdfContent);
-            $this->logger->info('Analyse des erreurs terminée', ['erreurs' => $erreursAnalyse]);
+            foreach ($questionsData as $q) {
+                $question = new Question();
+                $question->setTexte($q['text'] ?? '');
+                $question->setType($q['type'] ?? 'essay');
+                $question->setPoints($q['points'] ?? 1);
+                $question->setExamen($examen);
 
-            foreach ($erreursAnalyse as $erreur) {
-                if (isset($erreur['critical']) && $erreur['critical']) {
-                    $this->logger->warning('Erreur critique détectée, envoi bloqué', ['erreur' => $erreur['error']]);
-                    return $this->json([
-                        'message' => $erreur['error'],
-                        'erreurs_analyse' => implode('; ', array_column($erreursAnalyse, 'error'))
-                    ], 400);
+                if ($q['type'] === 'radio') {
+                    foreach ($q['options'] as $opt) {
+                        $option = new OptionQuestion();
+                        $option->setTexte($opt['text'] ?? '');
+                        $option->setValeur($opt['value'] ?? '');
+                        $option->setQuestion($question);
+                        $this->entityManager->persist($option);
+                    }
+                    $question->setReponseCorrecte($q['correctAnswer'] ?? '');
                 }
+
+                $this->entityManager->persist($question);
             }
 
-            $fixedInstructions = 'À chaque question, précisez la réponse correcte parmi les options pour les questions de type radio, attribuez des points à chaque question, et fournissez la réponse exacte pour les questions ouvertes.';
-            $questionsData = $this->geminiService->generateExamQuestions($pdfContent, $fixedInstructions);
-            $this->logger->info('Questions générées pour PDF', ['question_count' => count($questionsData)]);
+            $this->entityManager->persist($examen);
+            $this->entityManager->flush();
+            $this->logger->info('Examen soumis à l\'administration', ['examen_id' => $examen->getId()]);
+
+            return $this->json([
+                'message' => 'Examen soumis à l\'administration avec succès',
+                'id' => $examen->getId(),
+                'titre' => $titre,
+                'description' => $description,
+                'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
+                'erreurs_analyse' => !empty($erreursAnalyse) ? implode('; ', array_column($erreursAnalyse, 'error')) : null,
+                'duree' => $duration
+            ], 201);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la soumission de l\'examen: ' . $e->getMessage(), ['exception' => $e]);
+            return $this->json(['message' => 'Erreur serveur lors de la soumission de l\'examen: ' . $e->getMessage()], 500);
         }
-
-        $examen->setFichier($fileName);
-
-        foreach ($questionsData as $q) {
-            $question = new Question();
-            $question->setTexte($q['text'] ?? '');
-            $question->setType($q['type'] ?? 'essay');
-            $question->setPoints($q['points'] ?? 1);
-            $question->setExamen($examen);
-
-            if ($q['type'] === 'radio') {
-                foreach ($q['options'] as $opt) {
-                    $option = new OptionQuestion();
-                    $option->setTexte($opt['text'] ?? '');
-                    $option->setValeur($opt['value'] ?? '');
-                    $option->setQuestion($question);
-                    $this->entityManager->persist($option);
-                }
-                $question->setReponseCorrecte($q['correctAnswer'] ?? '');
-            }
-
-            $this->entityManager->persist($question);
-        }
-
-        $this->entityManager->persist($examen);
-        $this->entityManager->flush();
-        $this->logger->info('Examen soumis à l\'administration', ['examen_id' => $examen->getId()]);
-
-        return $this->json([
-            'message' => 'Examen soumis à l\'administration avec succès',
-            'id' => $examen->getId(),
-            'titre' => $titre,
-            'description' => $description,
-            'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
-            'erreurs_analyse' => !empty($erreursAnalyse) ? implode('; ', array_column($erreursAnalyse, 'error')) : null,
-            'duree' => $duration
-        ], 201);
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur lors de la soumission de l\'examen: ' . $e->getMessage(), ['exception' => $e]);
-        return $this->json(['message' => 'Erreur serveur lors de la soumission de l\'examen: ' . $e->getMessage()], 500);
     }
-}
 
    /**
      * @Route("/{id}/publish", name="api_examen_publish", methods={"POST"})
@@ -587,9 +588,8 @@ public function submitExamenToAdmin(Request $request): JsonResponse
             $agenda->setParcours($parcours);
             $agenda->addExamen($examen);
 
-            // Mettre à jour l'examen
             $examen->setAgenda($agenda);
-            $examen->setStatut('publié'); // Utiliser "publié" avec l'accent
+            $examen->setStatut('publié');
             $examen->setDatePublication($dateDebut);
             $examen->setDateExpiration($dateFin);
 
@@ -696,7 +696,7 @@ public function submitExamenToAdmin(Request $request): JsonResponse
         ], 200);
     }
 
-    /**
+   /**
      * @Route("/student", name="api_examen_student", methods={"GET"})
      */
     public function getStudentExams(CorrectionExamenRepository $correctionExamenRepository): JsonResponse
@@ -739,16 +739,21 @@ public function submitExamenToAdmin(Request $request): JsonResponse
     /**
      * @Route("/correction/{id}", name="api_correction_delete", methods={"DELETE"})
      */
-    public function deleteCorrection(int $id, CorrectionExamenRepository $correctionExamenRepository): JsonResponse
-    {
-        $this->logger->info('Requête reçue pour /api/correction/{id}', ['id' => $id]);
+    public function deleteCorrection(
+        int $id,
+        CorrectionExamenRepository $correctionExamenRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $this->logger->info('Requête reçue pour suppression de correction', ['correction_id' => $id]);
 
+        // Vérification des permissions
         $user = $this->security->getUser();
         if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
             $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
             return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
+        // Récupération de la correction
         $correction = $correctionExamenRepository->find($id);
         if (!$correction) {
             $this->logger->warning('Correction non trouvée', ['correction_id' => $id]);
@@ -756,25 +761,59 @@ public function submitExamenToAdmin(Request $request): JsonResponse
         }
 
         try {
-            // Supprimer le fichier de correction
+            // Suppression du fichier physique associé
             if ($correction->getFichierRapport()) {
                 $filePath = $this->getParameter('uploads_directory') . '/corrections/' . $correction->getFichierRapport();
+                
                 if (file_exists($filePath)) {
                     if (!unlink($filePath)) {
-                        $this->logger->warning('Échec de la suppression du fichier de correction', ['file' => $filePath]);
-                    } else {
-                        $this->logger->info('Fichier de correction supprimé', ['file' => $filePath]);
+                        $this->logger->error('Échec de la suppression du fichier', ['file' => $filePath]);
+                        throw new \RuntimeException('Échec de la suppression du fichier de correction');
                     }
+                    $this->logger->info('Fichier de correction supprimé', ['file' => $filePath]);
                 }
             }
 
-            $this->entityManager->remove($correction);
-            $this->entityManager->flush();
-            $this->logger->info('Correction supprimée', ['correction_id' => $id]);
-            return $this->json(['message' => 'Correction supprimée avec succès'], 200);
+            // Suppression des réponses associées - Modified to handle cases where the association might not exist
+            try {
+                if (method_exists($correction, 'getReponses')) {
+                    foreach ($correction->getReponses() as $reponse) {
+                        $entityManager->remove($reponse);
+                        $this->logger->debug('Réponse supprimée', ['reponse_id' => $reponse->getId()]);
+                    }
+                }
+            } catch (\Exception $e) {
+                $this->logger->warning('Erreur lors de la suppression des réponses', [
+                    'error' => $e->getMessage(),
+                    'correction_id' => $id
+                ]);
+            }
+
+            // Suppression de la correction
+            $entityManager->remove($correction);
+            $entityManager->flush();
+
+            $this->logger->info('Correction supprimée avec succès', [
+                'correction_id' => $id,
+                'fichier' => $correction->getFichierRapport()
+            ]);
+
+            return $this->json([
+                'message' => 'Correction supprimée avec succès',
+                'deleted_id' => $id
+            ], 200);
+
         } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la suppression: ' . $e->getMessage(), ['exception' => $e]);
-            return $this->json(['message' => 'Erreur lors de la suppression: ' . $e->getMessage()], 500);
+            $this->logger->error('Erreur lors de la suppression', [
+                'correction_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->json([
+                'message' => 'Erreur lors de la suppression de la correction',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -845,128 +884,128 @@ public function submitExamenToAdmin(Request $request): JsonResponse
         return $fileName;
     }
 
- /**
- * @Route("/teacher", name="api_examen_teacher", methods={"GET"})
- */
-public function getTeacherExams(): JsonResponse
-{
-    $this->logger->info('Requête reçue pour /api/examen/teacher');
+    /**
+     * @Route("/teacher", name="api_examen_teacher", methods={"GET"})
+     */
+    public function getTeacherExams(): JsonResponse
+    {
+        $this->logger->info('Requête reçue pour /api/examen/teacher');
 
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-        $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
-
-    try {
-        $currentYear = $this->entityManager->getRepository(Years::class)
-            ->findOneBy(['current' => true]);
-        $anneeUniversitaire = $currentYear ? $currentYear->getYear() : 'N/A';
-
-        $examens = $this->examenRepository->findAll();
-        $data = array_map(function ($examen) use ($anneeUniversitaire) {
-            $statut = $examen->getStatut() === 'soumis' ? 'en_attente' : $examen->getStatut();
-            return [
-                'id' => $examen->getId(),
-                'nomPrenom' => $examen->getAuteur()->getName(),
-                'mention' => $examen->getEc()->getUe()->getMention() 
-                    ? $examen->getEc()->getUe()->getMention()->getName() 
-                    : 'N/A',
-                'niveau' => $examen->getEc()->getUe()->getSemestre() 
-                    ? $examen->getEc()->getUe()->getSemestre()->getNiveau()->getNom() 
-                    : 'N/A',
-                'elementConstitutif' => $examen->getEc()->getName(),
-                'dateEnvoi' => $examen->getDateCreation()->format('Y-m-d H:i'),
-                'anneeUniversitaire' => $anneeUniversitaire,
-                'statut' => $statut, 
-                'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
-            ];
-        }, $examens);
-
-        $this->logger->info('Examens des enseignants récupérés', ['count' => count($data)]);
-        return $this->json($data, 200);
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur lors de la récupération des examens: ' . $e->getMessage(), ['exception' => $e]);
-        return $this->json(['message' => 'Erreur serveur: ' . $e->getMessage()], 500);
-    }
-}
-
-/**
- * @Route("/{id<\d+>}", name="api_examen_get", methods={"GET"})
- */
-public function getExamen(int $id): JsonResponse
-{
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
-
-    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
-    if (!$etudiant) {
-        return $this->json(['message' => 'Étudiant non trouvé'], 404);
-    }
-
-    $examen = $this->examenRepository->find($id);
-    if (!$examen) {
-        return $this->json(['message' => 'Examen non trouvé'], 404);
-    }
-
-    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
-        ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
-
-    $questions = [];
-    foreach ($examen->getQuestions() as $question) {
-        $questionData = [
-            'id' => $question->getId(),
-            'text' => $question->getTexte(),
-            'type' => $question->getType(),
-            'points' => $question->getPoints(),
-        ];
-
-        if ($question->getType() === 'radio') {
-            $questionData['options'] = array_map(function ($option) {
-                return [
-                    'value' => $option->getValeur(),
-                    'text' => $option->getTexte()
-                ];
-            }, $question->getOptions()->toArray());
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
+            $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
+            return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
-        $questions[] = $questionData;
+        try {
+            $currentYear = $this->entityManager->getRepository(Years::class)
+                ->findOneBy(['current' => true]);
+            $anneeUniversitaire = $currentYear ? $currentYear->getYear() : 'N/A';
+
+            $examens = $this->examenRepository->findAll();
+            $data = array_map(function ($examen) use ($anneeUniversitaire) {
+                $statut = $examen->getStatut() === 'soumis' ? 'en_attente' : $examen->getStatut();
+                return [
+                    'id' => $examen->getId(),
+                    'nomPrenom' => $examen->getAuteur()->getName(),
+                    'mention' => $examen->getEc()->getUe()->getMention() 
+                        ? $examen->getEc()->getUe()->getMention()->getName() 
+                        : 'N/A',
+                    'niveau' => $examen->getEc()->getUe()->getSemestre() 
+                        ? $examen->getEc()->getUe()->getSemestre()->getNiveau()->getNom() 
+                        : 'N/A',
+                    'elementConstitutif' => $examen->getEc()->getName(),
+                    'dateEnvoi' => $examen->getDateCreation()->format('Y-m-d H:i'),
+                    'anneeUniversitaire' => $anneeUniversitaire,
+                    'statut' => $statut, 
+                    'fichier' => $examen->getFichier() ? '/uploads/examens/' . $examen->getFichier() : null,
+                ];
+            }, $examens);
+
+            $this->logger->info('Examens des enseignants récupérés', ['count' => count($data)]);
+            return $this->json($data, 200);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la récupération des examens: ' . $e->getMessage(), ['exception' => $e]);
+            return $this->json(['message' => 'Erreur serveur: ' . $e->getMessage()], 500);
+        }
     }
 
-    $response = [
-        'id' => $examen->getId(),
-        'titre' => $examen->getTitre(),
-        'description' => $examen->getDescription(),
-        'duree' => $examen->getDuree(),
-        'statut' => $examen->getStatut(),
-        'questions' => $questions,
-        'date_publication' => $examen->getDatePublication()?->format('Y-m-d H:i:s'),
-        'date_expiration' => $examen->getDateExpiration()?->format('Y-m-d H:i:s')
-    ];
+    /**
+     * @Route("/{id<\d+>}", name="api_examen_get", methods={"GET"})
+     */
+    public function getExamen(int $id): JsonResponse
+    {
+        $user = $this->security->getUser();
+        if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+            return $this->json(['message' => 'Accès non autorisé'], 403);
+        }
 
-    if ($statutExamen) {
-        $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
-        
-        $response['statut'] = $statutExamen->getStatut();
-        $response['temps_restant'] = $tempsRestant;
-        $response['reponses'] = $statutExamen->getReponses() ?? [];
-        $response['debut_examen'] = $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s');
-    } else {
-        $response['statut'] = 'DISPONIBLE';
-        $response['temps_restant'] = $examen->getDuree();
-        $response['reponses'] = [];
+        $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+        if (!$etudiant) {
+            return $this->json(['message' => 'Étudiant non trouvé'], 404);
+        }
+
+        $examen = $this->examenRepository->find($id);
+        if (!$examen) {
+            return $this->json(['message' => 'Examen non trouvé'], 404);
+        }
+
+        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+            ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
+
+        $questions = [];
+        foreach ($examen->getQuestions() as $question) {
+            $questionData = [
+                'id' => $question->getId(),
+                'text' => $question->getTexte(),
+                'type' => $question->getType(),
+                'points' => $question->getPoints(),
+            ];
+
+            if ($question->getType() === 'radio') {
+                $questionData['options'] = array_map(function ($option) {
+                    return [
+                        'value' => $option->getValeur(),
+                        'text' => $option->getTexte()
+                    ];
+                }, $question->getOptions()->toArray());
+            }
+
+            $questions[] = $questionData;
+        }
+
+        $response = [
+            'id' => $examen->getId(),
+            'titre' => $examen->getTitre(),
+            'description' => $examen->getDescription(),
+            'duree' => $examen->getDuree(),
+            'statut' => $examen->getStatut(),
+            'questions' => $questions,
+            'date_publication' => $examen->getDatePublication()?->format('Y-m-d H:i:s'),
+            'date_expiration' => $examen->getDateExpiration()?->format('Y-m-d H:i:s')
+        ];
+
+        if ($statutExamen) {
+            $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
+            
+            $response['statut'] = $statutExamen->getStatut();
+            $response['temps_restant'] = $tempsRestant;
+            $response['reponses'] = $statutExamen->getReponses() ?? [];
+            $response['debut_examen'] = $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s');
+        } else {
+            $response['statut'] = 'DISPONIBLE';
+            $response['temps_restant'] = $examen->getDuree();
+            $response['reponses'] = [];
+        }
+
+        $this->logger->debug('Réponse getExamen', [
+            'examen_id' => $id,
+            'etudiant_id' => $etudiant->getId(),
+            'statut' => $response['statut']
+        ]);
+
+        return $this->json($response);
     }
-
-    $this->logger->debug('Réponse getExamen', [
-        'examen_id' => $id,
-        'etudiant_id' => $etudiant->getId(),
-        'statut' => $response['statut']
-    ]);
-
-    return $this->json($response);
-}
 
     /**
      * @Route("/{id}", name="api_examen_delete", methods={"DELETE"})
@@ -1141,259 +1180,259 @@ public function getExamen(int $id): JsonResponse
         }
     }
 
- /**
- * @Route("/{id}/start", name="api_examen_start", methods={"POST"})
- */
-public function startExamen(int $id): JsonResponse
-{
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
-
-    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
-    if (!$etudiant) {
-        return $this->json(['message' => 'Étudiant non trouvé'], 404);
-    }
-
-    $examen = $this->examenRepository->find($id);
-    if (!$examen) {
-        return $this->json(['message' => 'Examen non trouvé'], 404);
-    }
-
-    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
-        ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
-
-    if ($statutExamen) {
-        if ($statutExamen->getStatut() === EtudiantExamenStatut::STATUT_EN_COURS) {
-            $statutExamen->initialiserTempsRestant($examen->getDuree());
-            $this->entityManager->flush();
-
-            return $this->json([
-                'message' => 'Examen déjà en cours',
-                'temps_restant' => $statutExamen->getTempsRestant(),
-                'reponses' => $statutExamen->getReponses() ?? []
-            ]);
-        }
-
-        return $this->json(['message' => 'Examen déjà soumis ou abandonné'], 400);
-    }
-
-    $statutExamen = new EtudiantExamenStatut();
-    $statutExamen->setEtudiant($etudiant);
-    $statutExamen->setExamen($examen);
-    $statutExamen->setStatut(EtudiantExamenStatut::STATUT_EN_COURS);
-    $statutExamen->setDebutExamen(new \DateTime());
-    $statutExamen->initialiserTempsRestant($examen->getDuree());
-
-    $this->entityManager->persist($statutExamen);
-    $this->entityManager->flush();
-
-    return $this->json([
-        'message' => 'Examen démarré',
-        'temps_restant' => $statutExamen->getTempsRestant(),
-        'reponses' => []
-    ]);
-}
-
     /**
- * @Route("/{id}/abandon", name="api_examen_abandon", methods={"POST"})
- */
-public function abandonExamen(int $id): JsonResponse
-{
-    $user = $this->security->getUser();
-    if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
-        return $this->json(['message' => 'Accès non autorisé'], 403);
-    }
-
-    $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
-    if (!$etudiant) {
-        return $this->json(['message' => 'Aucune donnée étudiante trouvée'], 404);
-    }
-
-    $examen = $this->examenRepository->find($id);
-    if (!$examen) {
-        return $this->json(['message' => 'Examen non trouvé'], 404);
-    }
-
-    $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)->findOneBy([
-        'etudiant' => $etudiant,
-        'examen' => $examen,
-    ]);
-
-    if (!$statutExamen || $statutExamen->getStatut() !== 'EN_COURS') {
-        return $this->json(['message' => 'Examen non démarré ou déjà soumis/abandonné'], 400);
-    }
-
-    $statutExamen->setStatut('ABANDONNE');
-    $statutExamen->setTempsRestant(0);
-    $this->entityManager->persist($statutExamen);
-    $this->entityManager->flush();
-
-    return $this->json(['message' => 'Examen abandonné'], 200);
-}
-
-/**
- * @Route("/{id}/save-progress", name="api_examen_save_progress", methods={"POST"})
- */
-public function saveExamProgress(int $id, Request $request): JsonResponse
-{
-    try {
-        // 1. Authentification
+     * @Route("/{id}/start", name="api_examen_start", methods={"POST"})
+     */
+    public function startExamen(int $id): JsonResponse
+    {
         $user = $this->security->getUser();
         if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
             return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
-        // 2. Récupération de l'étudiant
         $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
         if (!$etudiant) {
             return $this->json(['message' => 'Étudiant non trouvé'], 404);
         }
 
-        // 3. Récupération de l'examen
         $examen = $this->examenRepository->find($id);
         if (!$examen) {
             return $this->json(['message' => 'Examen non trouvé'], 404);
         }
 
-        // 4. Vérification du statut
         $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
             ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
 
-        if (!$statutExamen || $statutExamen->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
-            return $this->json(['message' => 'Examen non démarré ou terminé'], 400);
+        if ($statutExamen) {
+            if ($statutExamen->getStatut() === EtudiantExamenStatut::STATUT_EN_COURS) {
+                $statutExamen->initialiserTempsRestant($examen->getDuree());
+                $this->entityManager->flush();
+
+                return $this->json([
+                    'message' => 'Examen déjà en cours',
+                    'temps_restant' => $statutExamen->getTempsRestant(),
+                    'reponses' => $statutExamen->getReponses() ?? []
+                ]);
+            }
+
+            return $this->json(['message' => 'Examen déjà soumis ou abandonné'], 400);
         }
 
-        // 5. Calcul du temps restant actuel
+        $statutExamen = new EtudiantExamenStatut();
+        $statutExamen->setEtudiant($etudiant);
+        $statutExamen->setExamen($examen);
+        $statutExamen->setStatut(EtudiantExamenStatut::STATUT_EN_COURS);
+        $statutExamen->setDebutExamen(new \DateTime());
         $statutExamen->initialiserTempsRestant($examen->getDuree());
-        if ($statutExamen->getTempsRestant() <= 0) {
-            $statutExamen->setStatut(EtudiantExamenStatut::STATUT_SOUMIS);
-            $this->entityManager->persist($statutExamen);
-            $this->entityManager->flush();
-            return $this->json(['message' => 'Le temps est écoulé, examen soumis automatiquement'], 400);
-        }
 
-        // 6. Traitement des données
-        $data = json_decode($request->getContent(), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return $this->json(['message' => 'Données JSON invalides'], 400);
-        }
-
-        $answers = $data['answers'] ?? [];
-        $tempsRestant = $data['temps_restant'] ?? $statutExamen->getTempsRestant();
-
-        // 7. Validation du temps restant
-        $tempsRestant = max(0, min($examen->getDuree(), (int)$tempsRestant));
-
-        // 8. Mise à jour de l'entité
-        $statutExamen->setReponses($answers);
-        $statutExamen->setTempsRestant($tempsRestant);
-
-        // 9. Sauvegarde
         $this->entityManager->persist($statutExamen);
         $this->entityManager->flush();
 
-        // 10. Réponse
         return $this->json([
-            'message' => 'Progression sauvegardée',
+            'message' => 'Examen démarré',
             'temps_restant' => $statutExamen->getTempsRestant(),
-            'derniere_activite' => $statutExamen->getDerniereActivite()->format('Y-m-d H:i:s')
+            'reponses' => []
         ]);
-
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur saveExamProgress: ' . $e->getMessage(), [
-            'exception' => $e,
-            'examen_id' => $id,
-            'user_id' => $user ? $user->getId() : null
-        ]);
-        
-        return $this->json([
-            'message' => 'Erreur lors de la sauvegarde',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
-/**
- * @Route("/{id}/get-time", name="api_examen_get_time", methods={"GET"})
- */
-public function getExamTime(int $id): JsonResponse
-{
-    try {
-        // Vérification authentification
+    /**
+     * @Route("/{id}/abandon", name="api_examen_abandon", methods={"POST"})
+     */
+    public function abandonExamen(int $id): JsonResponse
+    {
         $user = $this->security->getUser();
         if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
-            throw new \Exception('Accès non autorisé');
+            return $this->json(['message' => 'Accès non autorisé'], 403);
         }
 
         $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
         if (!$etudiant) {
-            throw new \Exception('Étudiant non trouvé');
+            return $this->json(['message' => 'Aucune donnée étudiante trouvée'], 404);
         }
 
         $examen = $this->examenRepository->find($id);
         if (!$examen) {
-            throw new \Exception('Examen non trouvé');
+            return $this->json(['message' => 'Examen non trouvé'], 404);
         }
 
-        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
-            ->findOneBy([
-                'etudiant' => $etudiant,
-                'examen' => $id
-            ]);
+        $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)->findOneBy([
+            'etudiant' => $etudiant,
+            'examen' => $examen,
+        ]);
 
-        if (!$statutExamen) {
-            throw new \Exception('Aucun statut d\'examen trouvé');
+        if (!$statutExamen || $statutExamen->getStatut() !== 'EN_COURS') {
+            return $this->json(['message' => 'Examen non démarré ou déjà soumis/abandonné'], 400);
         }
 
-        // Calculer et persister le temps restant
-        $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
+        $statutExamen->setStatut('ABANDONNE');
+        $statutExamen->setTempsRestant(0);
         $this->entityManager->persist($statutExamen);
         $this->entityManager->flush();
 
-        // Journalisation pour débogage
-        $this->logger->debug('Statut examen', [
-            'statut' => $statutExamen->getStatut(),
-            'temps_restant' => $tempsRestant,
-            'debut_examen' => $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s'),
-            'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s')
-        ]);
-
-        return $this->json([
-            'temps_restant' => $tempsRestant,
-            'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s'),
-            'statut' => $statutExamen->getStatut()
-        ]);
-
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur getExamTime', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return $this->json(['message' => $e->getMessage()], 500);
-    }
-}
-
-private function calculerTempsRestant(EtudiantExamenStatut $statut): int
-{
-    if ($statut->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
-        return 0;
+        return $this->json(['message' => 'Examen abandonné'], 200);
     }
 
-    $dureeExamen = $statut->getExamen()->getDuree() ?? 3600;
-    
-    // Si pas encore commencé
-    if (!$statut->getDebutExamen()) {
-        return $dureeExamen;
+    /**
+     * @Route("/{id}/save-progress", name="api_examen_save_progress", methods={"POST"})
+     */
+    public function saveExamProgress(int $id, Request $request): JsonResponse
+    {
+        try {
+            // 1. Authentification
+            $user = $this->security->getUser();
+            if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+                return $this->json(['message' => 'Accès non autorisé'], 403);
+            }
+
+            // 2. Récupération de l'étudiant
+            $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+            if (!$etudiant) {
+                return $this->json(['message' => 'Étudiant non trouvé'], 404);
+            }
+
+            // 3. Récupération de l'examen
+            $examen = $this->examenRepository->find($id);
+            if (!$examen) {
+                return $this->json(['message' => 'Examen non trouvé'], 404);
+            }
+
+            // 4. Vérification du statut
+            $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+                ->findOneBy(['etudiant' => $etudiant, 'examen' => $examen]);
+
+            if (!$statutExamen || $statutExamen->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
+                return $this->json(['message' => 'Examen non démarré ou terminé'], 400);
+            }
+
+            // 5. Calcul du temps restant actuel
+            $statutExamen->initialiserTempsRestant($examen->getDuree());
+            if ($statutExamen->getTempsRestant() <= 0) {
+                $statutExamen->setStatut(EtudiantExamenStatut::STATUT_SOUMIS);
+                $this->entityManager->persist($statutExamen);
+                $this->entityManager->flush();
+                return $this->json(['message' => 'Le temps est écoulé, examen soumis automatiquement'], 400);
+            }
+
+            // 6. Traitement des données
+            $data = json_decode($request->getContent(), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return $this->json(['message' => 'Données JSON invalides'], 400);
+            }
+
+            $answers = $data['answers'] ?? [];
+            $tempsRestant = $data['temps_restant'] ?? $statutExamen->getTempsRestant();
+
+            // 7. Validation du temps restant
+            $tempsRestant = max(0, min($examen->getDuree(), (int)$tempsRestant));
+
+            // 8. Mise à jour de l'entité
+            $statutExamen->setReponses($answers);
+            $statutExamen->setTempsRestant($tempsRestant);
+
+            // 9. Sauvegarde
+            $this->entityManager->persist($statutExamen);
+            $this->entityManager->flush();
+
+            // 10. Réponse
+            return $this->json([
+                'message' => 'Progression sauvegardée',
+                'temps_restant' => $statutExamen->getTempsRestant(),
+                'derniere_activite' => $statutExamen->getDerniereActivite()->format('Y-m-d H:i:s')
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur saveExamProgress: ' . $e->getMessage(), [
+                'exception' => $e,
+                'examen_id' => $id,
+                'user_id' => $user ? $user->getId() : null
+            ]);
+            
+            return $this->json([
+                'message' => 'Erreur lors de la sauvegarde',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // Calcul basé sur le temps écoulé depuis le début
-    $now = new \DateTime();
-    $tempsEcoule = $now->getTimestamp() - $statut->getDebutExamen()->getTimestamp();
-    $tempsRestant = $dureeExamen - $tempsEcoule;
+    /**
+     * @Route("/{id}/get-time", name="api_examen_get_time", methods={"GET"})
+     */
+    public function getExamTime(int $id): JsonResponse
+    {
+        try {
+            // Vérification authentification
+            $user = $this->security->getUser();
+            if (!$user || !in_array('ROLE_ETUDIANT', $user->getRoles())) {
+                throw new \Exception('Accès non autorisé');
+            }
 
-    // Protection contre les valeurs négatives
-    return max(0, $tempsRestant);
-}
+            $etudiant = $this->etudiantRepository->findOneBy(['user' => $user]);
+            if (!$etudiant) {
+                throw new \Exception('Étudiant non trouvé');
+            }
+
+            $examen = $this->examenRepository->find($id);
+            if (!$examen) {
+                throw new \Exception('Examen non trouvé');
+            }
+
+            $statutExamen = $this->entityManager->getRepository(EtudiantExamenStatut::class)
+                ->findOneBy([
+                    'etudiant' => $etudiant,
+                    'examen' => $id
+                ]);
+
+            if (!$statutExamen) {
+                throw new \Exception('Aucun statut d\'examen trouvé');
+            }
+
+            // Calculer et persister le temps restant
+            $tempsRestant = $statutExamen->calculerTempsRestant($examen->getDuree());
+            $this->entityManager->persist($statutExamen);
+            $this->entityManager->flush();
+
+            // Journalisation pour débogage
+            $this->logger->debug('Statut examen', [
+                'statut' => $statutExamen->getStatut(),
+                'temps_restant' => $tempsRestant,
+                'debut_examen' => $statutExamen->getDebutExamen()?->format('Y-m-d H:i:s'),
+                'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s')
+            ]);
+
+            return $this->json([
+                'temps_restant' => $tempsRestant,
+                'derniere_activite' => $statutExamen->getDerniereActivite()?->format('Y-m-d H:i:s'),
+                'statut' => $statutExamen->getStatut()
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur getExamTime', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function calculerTempsRestant(EtudiantExamenStatut $statut): int
+    {
+        if ($statut->getStatut() !== EtudiantExamenStatut::STATUT_EN_COURS) {
+            return 0;
+        }
+
+        $dureeExamen = $statut->getExamen()->getDuree() ?? 3600;
+        
+        // Si pas encore commencé
+        if (!$statut->getDebutExamen()) {
+            return $dureeExamen;
+        }
+
+        // Calcul basé sur le temps écoulé depuis le début
+        $now = new \DateTime();
+        $tempsEcoule = $now->getTimestamp() - $statut->getDebutExamen()->getTimestamp();
+        $tempsRestant = $dureeExamen - $tempsEcoule;
+
+        // Protection contre les valeurs négatives
+        return max(0, $tempsRestant);
+    }
 }

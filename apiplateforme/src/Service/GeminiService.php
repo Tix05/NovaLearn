@@ -40,40 +40,52 @@ Vous êtes un assistant spécialisé dans la création d'examens académiques. V
 **Instructions** :
 {$fullInstructions}
 
-**Exigences** :
-- Générez les questions exactement comme demandé dans les instructions (nombre, type, niveau de difficulté, etc.).
-- Si les instructions ne spécifient pas le nombre ou le type de questions, générez par défaut 5 questions : 3 à choix multiples (avec 4 options chacune, indiquer la réponse correcte) et 2 questions ouvertes.
-- Chaque question doit inclure :
-  - Le texte de la question.
-  - Le type ("radio" pour choix multiples, "essay" pour ouvertes).
-  - Les points (par défaut 1 point par question, sauf si spécifié).
-  - Pour les questions à choix multiples, fournissez 4 options et indiquez la réponse correcte.
-  - Pour les questions ouvertes, fournissez la réponse exacte attendue.
-- Retournez les questions dans un format JSON structuré.
+**Exigences strictes** :
+1. Notation :
+- La note totale de l'examen doit toujours être sur 20 points, quel que soit le nombre de questions.
+- Répartissez équitablement les points entre les questions en fonction de leur difficulté :
+  - Questions simples : 2-3 points
+  - Questions moyennes : 4-6 points
+  - Questions complexes : 7-10 points
+- Le total des points doit exactement faire 20.
 
-**Exemple de réponse** :
+2. Structure des questions :
+- Pour les questions à choix multiples (type "radio") :
+  - 4 options dont une seule correcte
+  - Indiquez clairement la réponse correcte
+  - Points : 2-3 par question
+  
+- Pour les questions ouvertes (type "essay") :
+  - Fournissez une réponse modèle détaillée
+  - Points : 5-10 selon la complexité
+
+3. Qualité :
+- Les questions doivent couvrir les points clés du document
+- Évitez les questions trop simples ou ambiguës
+- Variez les types de questions
+
+**Exemple de structure attendue** :
 [
     {
-        "text": "Quelle est la capitale de la France ?",
-        "type": "radio",
-        "points": 1,
-        "options": [
-            {"text": "Paris", "value": "A"},
-            {"text": "Lyon", "value": "B"},
-            {"text": "Marseille", "value": "C"},
-            {"text": "Toulouse", "value": "D"}
-        ],
-        "correctAnswer": "A"
+        "text": "Question complexe sur un concept clé",
+        "type": "essay",
+        "points": 8,
+        "correctAnswer": "Réponse détaillée attendue..."
     },
     {
-        "text": "Expliquez le rôle de la Révolution française.",
-        "type": "essay",
-        "points": 2,
-        "correctAnswer": "La Révolution française (1789-1799) a renversé la monarchie absolue, établi des principes de liberté, égalité et fraternité, et marqué le début de la modernité politique en France."
+        "text": "Question moyenne à choix multiple",
+        "type": "radio",
+        "points": 4,
+        "options": [
+            {"text": "Option partiellement correcte", "value": "A"},
+            {"text": "Option correcte", "value": "B", "correct": true},
+            {"text": "Option incorrecte", "value": "C"},
+            {"text": "Option plausible mais fausse", "value": "D"}
+        ]
     }
 ]
 
-Générez les questions maintenant.
+Générez maintenant l'examen en respectant strictement ces consignes.
 EOD;
 
         $maxRetries = 2;
@@ -301,16 +313,53 @@ EOD;
     }
 
     public function correctExam(array $answers, array $questions, string $pdfContent): array
-    {
-        $this->logger->info('Correction d\'examen avec Gemini', ['answer_count' => count($answers)]);
+{
+    $this->logger->info('Correction d\'examen avec Gemini', ['answer_count' => count($answers)]);
+
+    $allEmpty = true;
+    foreach ($answers as $answer) {
+        if (!empty($answer)) {
+            $allEmpty = false;
+            break;
+        }
+    }
+
+    if ($allEmpty) {
+        $this->logger->info('Aucune réponse fournie par l\'étudiant, retourne 0/20');
+        return [
+            'total_score' => 0,
+            'questions' => array_map(function($q) {
+                return [
+                    'score' => 0,
+                    'feedback' => 'Aucune réponse fournie'
+                ];
+            }, $questions)
+        ];
+    }
 
         $prompt = <<<EOD
-Vous êtes un correcteur d'examen académique. Votre tâche est de corriger les réponses des étudiants en fonction des questions et du contenu du document fourni. Suivez ces instructions :
+Vous êtes un correcteur d'examen académique strict mais équitable. Votre tâche est d'évaluer les réponses étudiantes selon ces règles :
 
-**Contenu du document** :
+**Règles de correction** :
+1. Notation :
+- Une question sans réponse reçoit automatiquement 0
+- Une réponse partiellement correcte reçoit entre 30% et 70% des points
+- Une réponse complètement fausse mais pertinente reçoit entre 10% et 20% des points
+- Une réponse hors sujet ou absurde reçoit 0
+
+2. Feedback :
+- Pour chaque réponse, fournissez un commentaire constructif
+- Indiquez ce qui manque dans les réponses partielles
+- Proposez des pistes d'amélioration
+
+3. Équité :
+- Soyez indulgent avec les réponses approximatives mais montrant un effort
+- Soyez strict avec les réponses manifestement incorrectes ou non sérieuses
+
+**Document de référence** :
 {$pdfContent}
 
-**Questions et réponses** :
+**Questions et réponses étudiantes** :
 EOD;
 
         foreach ($questions as $index => $question) {
@@ -332,29 +381,26 @@ EOD;
 
         $prompt .= <<<EOD
 
-**Exigences** :
-- Évaluez chaque réponse en fonction de sa pertinence et de son exactitude par rapport à la question et au contenu du document.
-- Attribuez un score pour chaque question (maximum : points indiqués).
-- Fournissez un commentaire expliquant la correction pour chaque question.
-- Calculez un score total sur 20.
-- Retournez un JSON avec :
-  - total_score : Score total sur 20.
-  - questions : Détails pour chaque question (question_id, score, feedback).
+**Consignes finales** :
+1. Analysez chaque réponse avec rigueur mais bienveillance
+2. Attribuez les points selon le barème fourni
+3. Fournissez un feedback détaillé pour chaque question
+4. La note finale doit refléter exactement la performance réelle de l'étudiant
+5. Si l'étudiant n'a répondu à aucune question, la note doit être 0/20
 
-**Exemple de réponse** :
+**Format de sortie attendu** :
 {
-    "total_score": 15,
+    "total_score": [note sur 20],
     "questions": {
         "1": {
-            "score": 1,
-            "feedback": "Réponse correcte."
+            "score": [points obtenus],
+            "feedback": "Commentaire détaillé..."
         },
-        "2": {
-            "score": 1.5,
-            "feedback": "Réponse partiellement correcte, manque de détails."
-        }
+        // ...
     }
 }
+
+Procédez maintenant à la correction en appliquant strictement ces règles.
 EOD;
 
         try {

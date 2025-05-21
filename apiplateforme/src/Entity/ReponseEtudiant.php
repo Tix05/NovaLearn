@@ -100,6 +100,12 @@ class ReponseEtudiant
      */
     private ?Examen $examen = null;
 
+    /**
+     * @ORM\ManyToOne(targetEntity="CorrectionExamen", inversedBy="reponses")
+     * @ORM\JoinColumn(name="correction_examen_id", referencedColumnName="id")
+     */
+    private $correctionExamen;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();

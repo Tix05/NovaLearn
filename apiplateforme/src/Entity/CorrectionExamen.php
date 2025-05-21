@@ -12,6 +12,8 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use ApiPlatform\Core\Annotation\ApiFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\DateFilter;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Symfony\Component\HttpFoundation\File\File;
 
 /**
  * @ApiResource(
@@ -54,6 +56,15 @@ class CorrectionExamen
      * @Groups({"correction:read"})
      */
     private ?string $fichierRapport = null;
+
+    /**
+     * @Vich\UploadableField(mapping="correction_file", fileNameProperty="fichierRapport")
+     * @Assert\File(
+     *     maxSize="5M",
+     *     mimeTypes={"application/pdf"}
+     * )
+     */
+    private ?File $rapportFile = null;
 
     /**
      * @ORM\Column(type="datetime")
@@ -193,6 +204,20 @@ class CorrectionExamen
             }
         }
         return $this;
+    }
+
+     public function setRapportFile(?File $rapportFile = null): void
+    {
+        $this->rapportFile = $rapportFile;
+
+        if (null !== $rapportFile) {
+            $this->updatedAt = new \DateTimeImmutable();
+        }
+    }
+
+    public function getRapportFile(): ?File
+    {
+        return $this->rapportFile;
     }
 
     /**

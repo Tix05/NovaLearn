@@ -26,3 +26,10 @@ vich_uploader:
             uri_prefix: /uploads/bibliotheque
             upload_destination: '%kernel.project_dir%/public/uploads/bibliotheque'
             namer: Vich\UploaderBundle\Naming\UniqidNamer
+        correction_file:
+            uri_prefix: /uploads/corrections
+            upload_destination: '%kernel.project_dir%/public/uploads/corrections'
+            namer: Vich\UploaderBundle\Naming\UniqidNamer
+            delete_on_update: true
+            delete_on_remove: true
+            inject_on_load: false
