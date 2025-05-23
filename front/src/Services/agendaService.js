@@ -11,16 +11,34 @@ export const getStudentAgenda = async () => {
             }
         });
 
+        // Validate response data
+        const data = response.data || {};
+        if (!data.cours || !Array.isArray(data.cours)) {
+            console.warn('Cours data is missing or not an array:', data.cours);
+            data.cours = [];
+        }
+        if (!data.examens || !Array.isArray(data.examens)) {
+            console.warn('Examens data is missing or not an array:', data.examens);
+            data.examens = [];
+        }
+        if (!data.evenements || !Array.isArray(data.evenements)) {
+            console.warn('Evenements data is missing or not an array:', data.evenements);
+            data.evenements = [];
+        }
+
         return {
-            cours: response.data.cours,
-            examens: response.data.examens.map(exam => ({
+            cours: data.cours,
+            examens: data.examens.map(exam => ({
                 ...exam,
                 examenId: exam.examenId || exam.id
             })),
-            evenements: response.data.evenements
+            evenements: data.evenements
         };
     } catch (error) {
         console.error("Error fetching student agenda:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw new Error('Erreur lors de la récupération de l\'agenda');
     }
 };
@@ -33,7 +51,7 @@ export const fetchExamQuestions = async (examId) => {
             }
         });
 
-        let tempsRestant = response.data.duree || 3600; // Default duration
+        let tempsRestant = response.data.duree || 3600;
         if (response.data.statut === 'EN_COURS') {
             try {
                 const timeData = await getExamTime(examId);
@@ -42,7 +60,6 @@ export const fetchExamQuestions = async (examId) => {
                     : response.data.temps_restant || response.data.duree || 3600;
             } catch (error) {
                 console.error('Error fetching exam time:', error);
-                // Fallback to cached time if available
                 const cached = localStorage.getItem(`examTime_${examId}`);
                 if (cached) {
                     const { time, lastSync } = JSON.parse(cached);
@@ -61,6 +78,9 @@ export const fetchExamQuestions = async (examId) => {
         };
     } catch (error) {
         console.error("Error fetching exam questions:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         return {
             questions: [],
             duree: 3600,
@@ -85,6 +105,9 @@ export const getExamStatus = async (examId) => {
         };
     } catch (error) {
         console.error("Error fetching exam status:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         return { statut: 'DISPONIBLE', temps_restant: 3600, reponses: {} };
     }
 };
@@ -97,6 +120,9 @@ export const getExamTime = async (examId) => {
         return response.data;
     } catch (error) {
         console.error("Error getting exam time:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw error;
     }
 };
@@ -110,6 +136,10 @@ export const startExam = async (examId) => {
         });
         return response.data;
     } catch (error) {
+        console.error("Error starting exam:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw new Error(error.response?.data?.message || 'Erreur lors du démarrage de l\'examen');
     }
 };
@@ -128,6 +158,10 @@ export const submitExam = async (examId, answers) => {
         );
         return response.data;
     } catch (error) {
+        console.error("Error submitting exam:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw new Error(error.response?.data?.message || 'Erreur lors de la soumission de l\'examen');
     }
 };
@@ -141,6 +175,10 @@ export const abandonExam = async (examId) => {
         });
         return response.data;
     } catch (error) {
+        console.error("Error abandoning exam:", error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw new Error(error.response?.data?.message || 'Erreur lors de l\'abandon de l\'examen');
     }
 };
@@ -161,7 +199,6 @@ export const saveExamProgress = async (examId, answers, tempsRestant) => {
             }
         );
 
-        // Sauvegarde locale du temps exact retourné par le serveur
         if (response.data.temps_restant !== undefined) {
             localStorage.setItem(`examTimeLeft_${examId}`, response.data.temps_restant);
             localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
@@ -170,6 +207,9 @@ export const saveExamProgress = async (examId, answers, tempsRestant) => {
         return response.data;
     } catch (error) {
         console.error('Erreur sauvegarde progression:', error);
+        if (error.response?.status === 401) {
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+        }
         throw new Error(error.response?.data?.message || 'Erreur lors de la sauvegarde de la progression');
     }
 };

@@ -101,18 +101,17 @@ class ReponseEtudiant
     private ?Examen $examen = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity="CorrectionExamen", inversedBy="reponses")
+     * @ORM\ManyToOne(targetEntity=CorrectionExamen::class, inversedBy="reponses")
      * @ORM\JoinColumn(name="correction_examen_id", referencedColumnName="id")
+     * @Groups({"reponse:read"})
      */
-    private $correctionExamen;
+    private ?CorrectionExamen $correctionExamen = null;
 
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->updatedAt = new \DateTime();
     }
-
-    // Getters and setters...
 
     public function getId(): ?int
     {
@@ -204,6 +203,17 @@ class ReponseEtudiant
     public function setExamen(?Examen $examen): self
     {
         $this->examen = $examen;
+        return $this;
+    }
+
+    public function getCorrectionExamen(): ?CorrectionExamen
+    {
+        return $this->correctionExamen;
+    }
+
+    public function setCorrectionExamen(?CorrectionExamen $correctionExamen): self
+    {
+        $this->correctionExamen = $correctionExamen;
         return $this;
     }
 

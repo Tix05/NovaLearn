@@ -90,15 +90,24 @@ function EtudiantRoutes() {
           </ProtectedRoute>
         }
       />
-
       <Route path="bibliotheque"
         element={
           <ProtectedRoute>
             <Bibliotheque />
           </ProtectedRoute>
         } />
-      <Route path="agenda" element={<Agenda />} />
-      <Route path="message" element={<Message />} />
+      <Route path="agenda"
+        element={
+          <ProtectedRoute>
+            <Agenda />
+          </ProtectedRoute>
+        } />
+      <Route path="message"
+        element={
+          <ProtectedRoute>
+            <Message />
+          </ProtectedRoute>
+        } />
       <Route path="mention"
         element={
           <ProtectedRoute>

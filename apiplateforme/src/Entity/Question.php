@@ -73,11 +73,11 @@ class Question
     private ?string $reponseCorrecte = null;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\Column(type="decimal", precision=5, scale=2)
      * @Groups({"question:read", "question:write"})
      * @Assert\PositiveOrZero
      */
-    private ?int $points = 0;
+    private ?float $points = 0.0;
 
     /**
      * @ORM\Column(type="datetime")
@@ -156,12 +156,12 @@ class Question
         return $this;
     }
 
-    public function getPoints(): ?int
+    public function getPoints(): ?float
     {
         return $this->points;
     }
 
-    public function setPoints(int $points): self
+    public function setPoints(float $points): self
     {
         $this->points = $points;
         return $this;
