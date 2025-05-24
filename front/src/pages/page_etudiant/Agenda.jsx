@@ -21,17 +21,22 @@ import {
     getExamTime
 } from '../../Services/agendaService';
 
-const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
+const useExamTimer = (examId, initialDuration, handleSubmitExam, setExamStarted, setExamSubmitted, selectedExam, examAnswers, debouncedSaveProgress) => {
     const [timeLeft, setTimeLeft] = useState(initialDuration);
     const lastSyncRef = useRef(null);
     const isMounted = useRef(true);
+    const toast = useRef(null);
 
     const syncWithServer = useCallback(async () => {
-        if (!examId) return;
+        if (!examId) {
+            console.debug('syncWithServer: Aucun examId fourni');
+            return;
+        }
 
         try {
+            console.debug('syncWithServer: Début synchronisation', { examId });
             const response = await getExamTime(examId);
-            console.debug('Sync server response:', {
+            console.debug('syncWithServer: Réponse serveur', {
                 examId,
                 temps_restant: response.temps_restant,
                 statut: response.statut,
@@ -39,14 +44,27 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
             });
 
             if (response.statut !== 'EN_COURS') {
-                console.debug('Examen non EN_COURS, mise à 0 du timer:', response.statut);
+                console.debug('syncWithServer: Examen non EN_COURS', { statut: response.statut });
                 setTimeLeft(0);
+                if (isMounted.current) {
+                    setExamStarted(false);
+                    if (response.statut === 'SOUMIS' || response.statut === 'ABANDONNE') {
+                        console.debug('syncWithServer: Examen déjà soumis ou abandonné, mise à jour état');
+                        setExamSubmitted(true);
+                        toast.current?.show({
+                            severity: 'info',
+                            summary: 'Examen terminé',
+                            detail: response.statut === 'SOUMIS' ? 'L\'examen a été soumis.' : 'L\'examen a été abandonné.',
+                            life: 3000
+                        });
+                    }
+                }
                 return;
             }
 
             const serverTime = response.temps_restant;
             if (serverTime === undefined || serverTime < 0) {
-                console.warn('Temps restant invalide du serveur:', serverTime);
+                console.warn('syncWithServer: Temps restant invalide du serveur', { serverTime });
                 return;
             }
 
@@ -59,32 +77,49 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
                 serverTime
             }));
         } catch (error) {
-            console.error('Erreur de synchronisation:', error);
+            console.error('syncWithServer: Erreur de synchronisation', error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Échec de la synchronisation avec le serveur. Utilisation du cache local.',
+                life: 3000
+            });
             const cached = localStorage.getItem(`examTime_${examId}`);
             if (cached) {
                 const { time, lastSync } = JSON.parse(cached);
                 const elapsed = Math.floor((Date.now() - lastSync) / 1000);
                 const adjustedCachedTime = Math.max(0, time - elapsed);
-                console.debug('Restauration depuis cache:', { time, elapsed, adjustedCachedTime });
+                console.debug('syncWithServer: Restauration depuis cache', { time, elapsed, adjustedCachedTime });
                 setTimeLeft(adjustedCachedTime);
             }
         }
-    }, [examId]);
+    }, [examId, setExamStarted, setExamSubmitted]);
 
     useEffect(() => {
         let timer;
         const updateTimer = () => {
             setTimeLeft(prev => {
+                if (prev <= 2) {
+                    // Juste avant que le temps ne soit écoulé, forcer une sauvegarde
+                    if (prev === 2 && isMounted.current && selectedExam) {
+                        console.debug('updateTimer: Sauvegarde finale avant expiration');
+                        debouncedSaveProgress.flush(); // Forcer la sauvegarde des réponses
+                        saveExamProgress(selectedExam.id, examAnswers, prev)
+                            .then(() => console.debug('Sauvegarde finale réussie'))
+                            .catch(err => console.error('Erreur sauvegarde finale:', err));
+                    }
+                }
                 if (prev <= 1) {
-                    console.debug('Temps écoulé, arrêt du timer');
+                    console.debug('updateTimer: Temps écoulé, arrêt du timer');
                     clearInterval(timer);
                     setTimeLeft(0);
                     if (isMounted.current && handleSubmitExam) {
-                        handleSubmitExam(true); // Déclencher la soumission automatique
+                        console.debug('updateTimer: Déclenchement soumission automatique');
+                        handleSubmitExam(true);
                     }
                     return 0;
                 }
-                console.debug('Décrémentation timeLeft:', prev - 1);
+                console.debug('updateTimer: Décrémentation timeLeft', { prev: prev - 1 });
                 return prev - 1;
             });
         };
@@ -94,10 +129,10 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
         }
 
         return () => {
-            console.debug('Nettoyage timer');
+            console.debug('updateTimer: Nettoyage timer');
             clearInterval(timer);
         };
-    }, [timeLeft, handleSubmitExam]);
+    }, [timeLeft, handleSubmitExam, selectedExam, examAnswers, debouncedSaveProgress]);
 
     useEffect(() => {
         isMounted.current = true;
@@ -105,10 +140,10 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
 
         const syncInterval = setInterval(() => {
             if (isMounted.current) {
-                console.debug('Synchronisation périodique pour examId:', examId);
+                console.debug('Synchronisation périodique', { examId });
                 syncWithServer();
             }
-        }, 10000);
+        }, 5000);
 
         return () => {
             isMounted.current = false;
@@ -122,12 +157,18 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
 
         const saveInterval = setInterval(async () => {
             try {
-                console.debug('Sauvegarde automatique:', { examId, timeLeft });
-                await saveExamProgress(examId, {}, timeLeft);
+                console.debug('Sauvegarde automatique', { examId, timeLeft });
+                await saveExamProgress(examId, examAnswers, timeLeft);
                 localStorage.setItem(`examTimeLeft_${examId}`, timeLeft);
                 localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
             } catch (error) {
                 console.error('Échec sauvegarde automatique:', error);
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Échec de la sauvegarde automatique.',
+                    life: 3000
+                });
             }
         }, 10000);
 
@@ -135,9 +176,9 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam) => {
             console.debug('Nettoyage intervalle sauvegarde');
             clearInterval(saveInterval);
         };
-    }, [examId, timeLeft]);
+    }, [examId, timeLeft, examAnswers]);
 
-    return [timeLeft, setTimeLeft];
+    return [timeLeft, setTimeLeft, toast];
 };
 
 const Agenda = () => {
@@ -169,16 +210,14 @@ const Agenda = () => {
                 localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
             } catch (error) {
                 console.error('Erreur sauvegarde progression:', error);
-                if (toast.current) {
-                    toast.current.show({
-                        severity: 'error',
-                        summary: 'Erreur',
-                        detail: 'Erreur lors de la sauvegarde de la progression',
-                        life: 3000,
-                    });
-                }
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors de la sauvegarde de la progression',
+                    life: 3000
+                });
             }
-        }, 2000)
+        }, 1000)
     ).current;
 
     const validateAnswers = useCallback(() => {
@@ -190,7 +229,7 @@ const Agenda = () => {
                         severity: 'error',
                         summary: 'Erreur',
                         detail: `La question ${question.text} a un format de réponse invalide.`,
-                        life: 5000,
+                        life: 5000
                     });
                     return false;
                 }
@@ -201,73 +240,192 @@ const Agenda = () => {
 
     const handleSubmitExam = useCallback(async (autoSubmit = false) => {
         if (!validateAnswers()) {
+            console.debug('handleSubmitExam: Validation des réponses échouée');
             return;
         }
 
-        if (autoSubmit) {
-            // Soumission automatique sans confirmation
-            try {
-                await debouncedSaveProgress.flush();
-                console.debug('Sauvegarde forcée avant soumission automatique');
-                const response = await submitExam(selectedExam.id, examAnswers);
+        if (examSubmitted || !examStarted) {
+            console.debug('handleSubmitExam: Soumission bloquée', { examSubmitted, examStarted });
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Action non autorisée',
+                detail: 'L\'examen est déjà soumis ou n\'a pas démarré.',
+                life: 3000
+            });
+            return;
+        }
+
+        // Pour la soumission manuelle, afficher le dialogue de confirmation
+        if (!autoSubmit) {
+            setConfirmMessage('Êtes-vous sûr de vouloir soumettre l\'examen ? Vos réponses seront enregistrées et vous ne pourrez plus les modifier.');
+            setConfirmAction('submit');
+            setShowConfirmDialog(true);
+            return;
+        }
+
+        // Pour la soumission automatique
+        try {
+            // Vérifier le statut de l'examen avant soumission
+            const statusData = await getExamStatus(selectedExam.id);
+            console.debug('handleSubmitExam: Vérification statut avant soumission', statusData);
+
+            if (statusData.statut === 'SOUMIS') {
+                console.debug('handleSubmitExam: Examen déjà soumis, traitement comme succès');
                 setExamSubmitted(true);
                 setExamStarted(false);
                 setAgendaData(prev => ({
                     ...prev,
-                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id),
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
                 localStorage.removeItem('ongoingExamId');
                 localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
                 localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
+
                 toast.current?.show({
                     severity: 'success',
                     summary: 'Succès',
                     detail: 'Examen soumis automatiquement',
-                    life: 3000,
+                    life: 3000
                 });
+
                 setTimeout(() => {
                     setShowExamDialog(false);
                     navigate('/etudiant/agenda');
                 }, 3000);
-            } catch (error) {
-                console.error('Erreur soumission automatique:', error);
+                return;
+            }
+
+            if (statusData.statut !== 'EN_COURS') {
                 toast.current?.show({
                     severity: 'error',
                     summary: 'Erreur',
-                    detail: error.response?.data?.message || 'Erreur lors de la soumission automatique',
-                    life: 3000,
+                    detail: 'L\'examen n\'est pas en cours. Statut actuel: ' + statusData.statut,
+                    life: 3000
                 });
-                if (error.response?.status === 401) {
-                    navigate('/login');
+                setExamStarted(false);
+                if (statusData.statut === 'ABANDONNE') {
+                    setExamSubmitted(true);
                 }
+                setShowExamDialog(false);
+                setAgendaData(prev => ({
+                    ...prev,
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+                }));
+                localStorage.removeItem('ongoingExamId');
+                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                navigate('/etudiant/agenda');
+                return;
             }
-        } else {
-            // Soumission manuelle avec confirmation
-            const hasAnswers = Object.values(examAnswers).some(answer =>
-                (Array.isArray(answer) && answer.length > 0) || (typeof answer === 'string' && answer.trim() !== '')
-            );
-            setConfirmMessage(
-                hasAnswers
-                    ? 'Êtes-vous sûr de vouloir soumettre vos réponses ?'
-                    : 'Vous n\'avez répondu à aucune question. Êtes-vous sûr de vouloir soumettre ?'
-            );
-            setConfirmAction('submit');
-            setShowConfirmDialog(true);
-        }
-    }, [examAnswers, validateAnswers, debouncedSaveProgress, selectedExam, navigate]);
 
-    const [timeLeft, setTimeLeft] = useExamTimer(
+            await debouncedSaveProgress.flush();
+            console.debug('handleSubmitExam: Sauvegarde forcée avant soumission', { autoSubmit });
+
+            const response = await submitExam(selectedExam.id, examAnswers);
+            console.debug('handleSubmitExam: Réponse soumission', response);
+
+            setExamSubmitted(true);
+            setExamStarted(false);
+            setAgendaData(prev => ({
+                ...prev,
+                examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+            }));
+            localStorage.removeItem('ongoingExamId');
+            localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+            localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+            localStorage.removeItem(`examTime_${selectedExam.id}`);
+
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: 'Examen soumis automatiquement',
+                life: 3000
+            });
+
+            setTimeout(() => {
+                setShowExamDialog(false);
+                navigate('/etudiant/agenda');
+            }, 3000);
+        } catch (error) {
+            console.error('handleSubmitExam: Erreur soumission examen', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la soumission de l\'examen';
+            if (errorMessage.includes('déjà soumis')) {
+                console.debug('handleSubmitExam: Erreur "déjà soumis" traitée comme succès');
+                setExamSubmitted(true);
+                setExamStarted(false);
+                setAgendaData(prev => ({
+                    ...prev,
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+                }));
+                localStorage.removeItem('ongoingExamId');
+                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
+
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Examen soumis automatiquement',
+                    life: 3000
+                });
+
+                setTimeout(() => {
+                    setShowExamDialog(false);
+                    navigate('/etudiant/agenda');
+                }, 3000);
+                return;
+            }
+
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: errorMessage,
+                life: 5000
+            });
+            if (errorMessage.includes('Session expirée') || error.response?.status === 401) {
+                navigate('/login');
+            } else if (errorMessage.includes('Examen non démarré') || errorMessage.includes('abandonné')) {
+                setExamStarted(false);
+                setExamSubmitted(true);
+                setShowExamDialog(false);
+                setAgendaData(prev => ({
+                    ...prev,
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+                }));
+                localStorage.removeItem('ongoingExamId');
+                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                navigate('/etudiant/agenda');
+            }
+        }
+    }, [examAnswers, validateAnswers, debouncedSaveProgress, selectedExam, navigate, examSubmitted, examStarted]);
+
+    const [timeLeft, setTimeLeft, timerToast] = useExamTimer(
         selectedExam?.id,
         selectedExam?.duration || 3600,
-        handleSubmitExam
+        handleSubmitExam,
+        setExamStarted,
+        setExamSubmitted,
+        selectedExam,
+        examAnswers,
+        debouncedSaveProgress
     );
+
+    useEffect(() => {
+        if (timerToast.current) {
+            toast.current = timerToast.current;
+        }
+    }, [timerToast]);
 
     const periodeOptions = [
         { label: 'Tout', value: 'Tout' },
         { label: 'Semaine', value: 'Semaine' },
         { label: 'Mois', value: 'Mois' },
         { label: 'Trimestre', value: 'Trimestre' },
-        { label: 'Semestre', value: 'Semestre' },
+        { label: 'Semestre', value: 'Semestre' }
     ];
 
     useEffect(() => {
@@ -301,7 +459,7 @@ const Agenda = () => {
                 setAgendaData({
                     cours: data.cours || [],
                     examens: examensWithStatus || [],
-                    evenements: data.evenements || [],
+                    evenements: data.evenements || []
                 });
 
                 const ongoingExamId = localStorage.getItem('ongoingExamId');
@@ -317,47 +475,47 @@ const Agenda = () => {
                                     ...exam,
                                     id: ongoingExamId,
                                     duration: examDetails.duree || 3600,
-                                    questions: examDetails.questions || [],
+                                    questions: examDetails.questions || []
                                 });
                                 setExamStarted(true);
                                 setExamAnswers(examData.reponses || {});
                                 setExamQuestions(examDetails.questions || []);
                                 setShowExamDialog(true);
                                 setShowInstructions(false);
+                            } else {
+                                throw new Error('Examen en cours non trouvé dans la liste');
                             }
+                        } else {
+                            localStorage.removeItem('ongoingExamId');
+                            localStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
+                            localStorage.removeItem(`examLastSave_${ongoingExamId}`);
+                            localStorage.removeItem(`examTime_${ongoingExamId}`);
                         }
                     } catch (error) {
                         console.error('Erreur restauration examen:', error);
                         localStorage.removeItem('ongoingExamId');
                         localStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
                         localStorage.removeItem(`examLastSave_${ongoingExamId}`);
+                        localStorage.removeItem(`examTime_${ongoingExamId}`);
                     }
                 }
                 setLoading(false);
             } catch (error) {
                 console.error('Erreur récupération agenda:', error);
-                if (toast.current) {
-                    toast.current.show({
-                        severity: 'error',
-                        summary: 'Erreur',
-                        detail: error.message || 'Erreur lors de la récupération de l\'agenda',
-                        life: 3000,
-                    });
-                }
-                if (error.response?.status === 401) {
-                    toast.current?.show({
-                        severity: 'error',
-                        summary: 'Session expirée',
-                        detail: 'Votre session a expirée. Veuillez vous reconnecter.',
-                        life: 3000,
-                    });
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message || 'Erreur lors de la récupération de l\'agenda',
+                    life: 3000
+                });
+                if (error.message.includes('Session expirée') || error.response?.status === 401) {
                     navigate('/login');
                 } else if (!agendaData.cours.length && !agendaData.examens.length && !agendaData.evenements.length) {
                     toast.current?.show({
                         severity: 'warn',
                         summary: 'Aucune donnée',
                         detail: 'Aucune donnée d\'agenda disponible.',
-                        life: 3000,
+                        life: 3000
                     });
                 }
                 setLoading(false);
@@ -404,7 +562,7 @@ const Agenda = () => {
                 ...exam,
                 duration: examData.duree || 3600,
                 questions: examData.questions || [],
-                id: exam.examenId,
+                id: exam.examenId
             });
 
             if (examData.statut === 'EN_COURS') {
@@ -419,7 +577,7 @@ const Agenda = () => {
                     severity: 'warn',
                     summary: 'Examen terminé',
                     detail: 'Cet examen a déjà été soumis ou abandonné.',
-                    life: 3000,
+                    life: 3000
                 });
                 return;
             } else {
@@ -433,12 +591,12 @@ const Agenda = () => {
             setShowExamDialog(true);
         } catch (error) {
             console.error('Erreur chargement examen:', error);
-            if (error.response?.status === 401) {
+            if (error.message.includes('Session expirée') || error.response?.status === 401) {
                 toast.current?.show({
                     severity: 'error',
                     summary: 'Session expirée',
                     detail: 'Votre session a expiré. Veuillez vous reconnecter.',
-                    life: 3000,
+                    life: 3000
                 });
                 navigate('/login');
             } else {
@@ -446,7 +604,7 @@ const Agenda = () => {
                     severity: 'error',
                     summary: 'Erreur',
                     detail: 'Impossible de charger les données de l\'examen.',
-                    life: 3000,
+                    life: 3000
                 });
             }
         }
@@ -466,16 +624,16 @@ const Agenda = () => {
                 severity: 'success',
                 summary: 'Succès',
                 detail: response.message || 'Examen démarré',
-                life: 3000,
+                life: 3000
             });
         } catch (error) {
             console.error('Erreur démarrage examen:', error);
-            if (error.response?.status === 401) {
+            if (error.message.includes('Session expirée') || error.response?.status === 401) {
                 toast.current?.show({
                     severity: 'error',
                     summary: 'Session expirée',
                     detail: 'Votre session a expiré. Veuillez vous reconnecter.',
-                    life: 3000,
+                    life: 3000
                 });
                 navigate('/login');
             } else {
@@ -483,7 +641,7 @@ const Agenda = () => {
                     severity: 'error',
                     summary: 'Erreur',
                     detail: error.message || 'Erreur lors du démarrage de l\'examen',
-                    life: 3000,
+                    life: 3000
                 });
             }
         }
@@ -505,7 +663,7 @@ const Agenda = () => {
                         severity: 'warn',
                         summary: 'Attention',
                         detail: `Vous pouvez sélectionner jusqu'à ${question.options.length - 1} options.`,
-                        life: 3000,
+                        life: 3000
                     });
                     return prev;
                 }
@@ -529,44 +687,85 @@ const Agenda = () => {
         setShowConfirmDialog(false);
         if (confirmAction === 'submit') {
             try {
+                // Vérifier le statut de l'examen avant soumission
+                const statusData = await getExamStatus(selectedExam.id);
+                console.debug('handleConfirmAction: Vérification statut avant soumission', statusData);
+                if (statusData.statut !== 'EN_COURS') {
+                    toast.current?.show({
+                        severity: 'error',
+                        summary: 'Erreur',
+                        detail: 'L\'examen n\'est pas en cours. Statut actuel: ' + statusData.statut,
+                        life: 3000
+                    });
+                    setExamStarted(false);
+                    if (statusData.statut === 'SOUMIS' || statusData.statut === 'ABANDONNE') {
+                        setExamSubmitted(true);
+                    }
+                    setShowExamDialog(false);
+                    setAgendaData(prev => ({
+                        ...prev,
+                        examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+                    }));
+                    localStorage.removeItem('ongoingExamId');
+                    localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                    localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                    localStorage.removeItem(`examTime_${selectedExam.id}`);
+                    navigate('/etudiant/agenda');
+                    return;
+                }
+
                 await debouncedSaveProgress.flush();
+                console.debug('handleConfirmAction: Sauvegarde forcée avant soumission manuelle');
+
                 const response = await submitExam(selectedExam.id, examAnswers);
+                console.debug('handleConfirmAction: Réponse soumission', response);
+
                 setExamSubmitted(true);
                 setExamStarted(false);
                 setAgendaData(prev => ({
                     ...prev,
-                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id),
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
                 localStorage.removeItem('ongoingExamId');
                 localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
                 localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
+
                 toast.current?.show({
                     severity: 'success',
                     summary: 'Succès',
                     detail: 'Examen soumis avec succès',
-                    life: 3000,
+                    life: 3000
                 });
+
                 setTimeout(() => {
                     setShowExamDialog(false);
                     navigate('/etudiant/agenda');
                 }, 3000);
             } catch (error) {
-                console.error('Erreur soumission examen:', error);
-                if (error.response?.status === 401) {
-                    toast.current?.show({
-                        severity: 'error',
-                        summary: 'Session expirée',
-                        detail: 'Votre session a expiré. Veuillez vous reconnecter.',
-                        life: 3000,
-                    });
+                console.error('handleConfirmAction: Erreur soumission examen', error);
+                const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la soumission de l\'examen';
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: errorMessage,
+                    life: 5000
+                });
+                if (errorMessage.includes('Session expirée') || error.response?.status === 401) {
                     navigate('/login');
-                } else {
-                    toast.current?.show({
-                        severity: 'error',
-                        summary: 'Erreur',
-                        detail: error.response?.data?.message || 'Erreur lors de la soumission de l\'examen',
-                        life: 3000,
-                    });
+                } else if (errorMessage.includes('Examen non démarré') || errorMessage.includes('déjà soumis') || errorMessage.includes('abandonné')) {
+                    setExamStarted(false);
+                    setExamSubmitted(true);
+                    setShowExamDialog(false);
+                    setAgendaData(prev => ({
+                        ...prev,
+                        examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
+                    }));
+                    localStorage.removeItem('ongoingExamId');
+                    localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                    localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                    localStorage.removeItem(`examTime_${selectedExam.id}`);
+                    navigate('/etudiant/agenda');
                 }
             }
         } else if (confirmAction === 'abandon') {
@@ -576,34 +775,35 @@ const Agenda = () => {
                 setExamStarted(false);
                 setAgendaData(prev => ({
                     ...prev,
-                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id),
+                    examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
                 localStorage.removeItem('ongoingExamId');
                 localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
                 localStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                localStorage.removeItem(`examTime_${selectedExam.id}`);
                 toast.current?.show({
                     severity: 'warn',
                     summary: 'Abandon',
                     detail: 'Vous avez abandonné l\'examen',
-                    life: 3000,
+                    life: 3000
                 });
                 navigate('/etudiant/agenda');
             } catch (error) {
-                console.error('Erreur abandon examen:', error);
-                if (error.response?.status === 401) {
+                console.error('handleConfirmAction: Erreur abandon examen', error);
+                if (error.message.includes('Session expirée') || error.response?.status === 401) {
                     toast.current?.show({
                         severity: 'error',
                         summary: 'Session expirée',
                         detail: 'Votre session a expiré. Veuillez vous reconnecter.',
-                        life: 3000,
+                        life: 3000
                     });
                     navigate('/login');
                 } else {
                     toast.current?.show({
                         severity: 'error',
                         summary: 'Erreur',
-                        detail: error.response?.data?.message || 'Erreur lors de l\'abandon de l\'examen',
-                        life: 3000,
+                        detail: error.message || 'Erreur lors de l\'abandon de l\'examen',
+                        life: 3000
                     });
                 }
             }
@@ -622,7 +822,7 @@ const Agenda = () => {
                 severity: 'warn',
                 summary: 'Attention',
                 detail: 'Vous ne pouvez pas quitter l\'examen sans soumettre ou abandonner.',
-                life: 3000,
+                life: 3000
             });
             return;
         }
@@ -636,6 +836,7 @@ const Agenda = () => {
         localStorage.removeItem('ongoingExamId');
         localStorage.removeItem(`examTimeLeft_${selectedExam?.id}`);
         localStorage.removeItem(`examLastSave_${selectedExam?.id}`);
+        localStorage.removeItem(`examTime_${selectedExam?.id}`);
     };
 
     const formatTime = (seconds) => {
@@ -866,8 +1067,12 @@ const Agenda = () => {
                     label="Soumettre l'examen"
                     icon="pi pi-send"
                     className="p-button-raised p-button-danger w-60"
-                    onClick={() => handleSubmitExam(false)}
-                    disabled={selectedExam?.questions?.length === 0}
+                    onClick={() => {
+                        setConfirmMessage('Êtes-vous sûr de vouloir soumettre l\'examen ? Vos réponses seront enregistrées et vous ne pourrez plus les modifier.');
+                        setConfirmAction('submit');
+                        setShowConfirmDialog(true);
+                    }}
+                    disabled={selectedExam?.questions?.length === 0 || examSubmitted || !examStarted}
                 />
             </div>
         </div>

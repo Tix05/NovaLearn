@@ -7,11 +7,12 @@ export const getStudentAgenda = async () => {
     try {
         const response = await axios.get(`${API_URL}/agenda/student`, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000 // Timeout de 10 secondes
         });
 
-        // Validate response data
         const data = response.data || {};
         if (!data.cours || !Array.isArray(data.cours)) {
             console.warn('Cours data is missing or not an array:', data.cours);
@@ -35,11 +36,11 @@ export const getStudentAgenda = async () => {
             evenements: data.evenements
         };
     } catch (error) {
-        console.error("Error fetching student agenda:", error);
+        console.error('Error fetching student agenda:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
-        throw new Error('Erreur lors de la récupération de l\'agenda');
+        throw new Error(error.response?.data?.message || 'Erreur lors de la récupération de l\'agenda');
     }
 };
 
@@ -47,8 +48,10 @@ export const fetchExamQuestions = async (examId) => {
     try {
         const response = await axios.get(`${API_URL}/examen/${examId}`, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000
         });
 
         let tempsRestant = response.data.duree || 3600;
@@ -77,7 +80,7 @@ export const fetchExamQuestions = async (examId) => {
             reponses: response.data.reponses || {}
         };
     } catch (error) {
-        console.error("Error fetching exam questions:", error);
+        console.error('Error fetching exam questions:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -95,8 +98,10 @@ export const getExamStatus = async (examId) => {
     try {
         const response = await axios.get(`${API_URL}/examen/${examId}`, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000
         });
         return {
             statut: response.data.statut || 'DISPONIBLE',
@@ -104,7 +109,7 @@ export const getExamStatus = async (examId) => {
             reponses: response.data.reponses || {}
         };
     } catch (error) {
-        console.error("Error fetching exam status:", error);
+        console.error('Error fetching exam status:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -115,11 +120,30 @@ export const getExamStatus = async (examId) => {
 export const getExamTime = async (examId) => {
     try {
         const response = await axios.get(`${API_URL}/examen/${examId}/get-time`, {
-            headers: { 'Authorization': `Bearer ${getToken()}` }
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 5000
         });
+
+        // Si le temps est écoulé mais que le statut est toujours EN_COURS, le serveur devrait automatiquement soumettre
+        if (response.data.temps_restant <= 0 && response.data.statut === 'EN_COURS') {
+            console.warn('Temps écoulé mais statut toujours EN_COURS - le serveur devrait soumettre automatiquement');
+            // Le serveur devrait retourner SOUMIS dans ce cas, mais nous forçons une nouvelle vérification
+            const statusResponse = await axios.get(`${API_URL}/examen/${examId}`, {
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    'Accept': 'application/json'
+                },
+                timeout: 5000
+            });
+            return statusResponse.data;
+        }
+
         return response.data;
     } catch (error) {
-        console.error("Error getting exam time:", error);
+        console.error('Error getting exam time:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -131,12 +155,14 @@ export const startExam = async (examId) => {
     try {
         const response = await axios.post(`${API_URL}/examen/${examId}/start`, {}, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000
         });
         return response.data;
     } catch (error) {
-        console.error("Error starting exam:", error);
+        console.error('Error starting exam:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -153,12 +179,14 @@ export const submitExam = async (examId, answers) => {
                 headers: {
                     'Authorization': `Bearer ${getToken()}`,
                     'Content-Type': 'application/json',
-                }
+                    'Accept': 'application/json'
+                },
+                timeout: 15000
             }
         );
         return response.data;
     } catch (error) {
-        console.error("Error submitting exam:", error);
+        console.error('Error submitting exam:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -170,12 +198,14 @@ export const abandonExam = async (examId) => {
     try {
         const response = await axios.post(`${API_URL}/examen/${examId}/abandon`, {}, {
             headers: {
-                'Authorization': `Bearer ${getToken()}`
-            }
+                'Authorization': `Bearer ${getToken()}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000
         });
         return response.data;
     } catch (error) {
-        console.error("Error abandoning exam:", error);
+        console.error('Error abandoning exam:', error);
         if (error.response?.status === 401) {
             throw new Error('Session expirée. Veuillez vous reconnecter.');
         }
@@ -195,7 +225,9 @@ export const saveExamProgress = async (examId, answers, tempsRestant) => {
                 headers: {
                     'Authorization': `Bearer ${getToken()}`,
                     'Content-Type': 'application/json',
-                }
+                    'Accept': 'application/json'
+                },
+                timeout: 10000
             }
         );
 

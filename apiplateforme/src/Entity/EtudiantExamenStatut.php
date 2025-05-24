@@ -9,6 +9,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 use ApiPlatform\Core\Annotation\ApiFilter;
+use Psr\Log\LoggerInterface;
 
 /**
  * @ApiResource(
@@ -84,19 +85,18 @@ class EtudiantExamenStatut
      */
     private $debutExamen;
 
-   /**
- * @ORM\Column(type="integer")
- * @Groups({"etudiant_examen_statut:read", "etudiant_examen_statut:write"})
- * @Assert\PositiveOrZero
- */
-private int $tempsRestant;
-
+    /**
+     * @ORM\Column(type="integer")
+     * @Groups({"etudiant_examen_statut:read", "etudiant_examen_statut:write"})
+     * @Assert\PositiveOrZero
+     */
+    private int $tempsRestant = 0;
 
     /**
      * @ORM\Column(type="json", nullable=true)
      * @Groups({"etudiant_examen_statut:read", "etudiant_examen_statut:write"})
      */
-   private ?array $reponses = null;
+    private ?array $reponses = null;
 
     /**
      * @ORM\Column(type="datetime")
@@ -116,10 +116,16 @@ private int $tempsRestant;
      */
     private $derniereActivite;
 
-    public function __construct()
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    public function __construct(LoggerInterface $logger = null)
     {
         $this->createdAt = new \DateTime();
         $this->derniereActivite = new \DateTime();
+        $this->logger = $logger;
     }
 
     public function getId(): ?int
@@ -135,7 +141,6 @@ private int $tempsRestant;
     public function setEtudiant(?Etudiant $etudiant): self
     {
         $this->etudiant = $etudiant;
-
         return $this;
     }
 
@@ -147,7 +152,6 @@ private int $tempsRestant;
     public function setExamen(?Examen $examen): self
     {
         $this->examen = $examen;
-
         return $this;
     }
 
@@ -159,7 +163,6 @@ private int $tempsRestant;
     public function setStatut(string $statut): self
     {
         $this->statut = $statut;
-
         return $this;
     }
 
@@ -171,23 +174,20 @@ private int $tempsRestant;
     public function setDebutExamen(?\DateTimeInterface $debutExamen): self
     {
         $this->debutExamen = $debutExamen;
-
         return $this;
     }
 
-    public function getTempsRestant(): ?int
+    public function getTempsRestant(): int
     {
         return $this->tempsRestant;
     }
 
     public function setTempsRestant(int $tempsRestant): self
-{
-    // Validation stricte - n'accepte plus null
-    $this->tempsRestant = max(0, $tempsRestant);
-    $this->updateDerniereActivite();
-    
-    return $this;
-}
+    {
+        $this->tempsRestant = max(0, $tempsRestant);
+        $this->updateDerniereActivite();
+        return $this;
+    }
 
     public function getReponses(): ?array
     {
@@ -201,7 +201,6 @@ private int $tempsRestant;
         } else {
             $this->reponses = $reponses;
         }
-
         return $this;
     }
 
@@ -213,7 +212,6 @@ private int $tempsRestant;
     public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -225,7 +223,6 @@ private int $tempsRestant;
     public function setUpdatedAt(?\DateTimeInterface $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
-
         return $this;
     }
 
@@ -237,11 +234,10 @@ private int $tempsRestant;
     public function setDerniereActivite(\DateTimeInterface $derniereActivite): self
     {
         $this->derniereActivite = $derniereActivite;
-
         return $this;
     }
 
-public function calculerTempsRestant(int $dureeExamen): int
+    public function calculerTempsRestant(int $dureeExamen): int
 {
     if ($this->statut !== self::STATUT_EN_COURS) {
         $this->tempsRestant = 0;
@@ -258,43 +254,40 @@ public function calculerTempsRestant(int $dureeExamen): int
     $tempsEcoule = $now->getTimestamp() - $this->debutExamen->getTimestamp();
     $tempsRestant = max(0, $dureeExamen - $tempsEcoule);
 
-    if ($tempsRestant <= 0) {
+    $this->tempsRestant = $tempsRestant;
+
+    if ($tempsRestant <= 0 && $this->logger) {
         $this->logger->warning('Temps restant calculé à 0 pour examen en cours', [
-            'examen_id' => $this->examen->getId(),
-            'etudiant_id' => $this->etudiant->getId(),
-            'debut_examen' => $this->debutExamen->format('Y-m-d H:i:s'),
+            'examen_id' => $this->examen ? $this->examen->getId() : null,
+            'etudiant_id' => $this->etudiant ? $this->etudiant->getId() : null,
+            'debut_examen' => $this->debutExamen ? $this->debutExamen->format('Y-m-d H:i:s') : null,
             'duree_examen' => $dureeExamen
         ]);
-        $this->setStatut(self::STATUT_SOUMIS);
-        $this->tempsRestant = 0;
-    } else {
-        $this->tempsRestant = $tempsRestant;
     }
 
     $this->updateDerniereActivite();
     return $this->tempsRestant;
 }
 
-public function initialiserTempsRestant(int $dureeExamen): void
-{
-    if ($this->statut !== self::STATUT_EN_COURS) {
-        $this->tempsRestant = 0;
-        return;
-    }
+    public function initialiserTempsRestant(int $dureeExamen): void
+    {
+        if ($this->statut !== self::STATUT_EN_COURS) {
+            $this->tempsRestant = 0;
+            return;
+        }
 
-    if (!$this->debutExamen) {
-        $this->debutExamen = new \DateTime();
-        $this->tempsRestant = $dureeExamen;
+        if (!$this->debutExamen) {
+            $this->debutExamen = new \DateTime();
+            $this->tempsRestant = $dureeExamen;
+            $this->updateDerniereActivite();
+            return;
+        }
+
+        $now = new \DateTime();
+        $tempsEcoule = $now->getTimestamp() - $this->debutExamen->getTimestamp();
+        $this->tempsRestant = max(0, $dureeExamen - $tempsEcoule);
         $this->updateDerniereActivite();
-        return;
     }
-
-    $now = new \DateTime();
-    $tempsEcoule = $now->getTimestamp() - $this->debutExamen->getTimestamp();
-    $this->tempsRestant = max(0, $dureeExamen - $tempsEcoule);
-    $this->updateDerniereActivite();
-}
-
 
     /**
      * @ORM\PrePersist
