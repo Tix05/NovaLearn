@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './apiConfig';
 import { getTeacherToken } from './teacherAuthService';
 
 const API_URL = 'http://localhost:8000/api';
