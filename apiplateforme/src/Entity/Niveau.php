@@ -103,11 +103,11 @@ class Niveau
      */
     private $etudiants;
 
-    /**
-     * @ORM\OneToMany(targetEntity=Ue::class, mappedBy="niveau")
-     * @Groups({"niveau:read"})
-     */
-    private $ues;
+    // /**
+    //  * @ORM\OneToMany(targetEntity=Ue::class, mappedBy="niveau")
+    //  * @Groups({"niveau:read"})
+    //  */
+    // private $ues;
 
     /**
      * @ORM\OneToMany(targetEntity=Agenda::class, mappedBy="niveau")

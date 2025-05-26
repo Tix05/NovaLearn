@@ -234,7 +234,6 @@ class TeacherDataController extends AbstractController
                 return $this->json(['message' => 'Aucun fichier fourni'], Response::HTTP_BAD_REQUEST);
             }
 
-            // Validation des types MIME
             $validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
             $validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
             if ($type === 'VIDEO' && !in_array($mimeType, $validVideoTypes)) {
@@ -256,8 +255,7 @@ class TeacherDataController extends AbstractController
                     $compressedFileName = 'compressed_' . $fileName;
                     $compressedFilePath = $this->getParameter('supports_directory') . '/' . $compressedFileName;
 
-                    // Exécution directe de FFmpeg via exec()
-                    $ffmpegPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe'; // Ajustez ce chemin selon votre installation
+                    $ffmpegPath = 'C:\ffmpeg\bin\ffmpeg.exe';
                     $command = sprintf(
                         '%s -i %s -vcodec libx264 -b:v 1000k -acodec aac -b:a 128k %s',
                         escapeshellarg($ffmpegPath),

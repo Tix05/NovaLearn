@@ -25,11 +25,11 @@ use DateTimeImmutable;
  *     normalizationContext={"groups"={"mention:read"}},
  *     denormalizationContext={"groups"={"mention:write"}},
  *     collectionOperations={
- *         "get",
+  *         "get"={"normalization_context"={"groups"={"mention:read"}}},
  *         "post"={"security"="is_granted('ROLE_ADMIN')"}
  *     },
  *     itemOperations={
- *         "get",
+ *         "get"={"normalization_context"={"groups"={"mention:read"}}},
  *         "put"={"security"="is_granted('ROLE_ADMIN')"},
  *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
  *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
@@ -97,11 +97,11 @@ class Mention
      */
     private ?\DateTimeImmutable $updated_at = null;
 
-    /**
-     * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
-     * @Groups({"mention:read"})
-     */
-    private Collection $profs;
+    // /**
+    //  * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
+    //  * @Groups({"mention:read"})
+    //  */
+    // private Collection $profs;
 
     /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="mention")

@@ -24,8 +24,11 @@ vich_uploader:
             delete_on_remove: true
         bibliotheque_files:
             uri_prefix: /uploads/bibliotheque
-            upload_destination: '%kernel.project_dir%/public/uploads/bibliotheque'
+            upload_destination: '%kernel.project_dir%/public/Uploads/bibliotheque'
             namer: Vich\UploaderBundle\Naming\UniqidNamer
+            inject_on_load: false
+            delete_on_update: true
+            delete_on_remove: true
         correction_file:
             uri_prefix: /uploads/corrections
             upload_destination: '%kernel.project_dir%/public/uploads/corrections'
