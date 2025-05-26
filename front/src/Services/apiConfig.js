@@ -40,7 +40,7 @@ axios.interceptors.response.use(
                 return Promise.reject(new Error(errorMessage));
             }
 
-            window.location.href = '/etudiant/login-etudiant';
+            window.location.href = '/';
             return Promise.reject(new Error('Session non autorisée, veuillez vous reconnecter'));
         }
 

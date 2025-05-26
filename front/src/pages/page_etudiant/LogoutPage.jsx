@@ -8,7 +8,6 @@ const LogoutPage = () => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         navigate('/etudiant/login-etudiant', { replace: true });
-        // window.location.reload();
     };
     useEffect(() => {
         logout();
