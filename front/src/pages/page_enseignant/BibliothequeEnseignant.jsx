@@ -187,7 +187,7 @@ export default function BibliothequeEnseignant() {
         e.preventDefault();
 
         // Validation des champs requis
-        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre || (!formData.file && !showEditDialog)) {
+        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre || (!formData.file && !showEditDialog && !formData.existingFile)) {
             toast.current.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir tous les champs requis', life: 3000 });
             return;
         }
@@ -198,7 +198,7 @@ export default function BibliothequeEnseignant() {
         formDataToSend.append('ec', formData.ec);
         formDataToSend.append('parcours', formData.parcours);
         if (formData.file) {
-            formDataToSend.append('file', formData.file);
+            formDataToSend.append('file', formData.file); // Ajouter le fichier uniquement s'il a été sélectionné
         }
         formDataToSend.append('status', checked ? '1' : '0');
 
@@ -224,6 +224,7 @@ export default function BibliothequeEnseignant() {
                 titre: '',
                 description: '',
                 file: null,
+                existingFile: null,
             });
             setChecked(false);
         } catch (error) {
@@ -255,7 +256,7 @@ export default function BibliothequeEnseignant() {
         const ecId = selectedEc ? selectedEc.value : '';
 
         // Trouver le parcours correspondant
-        const selectedParcours = selectedMention?.parcours.find((p) => p.label === rowData.niveauNom);
+        const selectedParcours = selectedMention?.parcours.find((p) => p.label === rowData.parcoursName);
         const parcoursName = selectedParcours ? selectedParcours.value : '';
 
         setFormData({
@@ -267,7 +268,8 @@ export default function BibliothequeEnseignant() {
             type: rowData.type,
             titre: rowData.titre,
             description: '',
-            file: null,
+            file: null, // Garder null pour le nouveau fichier à uploader
+            existingFile: rowData.fichier, // Stocker l'URL ou le nom du fichier existant
         });
 
         // Mettre à jour les listes déroulantes
@@ -659,10 +661,25 @@ export default function BibliothequeEnseignant() {
                                         )}
 
                                         <div className="flex justify-between w-full">
-                                            <div>
+                                            <div className="flex flex-col w-full">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Fichier*
+                                                    Fichier* {showEditDialog && formData.existingFile ? '(Fichier existant)' : ''}
                                                 </label>
+                                                {showEditDialog && formData.existingFile && (
+                                                    <div className="mb-2">
+                                                        <p className="text-sm text-gray-600">
+                                                            Fichier actuel :{' '}
+                                                            <a
+                                                                href={formData.existingFile}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:underline"
+                                                            >
+                                                                {formData.existingFile.split('/').pop()}
+                                                            </a>
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 <FileUpload
                                                     mode="basic"
                                                     name="file"
@@ -670,7 +687,7 @@ export default function BibliothequeEnseignant() {
                                                     accept=".pdf,.doc,.docx"
                                                     maxFileSize={10000000}
                                                     onSelect={handleFileChange}
-                                                    chooseLabel="Choisir un fichier"
+                                                    chooseLabel={showEditDialog && formData.existingFile ? 'Remplacer le fichier' : 'Choisir un fichier'}
                                                     className="w-full"
                                                 />
                                             </div>

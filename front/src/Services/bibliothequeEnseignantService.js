@@ -22,8 +22,9 @@ export const getBibliothequeItems = async () => {
             mentionName: item.mentionName || 'N/A',
             niveauNom: item.niveauNom || 'N/A',
             ecName: item.ecName || 'N/A',
+            parcoursName: item.parcoursName || 'N/A',
             isPublished: item.status || false,
-            source: item['@id'].includes('/bibliotheques/') ? 'bibliotheque' : 'fichier_support', // Distinguer la source
+            source: item['@id'].includes('/bibliotheques/') ? 'bibliotheque' : 'fichier_support',
         }));
     } catch (error) {
         console.error('Erreur lors de la récupération des éléments de la bibliothèque:', error);

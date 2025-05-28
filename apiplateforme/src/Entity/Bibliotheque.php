@@ -309,6 +309,14 @@ class Bibliotheque
     }
 
     /**
+     * @Groups({"bibliotheque:read", "bibliotheque:list"})
+     */
+    public function getParcoursName(): ?string
+    {
+        return $this->parcours?->getName();
+    }
+
+    /**
      * @ORM\PreUpdate
      */
     public function updateTimestamps(): void
