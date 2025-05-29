@@ -35,7 +35,7 @@ export const getBibliothequeItems = async () => {
 export const createBibliothequeItem = async (formData) => {
     try {
         const response = await axios.post(
-            `${API_URL}/teacher/bibliotheques`,
+            `${API_URL}/bibliotheques`,
             formData,
             {
                 headers: {

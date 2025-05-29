@@ -17,36 +17,35 @@ use Vich\UploaderBundle\Mapping\Annotation as Vich;
  * @ApiResource(
  *     normalizationContext={"groups"={"bibliotheque:read", "bibliotheque:list"}},
  *     denormalizationContext={"groups"={"bibliotheque:write"}},
- *     collectionOperations={
- *         "get"={
- *             "normalization_context"={"groups"={"bibliotheque:list"}}
- *         },
- *         "post"={
- *             "method"="POST",
- *             "path"="/bibliotheques/upload",
- *             "controller"=App\Controller\BibliothequeUploadController::class,
- *             "deserialize"=false,
- *             "security"="is_granted('ROLE_USER')",
- *             "openapi_context"={
- *                 "requestBody"={
- *                     "content"={
- *                         "multipart/form-data"={
- *                             "schema"={
- *                                 "type"="object",
- *                                 "properties"={
- *                                     "file"={"type"="string", "format"="binary"},
- *                                     "titre"={"type"="string"},
- *                                     "type"={"type"="string"},
- *                                     "ec"={"type"="integer"}
- *                                 },
- *                                 "required"={"file", "titre", "type", "ec"}
- *                             }
- *                         }
- *                     }
- *                 }
- *             }
- *         }
- *     },
+ *     *     collectionOperations={
+*         "get"={
+*             "normalization_context"={"groups"={"bibliotheque:list"}}
+*         },
+*         "post"={
+*             "method"="POST",
+*             "path"="/bibliotheques",
+*             "security"="is_granted('ROLE_USER')",
+*             "openapi_context"={
+*                 "requestBody"={
+*                     "content"={
+*                         "multipart/form-data"={
+*                             "schema"={
+*                                 "type"="object",
+*                                 "properties"={
+*                                     "file"={"type"="string", "format"="binary"},
+*                                     "titre"={"type"="string"},
+*                                     "type"={"type"="string"},
+*                                     "ec"={"type"="integer"},
+*                                     "parcours"={"type"="string"}
+*                                 },
+*                                 "required"={"file", "titre", "type", "ec", "parcours"}
+*                             }
+*                         }
+*                     }
+*                 }
+*             }
+*         }
+*     },
  *     itemOperations={
  *         "get",
  *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},

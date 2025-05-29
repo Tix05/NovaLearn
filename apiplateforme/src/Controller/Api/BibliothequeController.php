@@ -15,6 +15,10 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Security;
 use Psr\Log\LoggerInterface;
 use Vich\UploaderBundle\Storage\StorageInterface;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Vich\UploaderBundle\Handler\UploadHandler;
+use App\Repository\ParcoursRepository;
 
 /**
  * @Route("/api")
@@ -34,7 +38,10 @@ class BibliothequeController extends AbstractController
         EntityManagerInterface $entityManager,
         Security $security,
         LoggerInterface $logger,
-        StorageInterface $storage
+        StorageInterface $storage,
+        UploadHandler $uploadHandler,
+        SerializerInterface $serializer,
+        ParcoursRepository $parcoursRepository
     ) {
         $this->fichierSupportRepository = $fichierSupportRepository;
         $this->bibliothequeRepository = $bibliothequeRepository;
@@ -42,6 +49,9 @@ class BibliothequeController extends AbstractController
         $this->security = $security;
         $this->logger = $logger;
         $this->storage = $storage;
+        $this->uploadHandler = $uploadHandler;
+        $this->serializer = $serializer;
+        $this->parcoursRepository = $parcoursRepository;
     }
 
     /**
@@ -104,90 +114,103 @@ class BibliothequeController extends AbstractController
         ], Response::HTTP_OK, [], ['groups' => ['bibliotheque:list']]);
     }
 
-    /**
-     * @Route("/bibliotheques", name="api_create_bibliotheque", methods={"POST"})
-     */
-    public function createBibliothequeItem(Request $request, EcRepository $ecRepository): Response
-    {
-        $file = $request->files->get('file');
-        $titre = $request->request->get('titre');
-        $type = $request->request->get('type');
-        $ecId = $request->request->get('ec');
-        $parcoursName = $request->request->get('parcours');
-        $status = $request->request->get('status') === '1';
+/**
+ * @Route("/bibliotheques", name="api_create_bibliotheque", methods={"POST"})
+ */
+public function createBibliothequeItem(Request $request, EcRepository $ecRepository, ParcoursRepository $parcoursRepository): Response
+{
+    $file = $request->files->get('file');
+    $titre = $request->request->get('titre');
+    $type = $request->request->get('type');
+    $ecId = $request->request->get('ec');
+    $parcoursName = $request->request->get('parcours');
+    $status = $request->request->get('status') === '1';
 
-        if (!$file || !$titre || !$type || !$ecId || !$parcoursName) {
-            $this->logger->warning('Données manquantes', [
-                'file' => $file ? 'present' : 'missing',
-                'titre' => $titre,
-                'type' => $type,
-                'ec' => $ecId,
-                'parcours' => $parcoursName,
-            ]);
-            return $this->json(['message' => 'Données manquantes'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $ec = $ecRepository->find($ecId);
-        if (!$ec) {
-            $this->logger->warning('EC non trouvé', ['ec_id' => $ecId]);
-            return $this->json(['message' => 'EC non trouvé'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $parcours = $this->entityManager->getRepository(\App\Entity\Parcours::class)->findOneBy(['name' => $parcoursName]);
-        if (!$parcours) {
-            $this->logger->warning('Parcours non trouvé', ['parcours_name' => $parcoursName]);
-            return $this->json(['message' => 'Parcours non trouvé'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $user = $this->security->getUser();
-        if (!$user) {
-            $this->logger->error('Aucun utilisateur authentifié');
-            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
-        }
-
-        $validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
-        if (!in_array($type, $validTypes)) {
-            $this->logger->warning('Type invalide', ['type' => $type]);
-            return $this->json(['message' => 'Type invalide. Les types autorisés sont : administration, sujet avec corrigé, exercice'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $bibliotheque = new Bibliotheque();
-        $bibliotheque->setTitre($titre);
-        $bibliotheque->setType($type);
-        $bibliotheque->setEc($ec);
-        $bibliotheque->setMention($ec->getParcours()->getMention());
-        $bibliotheque->setParcours($parcours);
-        $bibliotheque->setUser($user);
-        $bibliotheque->setFile($file);
-        $bibliotheque->setStatus($status);
-
-        try {
-            $this->uploadHandler->upload($bibliotheque, 'file');
-            $this->entityManager->persist($bibliotheque);
-            $this->entityManager->flush();
-
-            $this->logger->info('Élément de bibliothèque créé avec succès', ['id' => $bibliotheque->getId(), 'titre' => $titre]);
-
-            $data = $this->serializer->serialize($bibliotheque, 'json', ['groups' => ['bibliotheque:read']]);
-
-            return new Response(
-                $data,
-                Response::HTTP_CREATED,
-                ['Content-Type' => 'application/json']
-            );
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la création de l\'élément de bibliothèque', [
-                'error' => $e->getMessage(),
-                'titre' => $titre,
-            ]);
-            return $this->json(['message' => 'Erreur lors de la création : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+    if (!$file || !$titre || !$type || !$ecId || !$parcoursName) {
+        $this->logger->warning('Données manquantes', [
+            'file' => $file ? 'present' : 'missing',
+            'titre' => $titre,
+            'type' => $type,
+            'ec' => $ecId,
+            'parcours' => $parcoursName,
+        ]);
+        return $this->json(['message' => 'Données manquantes'], Response::HTTP_BAD_REQUEST);
     }
+
+    $ec = $ecRepository->find($ecId);
+    if (!$ec) {
+        $this->logger->warning('EC non trouvé', ['ec_id' => $ecId]);
+        return $this->json(['message' => 'EC non trouvé'], Response::HTTP_BAD_REQUEST);
+    }
+
+    $parcours = $parcoursRepository->findOneBy(['name' => $parcoursName]);
+    if (!$parcours) {
+        $this->logger->warning('Parcours non trouvé', ['parcours_name' => $parcoursName]);
+        return $this->json(['message' => 'Parcours non trouvé'], Response::HTTP_BAD_REQUEST);
+    }
+
+    $user = $this->security->getUser();
+    if (!$user) {
+        $this->logger->error('Aucun utilisateur authentifié');
+        return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
+    }
+
+    if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+        $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
+        return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+    }
+
+    $validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
+    if (!in_array($type, $validTypes)) {
+        $this->logger->warning('Type invalide', ['type' => $type]);
+        return $this->json(['message' => 'Type invalide. Les types autorisés sont : administration, sujet avec corrigé, exercice'], Response::HTTP_BAD_REQUEST);
+    }
+
+    $bibliotheque = new Bibliotheque();
+    $bibliotheque->setTitre($titre);
+    $bibliotheque->setType($type);
+    $bibliotheque->setEc($ec);
+    $bibliotheque->setMention($parcours->getMention());
+    $bibliotheque->setParcours($parcours);
+    $bibliotheque->setUser($user);
+    $bibliotheque->setStatus($status);
+
+    // Gérer le fichier manuellement
+    try {
+        $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+        $filePath = $this->getParameter('kernel.project_dir') . '/public/Uploads/bibliotheque/' . $fileName;
+        $file->move($this->getParameter('kernel.project_dir') . '/public/Uploads/bibliotheque', $fileName);
+        $bibliotheque->setFichier($fileName);
+        $bibliotheque->setFile($file);
+    } catch (\Exception $e) {
+        $this->logger->error('Erreur lors de l\'upload du fichier', [
+            'error' => $e->getMessage(),
+            'titre' => $titre,
+        ]);
+        return $this->json(['message' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+
+    try {
+        $this->entityManager->persist($bibliotheque);
+        $this->entityManager->flush();
+
+        $this->logger->info('Élément de bibliothèque créé avec succès', ['id' => $bibliotheque->getId(), 'titre' => $titre]);
+
+        $data = $this->serializer->serialize($bibliotheque, 'json', ['groups' => ['bibliotheque:read']]);
+
+        return new Response(
+            $data,
+            Response::HTTP_CREATED,
+            ['Content-Type' => 'application/json']
+        );
+    } catch (\Exception $e) {
+        $this->logger->error('Erreur lors de la création de l\'élément de bibliothèque', [
+            'error' => $e->getMessage(),
+            'titre' => $titre,
+        ]);
+        return $this->json(['message' => 'Erreur lors de la création : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
 
     /**
      * @Route("/bibliotheques/{id}", name="api_update_bibliotheque", methods={"PUT"})

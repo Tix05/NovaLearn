@@ -25,3 +25,11 @@ services:
             $geminiApiKey: '%google_gemini_api_key%'
             $logger: '@monolog.logger'
             $httpClient: '@http_client'
+    
+    App\Controller\BibliothequeUploadController:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+            $ecRepository: '@App\Repository\EcRepository'
+            $parcoursRepository: '@App\Repository\ParcoursRepository'
+            $serializer: '@serializer'
+            $logger: '@logger'
