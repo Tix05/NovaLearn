@@ -306,46 +306,53 @@ public function createBibliothequeItem(Request $request, EcRepository $ecReposit
     }
 
     /**
-     * @Route("/bibliotheques/{id}", name="api_delete_bibliotheque", methods={"DELETE"})
-     */
-    public function deleteBibliothequeItem(int $id): Response
-    {
-        $user = $this->security->getUser();
-        if (!$user) {
-            $this->logger->error('Aucun utilisateur authentifié');
-            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
-        }
-
-        $bibliotheque = $this->bibliothequeRepository->find($id);
-        if (!$bibliotheque) {
-            $this->logger->warning('Élément non trouvé', ['id' => $id]);
-            return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-        $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
-        if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
-            $this->logger->warning('Non autorisé à supprimer cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
-            return $this->json(['message' => 'Non autorisé à supprimer cet élément'], Response::HTTP_FORBIDDEN);
-        }
-
-        // Supprimer le fichier associé avec VichUploader
-        if ($bibliotheque->getFichier()) {
-            $this->storage->remove($bibliotheque, 'file');
-        }
-
-        $this->entityManager->remove($bibliotheque);
-        $this->entityManager->flush();
-
-        $this->logger->info('Élément de bibliothèque supprimé avec succès', ['id' => $id]);
-
-        return $this->json(['message' => 'Élément supprimé avec succès'], Response::HTTP_OK);
+ * @Route("/bibliotheques/{id}", name="api_delete_bibliotheque", methods={"DELETE"})
+ */
+public function deleteBibliothequeItem(int $id): Response
+{
+    $user = $this->security->getUser();
+    if (!$user) {
+        $this->logger->error('Aucun utilisateur authentifié');
+        return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
     }
 
+    if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+        $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
+        return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+    }
+
+    $bibliotheque = $this->bibliothequeRepository->find($id);
+    if (!$bibliotheque) {
+        $this->logger->warning('Élément non trouvé', ['id' => $id]);
+        return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
+    }
+
+    $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
+    if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
+        $this->logger->warning('Non autorisé à supprimer cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
+        return $this->json(['message' => 'Non autorisé à supprimer cet élément'], Response::HTTP_FORBIDDEN);
+    }
+
+    // Supprimer le fichier associé avec VichUploader
+    if ($bibliotheque->getFichier()) {
+        // Solution 1: Utiliser l'UploadHandler pour supprimer le fichier
+        // $this->uploadHandler->remove($bibliotheque, 'file');
+        
+        // OU Solution 2: Supprimer manuellement le fichier
+        
+        $filePath = $this->getParameter('kernel.project_dir').'/public/uploads/bibliotheque/'.$bibliotheque->getFichier();
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+    }
+
+    $this->entityManager->remove($bibliotheque);
+    $this->entityManager->flush();
+
+    $this->logger->info('Élément de bibliothèque supprimé avec succès', ['id' => $id]);
+
+    return $this->json(['message' => 'Élément supprimé avec succès'], Response::HTTP_OK);
+}
     private function mapSupportType($type)
     {
         $types = [
