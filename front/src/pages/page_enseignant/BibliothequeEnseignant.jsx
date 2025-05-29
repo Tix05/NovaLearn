@@ -10,6 +10,7 @@ import { FileUpload } from 'primereact/fileupload';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toast } from 'primereact/toast';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'; // Import ConfirmDialog
 import { X } from 'lucide-react';
 import { InputSwitch } from 'primereact/inputswitch';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
@@ -44,6 +45,7 @@ export default function BibliothequeEnseignant() {
         titre: '',
         description: '',
         file: null,
+        existingFile: null,
     });
 
     // Types statiques
@@ -140,7 +142,6 @@ export default function BibliothequeEnseignant() {
         setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
     };
 
-    // Mettre à jour les EC quand l'UE change
     const handleUeChange = (e) => {
         const ueId = e.value;
         setFormData((prev) => ({
@@ -187,77 +188,120 @@ export default function BibliothequeEnseignant() {
         e.preventDefault();
 
         // Validation des champs requis
-        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre || (!formData.file && !showEditDialog && !formData.existingFile)) {
+        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre) {
             toast.current.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir tous les champs requis', life: 3000 });
             return;
         }
 
+        // Log pour déboguer les données du formulaire
+        console.log('Données du formulaire:', {
+            titre: formData.titre,
+            type: formData.type,
+            ec: formData.ec,
+            parcours: formData.parcours,
+            file: formData.file,
+            status: checked ? '1' : '0',
+        });
+
         const formDataToSend = new FormData();
         formDataToSend.append('titre', formData.titre);
         formDataToSend.append('type', formData.type);
-        formDataToSend.append('ec', formData.ec);
+        formDataToSend.append('ec', String(formData.ec)); // Convertir en chaîne pour éviter des problèmes
         formDataToSend.append('parcours', formData.parcours);
         if (formData.file) {
-            formDataToSend.append('file', formData.file); // Ajouter le fichier uniquement s'il a été sélectionné
+            formDataToSend.append('file', formData.file);
         }
         formDataToSend.append('status', checked ? '1' : '0');
 
-        try {
-            if (showEditDialog) {
-                await updateBibliothequeItem(selectedItem.id, formDataToSend);
-                toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément modifié avec succès', life: 3000 });
-            } else {
-                await createBibliothequeItem(formDataToSend);
-                toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément créé avec succès', life: 3000 });
+        // Log du FormData avant envoi
+        const formDataEntries = {};
+        for (const [key, value] of formDataToSend.entries()) {
+            formDataEntries[key] = value;
+        }
+        console.log('FormData prêt à envoyer:', formDataEntries);
+
+        const submitAction = async () => {
+            try {
+                if (showEditDialog) {
+                    await updateBibliothequeItem(selectedItem.id, formDataToSend);
+                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément modifié avec succès', life: 3000 });
+                } else {
+                    if (!formData.file) {
+                        toast.current.show({ severity: 'warn', summary: 'Attention', detail: 'Un fichier est requis pour la création', life: 3000 });
+                        return;
+                    }
+                    await createBibliothequeItem(formDataToSend);
+                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément créé avec succès', life: 3000 });
+                }
+                const updatedItems = await getBibliothequeItems();
+                setData(updatedItems);
+                setShowCreateDialog(false);
+                setShowEditDialog(false);
+                setFormData({
+                    mention: '',
+                    semestre: '',
+                    parcours: '',
+                    ue: '',
+                    ec: '',
+                    type: '',
+                    titre: '',
+                    description: '',
+                    file: null,
+                    existingFile: null,
+                });
+                setChecked(false);
+            } catch (error) {
+                console.error('Erreur lors de la soumission:', error);
+                toast.current.show({ severity: 'error', summary: 'Erreur', detail: error.response?.data?.message || 'Une erreur est survenue', life: 3000 });
             }
-            const updatedItems = await getBibliothequeItems();
-            setData(updatedItems);
-            setShowCreateDialog(false);
-            setShowEditDialog(false);
-            setFormData({
-                mention: '',
-                semestre: '',
-                parcours: '',
-                ue: '',
-                ec: '',
-                type: '',
-                titre: '',
-                description: '',
-                file: null,
-                existingFile: null,
+        };
+
+        if (showEditDialog) {
+            confirmDialog({
+                message: 'Êtes-vous sûr de vouloir modifier cet élément ?',
+                header: 'Confirmation de modification',
+                icon: 'pi pi-exclamation-triangle',
+                acceptLabel: 'Oui',
+                rejectLabel: 'Non',
+                accept: submitAction,
+                reject: () => toast.current.show({ severity: 'info', summary: 'Annulé', detail: 'Modification annulée', life: 3000 }),
             });
-            setChecked(false);
-        } catch (error) {
-            console.error('Erreur lors de la soumission:', error);
-            toast.current.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue', life: 3000 });
+        } else {
+            submitAction();
         }
     };
 
     const handleEdit = (rowData) => {
-        if (rowData.source !== 'bibliotheque') return; // Empêche la modification pour FichierSupport
+        if (rowData.source !== 'bibliotheque') return;
         setSelectedItem(rowData);
 
-        // Trouver la mention correspondante
         const selectedMention = mentions.find((m) => m.label === rowData.mentionName);
         const mentionId = selectedMention ? selectedMention.value : '';
 
-        // Trouver le semestre correspondant
         const selectedSemestre = selectedMention?.niveaux.find((s) =>
             s.ues.some((u) => u.ecs.some((ec) => ec.label === rowData.ecName))
         );
         const semestreId = selectedSemestre ? selectedSemestre.value : '';
 
-        // Trouver l'UE correspondante
         const selectedUe = selectedSemestre?.ues.find((u) => u.ecs.some((ec) => ec.label === rowData.ecName));
         const ueId = selectedUe ? selectedUe.value : '';
 
-        // Trouver l'EC correspondant
         const selectedEc = selectedUe?.ecs.find((ec) => ec.label === rowData.ecName);
         const ecId = selectedEc ? selectedEc.value : '';
 
-        // Trouver le parcours correspondant
         const selectedParcours = selectedMention?.parcours.find((p) => p.label === rowData.parcoursName);
         const parcoursName = selectedParcours ? selectedParcours.value : '';
+
+        // Vérifier que les champs requis sont présents
+        if (!mentionId || !semestreId || !ueId || !ecId || !parcoursName || !rowData.type || !rowData.titre) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Impossible de charger les données pour la modification. Vérifiez les données de l\'élément.',
+                life: 5000,
+            });
+            return;
+        }
 
         setFormData({
             mention: mentionId,
@@ -268,11 +312,10 @@ export default function BibliothequeEnseignant() {
             type: rowData.type,
             titre: rowData.titre,
             description: '',
-            file: null, // Garder null pour le nouveau fichier à uploader
-            existingFile: rowData.fichier, // Stocker l'URL ou le nom du fichier existant
+            file: null,
+            existingFile: rowData.fichier,
         });
 
-        // Mettre à jour les listes déroulantes
         if (selectedMention) {
             setSemestres([
                 { label: 'Veuillez choisir le semestre', value: '' },
@@ -304,20 +347,33 @@ export default function BibliothequeEnseignant() {
         setShowEditDialog(true);
     };
 
-    const handleDelete = async (id, source) => {
-        if (source !== 'bibliotheque') return; // Empêche la suppression pour FichierSupport
-        try {
-            await deleteBibliothequeItem(id);
-            const updatedItems = await getBibliothequeItems();
-            setData(updatedItems);
-        } catch (error) {
-            console.error('Erreur lors de la suppression:', error);
-        }
+    const handleDelete = (id, source) => {
+        if (source !== 'bibliotheque') return;
+
+        confirmDialog({
+            message: 'Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.',
+            header: 'Confirmation de suppression',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Oui',
+            rejectLabel: 'Non',
+            accept: async () => {
+                try {
+                    await deleteBibliothequeItem(id);
+                    const updatedItems = await getBibliothequeItems();
+                    setData(updatedItems);
+                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément supprimé avec succès', life: 3000 });
+                } catch (error) {
+                    console.error('Erreur lors de la suppression:', error);
+                    toast.current.show({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression', life: 3000 });
+                }
+            },
+            reject: () => toast.current.show({ severity: 'info', summary: 'Annulé', detail: 'Suppression annulée', life: 3000 }),
+        });
     };
 
     const handleDownload = (filename) => {
         const link = document.createElement('a');
-        link.href = filename; // Utilise l'URL complète fournie par l'API
+        link.href = filename;
         link.download = filename.split('/').pop();
         link.click();
     };
@@ -458,6 +514,7 @@ export default function BibliothequeEnseignant() {
     return (
         <LayoutEnseignant>
             <Toast ref={toast} />
+            <ConfirmDialog /> {/* Ajouter le composant ConfirmDialog */}
             <div className="relative">
                 <DataTable
                     value={filteredData}
@@ -477,7 +534,6 @@ export default function BibliothequeEnseignant() {
                     <Column body={actionBodyTemplate} header="Action" sortable style={{ minWidth: '10rem' }} />
                 </DataTable>
 
-                {/* Modal de création/modification avec animation Framer Motion */}
                 <AnimatePresence>
                     {(showCreateDialog || showEditDialog) && (
                         <div
