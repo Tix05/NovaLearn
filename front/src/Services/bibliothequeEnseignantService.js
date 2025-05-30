@@ -52,24 +52,42 @@ export const createBibliothequeItem = async (formData) => {
     }
 };
 
-export const updateBibliothequeItem = async (id, formData) => {
+export const updateBibliothequeItem = async (id, data) => {
     try {
-        // Validation du type
         const validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
-        if (!validTypes.includes(formData.get('type'))) {
+        if (data.type && !validTypes.includes(data.type)) {
             throw new Error('Type invalide. Les types autorisés sont : administration, sujet avec corrigé, exercice');
         }
 
-        const response = await axios.put(`${API_URL}/bibliotheques/${id}`, formData, {
+        const response = await axios.patch(`${API_URL}/bibliotheques/${id}`, data, {
             headers: {
                 Authorization: `Bearer ${getTeacherToken()}`,
-                'Content-Type': 'multipart/form-data',
-                Accept: 'application/ld+json',
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
             },
         });
         return response.data;
     } catch (error) {
         console.error('Erreur lors de la modification de l\'élément de la bibliothèque:', error);
+        throw error;
+    }
+};
+
+export const uploadBibliothequeFile = async (id, file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await axios.post(`${API_URL}/bibliotheques/${id}/upload`, formData, {
+            headers: {
+                Authorization: `Bearer ${getTeacherToken()}`,
+                'Content-Type': 'multipart/form-data',
+                Accept: 'application/json',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Erreur lors de l\'upload du fichier:', error);
         throw error;
     }
 };
@@ -98,7 +116,6 @@ export const getTeacherMentions = async () => {
             },
         });
 
-        // Transforme les données pour les listes déroulantes
         const mentions = response.data.map(item => ({
             label: item.nom,
             value: item.id,
@@ -115,8 +132,8 @@ export const getTeacherMentions = async () => {
                 })),
             })),
             parcours: item.parcours.map(parcours => ({
-                label: parcours, // Nom du parcours
-                value: parcours, // Utiliser le nom comme valeur pour simplifier
+                label: parcours,
+                value: parcours,
             })),
         }));
 

@@ -17,38 +17,81 @@ use Vich\UploaderBundle\Mapping\Annotation as Vich;
  * @ApiResource(
  *     normalizationContext={"groups"={"bibliotheque:read", "bibliotheque:list"}},
  *     denormalizationContext={"groups"={"bibliotheque:write"}},
- *     *     collectionOperations={
-*         "get"={
-*             "normalization_context"={"groups"={"bibliotheque:list"}}
-*         },
-*         "post"={
-*             "method"="POST",
-*             "path"="/bibliotheques",
-*             "security"="is_granted('ROLE_USER')",
-*             "openapi_context"={
-*                 "requestBody"={
-*                     "content"={
-*                         "multipart/form-data"={
-*                             "schema"={
-*                                 "type"="object",
-*                                 "properties"={
-*                                     "file"={"type"="string", "format"="binary"},
-*                                     "titre"={"type"="string"},
-*                                     "type"={"type"="string"},
-*                                     "ec"={"type"="integer"},
-*                                     "parcours"={"type"="string"}
-*                                 },
-*                                 "required"={"file", "titre", "type", "ec", "parcours"}
-*                             }
-*                         }
-*                     }
-*                 }
-*             }
-*         }
-*     },
+ *     collectionOperations={
+ *         "get"={
+ *             "normalization_context"={"groups"={"bibliotheque:list"}}
+ *         },
+ *         "post"={
+ *             "method"="POST",
+ *             "path"="/bibliotheques",
+ *             "security"="is_granted('ROLE_USER')",
+ *             "openapi_context"={
+ *                 "requestBody"={
+ *                     "content"={
+ *                         "multipart/form-data"={
+ *                             "schema"={
+ *                                 "type"="object",
+ *                                 "properties"={
+ *                                     "file"={"type"="string", "format"="binary"},
+ *                                     "titre"={"type"="string"},
+ *                                     "type"={"type"="string"},
+ *                                     "ec"={"type"="integer"},
+ *                                     "parcours"={"type"="string"}
+ *                                 },
+ *                                 "required"={"file", "titre", "type", "ec", "parcours"}
+ *                             }
+ *                         }
+ *                     }
+ *                 }
+ *             }
+ *         }
+ *     },
  *     itemOperations={
  *         "get",
- *         "put"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"},
+ *         "patch"={
+ *             "method"="PATCH",
+ *             "path"="/bibliotheques/{id}",
+ *             "security"="is_granted('ROLE_ADMIN') or object.getUser() == user",
+ *             "openapi_context"={
+ *                 "requestBody"={
+ *                     "content"={
+ *                         "application/json"={
+ *                             "schema"={
+ *                                 "type"="object",
+ *                                 "properties"={
+ *                                     "titre"={"type"="string"},
+ *                                     "type"={"type"="string"},
+ *                                     "ec"={"type"="integer"},
+ *                                     "parcours"={"type"="string"},
+ *                                     "status"={"type"="boolean"}
+ *                                 }
+ *                             }
+ *                         }
+ *                     }
+ *                 }
+ *             }
+ *         },
+ *         "upload_file"={
+ *             "method"="POST",
+ *             "path"="/bibliotheques/{id}/upload",
+ *             "controller"=BibliothequeController::class,
+ *             "security"="is_granted('ROLE_ADMIN') or object.getUser() == user",
+ *             "openapi_context"={
+ *                 "requestBody"={
+ *                     "content"={
+ *                         "multipart/form-data"={
+ *                             "schema"={
+ *                                 "type"="object",
+ *                                 "properties"={
+ *                                     "file"={"type"="string", "format"="binary"}
+ *                                 },
+ *                                 "required"={"file"}
+ *                             }
+ *                         }
+ *                     }
+ *                 }
+ *             }
+ *         },
  *         "delete"={"security"="is_granted('ROLE_ADMIN') or object.getUser() == user"}
  *     }
  * )

@@ -7,14 +7,13 @@ import { InputIcon } from 'primereact/inputicon';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
-import { InputTextarea } from 'primereact/inputtextarea';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'; // Import ConfirmDialog
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { X } from 'lucide-react';
 import { InputSwitch } from 'primereact/inputswitch';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
-import { getBibliothequeItems, createBibliothequeItem, updateBibliothequeItem, deleteBibliothequeItem, getTeacherMentions } from '../../Services/bibliothequeEnseignantService';
+import { getBibliothequeItems, createBibliothequeItem, updateBibliothequeItem, uploadBibliothequeFile, deleteBibliothequeItem, getTeacherMentions } from '../../Services/bibliothequeEnseignantService';
 
 export default function BibliothequeEnseignant() {
     const [data, setData] = useState([]);
@@ -43,7 +42,6 @@ export default function BibliothequeEnseignant() {
         ec: '',
         type: '',
         titre: '',
-        description: '',
         file: null,
         existingFile: null,
     });
@@ -77,14 +75,24 @@ export default function BibliothequeEnseignant() {
     // Charger les données initiales
     useEffect(() => {
         const fetchData = async () => {
-            const items = await getBibliothequeItems();
-            setData(items);
+            try {
+                const items = await getBibliothequeItems();
+                setData(items);
 
-            const teacherMentions = await getTeacherMentions();
-            setMentions([
-                { label: 'Veuillez choisir la mention', value: '' },
-                ...teacherMentions,
-            ]);
+                const teacherMentions = await getTeacherMentions();
+                setMentions([
+                    { label: 'Veuillez choisir la mention', value: '' },
+                    ...teacherMentions,
+                ]);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors du chargement des données',
+                    life: 3000
+                });
+            }
         };
         fetchData();
     }, []);
@@ -189,50 +197,69 @@ export default function BibliothequeEnseignant() {
 
         // Validation des champs requis
         if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre) {
-            toast.current.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir tous les champs requis', life: 3000 });
+            toast.current.show({
+                severity: 'warn',
+                summary: 'Attention',
+                detail: 'Veuillez remplir tous les champs requis',
+                life: 3000
+            });
             return;
         }
-
-        // Log pour déboguer les données du formulaire
-        console.log('Données du formulaire:', {
-            titre: formData.titre,
-            type: formData.type,
-            ec: formData.ec,
-            parcours: formData.parcours,
-            file: formData.file,
-            status: checked ? '1' : '0',
-        });
-
-        const formDataToSend = new FormData();
-        formDataToSend.append('titre', formData.titre);
-        formDataToSend.append('type', formData.type);
-        formDataToSend.append('ec', String(formData.ec)); // Convertir en chaîne pour éviter des problèmes
-        formDataToSend.append('parcours', formData.parcours);
-        if (formData.file) {
-            formDataToSend.append('file', formData.file);
-        }
-        formDataToSend.append('status', checked ? '1' : '0');
-
-        // Log du FormData avant envoi
-        const formDataEntries = {};
-        for (const [key, value] of formDataToSend.entries()) {
-            formDataEntries[key] = value;
-        }
-        console.log('FormData prêt à envoyer:', formDataEntries);
 
         const submitAction = async () => {
             try {
                 if (showEditDialog) {
-                    await updateBibliothequeItem(selectedItem.id, formDataToSend);
-                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément modifié avec succès', life: 3000 });
+                    // Prepare textual data for PATCH request
+                    const textData = {
+                        titre: formData.titre,
+                        type: formData.type,
+                        ec: String(formData.ec),
+                        parcours: formData.parcours,
+                        status: checked,
+                    };
+
+                    // Send textual updates
+                    await updateBibliothequeItem(selectedItem.id, textData);
+
+                    // Send file update if a new file is selected
+                    if (formData.file) {
+                        await uploadBibliothequeFile(selectedItem.id, formData.file);
+                    }
+
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément modifié avec succès',
+                        life: 3000
+                    });
                 } else {
                     if (!formData.file) {
-                        toast.current.show({ severity: 'warn', summary: 'Attention', detail: 'Un fichier est requis pour la création', life: 3000 });
+                        toast.current.show({
+                            severity: 'warn',
+                            summary: 'Attention',
+                            detail: 'Un fichier est requis pour la création',
+                            life: 3000
+                        });
                         return;
                     }
+
+                    const formDataToSend = new FormData();
+                    formDataToSend.append('titre', formData.titre);
+                    formDataToSend.append('type', formData.type);
+                    formDataToSend.append('ec', String(formData.ec));
+                    formDataToSend.append('parcours', formData.parcours);
+                    formDataToSend.append('file', formData.file);
+                    formDataToSend.append('status', checked ? '1' : '0');
+
                     await createBibliothequeItem(formDataToSend);
-                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément créé avec succès', life: 3000 });
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément créé avec succès',
+                        life: 3000
+                    });
                 }
+
                 const updatedItems = await getBibliothequeItems();
                 setData(updatedItems);
                 setShowCreateDialog(false);
@@ -245,14 +272,18 @@ export default function BibliothequeEnseignant() {
                     ec: '',
                     type: '',
                     titre: '',
-                    description: '',
                     file: null,
                     existingFile: null,
                 });
                 setChecked(false);
             } catch (error) {
                 console.error('Erreur lors de la soumission:', error);
-                toast.current.show({ severity: 'error', summary: 'Erreur', detail: error.response?.data?.message || 'Une erreur est survenue', life: 3000 });
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.response?.data?.message || 'Une erreur est survenue',
+                    life: 3000
+                });
             }
         };
 
@@ -264,7 +295,12 @@ export default function BibliothequeEnseignant() {
                 acceptLabel: 'Oui',
                 rejectLabel: 'Non',
                 accept: submitAction,
-                reject: () => toast.current.show({ severity: 'info', summary: 'Annulé', detail: 'Modification annulée', life: 3000 }),
+                reject: () => toast.current.show({
+                    severity: 'info',
+                    summary: 'Annulé',
+                    detail: 'Modification annulée',
+                    life: 3000
+                }),
             });
         } else {
             submitAction();
@@ -311,7 +347,6 @@ export default function BibliothequeEnseignant() {
             ec: ecId,
             type: rowData.type,
             titre: rowData.titre,
-            description: '',
             file: null,
             existingFile: rowData.fichier,
         });
@@ -361,13 +396,28 @@ export default function BibliothequeEnseignant() {
                     await deleteBibliothequeItem(id);
                     const updatedItems = await getBibliothequeItems();
                     setData(updatedItems);
-                    toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément supprimé avec succès', life: 3000 });
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément supprimé avec succès',
+                        life: 3000
+                    });
                 } catch (error) {
                     console.error('Erreur lors de la suppression:', error);
-                    toast.current.show({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de la suppression', life: 3000 });
+                    toast.current.show({
+                        severity: 'error',
+                        summary: 'Erreur',
+                        detail: 'Une erreur est survenue lors de la suppression',
+                        life: 3000
+                    });
                 }
             },
-            reject: () => toast.current.show({ severity: 'info', summary: 'Annulé', detail: 'Suppression annulée', life: 3000 }),
+            reject: () => toast.current.show({
+                severity: 'info',
+                summary: 'Annulé',
+                detail: 'Suppression annulée',
+                life: 3000
+            }),
         });
     };
 
@@ -387,7 +437,8 @@ export default function BibliothequeEnseignant() {
             (item.titre.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
                 item.mentionName.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
                 item.niveauNom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-                item.ecName.toLowerCase().includes(globalFilterValue.toLowerCase()))
+                item.ecName.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+                item.type.toLowerCase().includes(globalFilterValue.toLowerCase()))
     );
 
     const dropdownTemplate = (option, props) => {
@@ -514,7 +565,7 @@ export default function BibliothequeEnseignant() {
     return (
         <LayoutEnseignant>
             <Toast ref={toast} />
-            <ConfirmDialog /> {/* Ajouter le composant ConfirmDialog */}
+            <ConfirmDialog />
             <div className="relative">
                 <DataTable
                     value={filteredData}
@@ -699,23 +750,6 @@ export default function BibliothequeEnseignant() {
                                             />
                                         </div>
 
-                                        {checked && (
-                                            <div className="w-full">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Description du document*
-                                                </label>
-                                                <InputTextarea
-                                                    name="description"
-                                                    value={formData.description}
-                                                    onChange={handleChange}
-                                                    rows={6}
-                                                    className="w-full"
-                                                    placeholder="Entrez la description"
-                                                    style={{ width: '100%' }}
-                                                />
-                                            </div>
-                                        )}
-
                                         <div className="flex justify-between w-full">
                                             <div className="flex flex-col w-full">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -739,7 +773,6 @@ export default function BibliothequeEnseignant() {
                                                 <FileUpload
                                                     mode="basic"
                                                     name="file"
-                                                    url="/api/bibliotheques/upload"
                                                     accept=".pdf,.doc,.docx"
                                                     maxFileSize={10000000}
                                                     onSelect={handleFileChange}
