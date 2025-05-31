@@ -15,7 +15,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
-
 /**
  * @ApiResource(
  *     attributes={
@@ -207,6 +206,12 @@ class Agenda
      */
     private $videoFile;
 
+    /**
+     * @ORM\OneToOne(targetEntity=Bibliotheque::class, inversedBy="agenda")
+     * @ORM\JoinColumn(name="bibliotheque_id", referencedColumnName="id", nullable=true)
+     */
+    private $bibliotheque;
+
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
@@ -227,7 +232,6 @@ class Agenda
     public function setTitre(string $titre): self
     {
         $this->titre = $titre;
-
         return $this;
     }
 
@@ -261,7 +265,6 @@ class Agenda
     public function setDescription(string $description): self
     {
         $this->description = $description;
-
         return $this;
     }
 
@@ -273,7 +276,6 @@ class Agenda
     public function setImage(?string $image): self
     {
         $this->image = $image;
-
         return $this;
     }
 
@@ -285,7 +287,6 @@ class Agenda
     public function setVideo(?string $video): self
     {
         $this->video = $video;
-
         return $this;
     }
 
@@ -297,7 +298,6 @@ class Agenda
     public function setUrl(?string $url): self
     {
         $this->url = $url;
-
         return $this;
     }
 
@@ -309,7 +309,6 @@ class Agenda
     public function setType(string $type): self
     {
         $this->type = $type;
-
         return $this;
     }
 
@@ -321,7 +320,6 @@ class Agenda
     public function setCreatedAt(\DateTimeImmutable $created_at): self
     {
         $this->created_at = $created_at;
-
         return $this;
     }
 
@@ -333,7 +331,6 @@ class Agenda
     public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-
         return $this;
     }
 
@@ -356,7 +353,6 @@ class Agenda
     public function setMention(?Mention $mention): self
     {
         $this->mention = $mention;
-
         return $this;
     }
 
@@ -368,7 +364,6 @@ class Agenda
     public function setParcours(?Parcours $parcours): self
     {
         $this->parcours = $parcours;
-
         return $this;
     }
 
@@ -380,7 +375,17 @@ class Agenda
     public function setNiveau(?Niveau $niveau): self
     {
         $this->niveau = $niveau;
+        return $this;
+    }
 
+    public function getBibliotheque(): ?Bibliotheque
+    {
+        return $this->bibliotheque;
+    }
+
+    public function setBibliotheque(?Bibliotheque $bibliotheque): self
+    {
+        $this->bibliotheque = $bibliotheque;
         return $this;
     }
 
@@ -406,7 +411,6 @@ class Agenda
             $this->notifications->add($notification);
             $notification->setAgenda($this);
         }
-
         return $this;
     }
 
@@ -418,7 +422,6 @@ class Agenda
                 $notification->setAgenda(null);
             }
         }
-
         return $this;
     }
 
@@ -449,7 +452,6 @@ class Agenda
     public function setImageFile($imageFile = null): void
     {
         $this->imageFile = $imageFile;
-
         if (null !== $imageFile) {
             $this->updated_at = new \DateTimeImmutable();
         }
@@ -463,7 +465,6 @@ class Agenda
     public function setVideoFile($videoFile = null): void
     {
         $this->videoFile = $videoFile;
-
         if (null !== $videoFile) {
             $this->updated_at = new \DateTimeImmutable();
         }

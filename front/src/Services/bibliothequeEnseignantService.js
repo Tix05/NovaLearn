@@ -24,6 +24,7 @@ export const getBibliothequeItems = async () => {
             ecName: item.ecName || 'N/A',
             parcoursName: item.parcoursName || 'N/A',
             isPublished: item.status || false,
+            description: item.description || '',
             source: item['@id'].includes('/bibliotheques/') ? 'bibliotheque' : 'fichier_support',
         }));
     } catch (error) {

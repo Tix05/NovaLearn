@@ -12,6 +12,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { X } from 'lucide-react';
 import { InputSwitch } from 'primereact/inputswitch';
+import { InputTextarea } from 'primereact/inputtextarea';
 import LayoutEnseignant from '../../components/LayoutEnseignant';
 import { getBibliothequeItems, createBibliothequeItem, updateBibliothequeItem, uploadBibliothequeFile, deleteBibliothequeItem, getTeacherMentions } from '../../Services/bibliothequeEnseignantService';
 
@@ -42,6 +43,7 @@ export default function BibliothequeEnseignant() {
         ec: '',
         type: '',
         titre: '',
+        description: '',
         file: null,
         existingFile: null,
     });
@@ -196,11 +198,11 @@ export default function BibliothequeEnseignant() {
         e.preventDefault();
 
         // Validation des champs requis
-        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre) {
+        if (!formData.mention || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre || (checked && !formData.description)) {
             toast.current.show({
                 severity: 'warn',
                 summary: 'Attention',
-                detail: 'Veuillez remplir tous les champs requis',
+                detail: 'Veuillez remplir tous les champs requis' + (checked ? ', y compris la description' : ''),
                 life: 3000
             });
             return;
@@ -215,6 +217,7 @@ export default function BibliothequeEnseignant() {
                         type: formData.type,
                         ec: String(formData.ec),
                         parcours: formData.parcours,
+                        description: formData.description,
                         status: checked,
                     };
 
@@ -248,6 +251,7 @@ export default function BibliothequeEnseignant() {
                     formDataToSend.append('type', formData.type);
                     formDataToSend.append('ec', String(formData.ec));
                     formDataToSend.append('parcours', formData.parcours);
+                    formDataToSend.append('description', formData.description);
                     formDataToSend.append('file', formData.file);
                     formDataToSend.append('status', checked ? '1' : '0');
 
@@ -272,6 +276,7 @@ export default function BibliothequeEnseignant() {
                     ec: '',
                     type: '',
                     titre: '',
+                    description: '',
                     file: null,
                     existingFile: null,
                 });
@@ -347,6 +352,7 @@ export default function BibliothequeEnseignant() {
             ec: ecId,
             type: rowData.type,
             titre: rowData.titre,
+            description: rowData.description || '',
             file: null,
             existingFile: rowData.fichier,
         });
@@ -750,7 +756,7 @@ export default function BibliothequeEnseignant() {
                                             />
                                         </div>
 
-                                        <div className="flex justify-between w-full">
+                                        <div className="flex justify-between w-full md:col-span-3">
                                             <div className="flex flex-col w-full">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                                     Fichier* {showEditDialog && formData.existingFile ? '(Fichier existant)' : ''}
@@ -787,6 +793,22 @@ export default function BibliothequeEnseignant() {
                                                 <InputSwitch checked={checked} onChange={(e) => setChecked(e.value)} />
                                             </div>
                                         </div>
+
+                                        {checked && (
+                                            <div className="w-full md:col-span-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Description*
+                                                </label>
+                                                <InputTextarea
+                                                    name="description"
+                                                    value={formData.description}
+                                                    onChange={handleChange}
+                                                    className="w-full"
+                                                    placeholder="Entrez une description"
+                                                    rows={4}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-end pt-4">

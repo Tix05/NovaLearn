@@ -36,7 +36,9 @@ use Vich\UploaderBundle\Mapping\Annotation as Vich;
  *                                     "titre"={"type"="string"},
  *                                     "type"={"type"="string"},
  *                                     "ec"={"type"="integer"},
- *                                     "parcours"={"type"="string"}
+ *                                     "parcours"={"type"="string"},
+ *                                     "description"={"type"="string"},
+ *                                     "status"={"type"="boolean"}
  *                                 },
  *                                 "required"={"file", "titre", "type", "ec", "parcours"}
  *                             }
@@ -63,6 +65,7 @@ use Vich\UploaderBundle\Mapping\Annotation as Vich;
  *                                     "type"={"type"="string"},
  *                                     "ec"={"type"="integer"},
  *                                     "parcours"={"type"="string"},
+ *                                     "description"={"type"="string"},
  *                                     "status"={"type"="boolean"}
  *                                 }
  *                             }
@@ -191,6 +194,17 @@ class Bibliotheque
      * @Groups({"bibliotheque:read"})
      */
     private $user;
+
+    /**
+     * @ORM\Column(type="text", nullable=true)
+     * @Groups({"bibliotheque:read", "bibliotheque:write"})
+     */
+    private $description;
+
+    /**
+     * @ORM\OneToOne(targetEntity=Agenda::class, mappedBy="bibliotheque", cascade={"persist", "remove"})
+     */
+    private $agenda;
 
     public function __construct()
     {
@@ -323,6 +337,39 @@ class Bibliotheque
     public function setUser(?User $user): self
     {
         $this->user = $user;
+        return $this;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function setDescription(?string $description): self
+    {
+        $this->description = $description;
+        return $this;
+    }
+
+    public function getAgenda(): ?Agenda
+    {
+        return $this->agenda;
+    }
+
+    public function setAgenda(?Agenda $agenda): self
+    {
+        // Unset the owning side of the relation if necessary
+        if ($agenda !== $this->agenda && $this->agenda !== null) {
+            $this->agenda->setBibliotheque(null);
+        }
+
+        $this->agenda = $agenda;
+
+        // Set the owning side of the relation
+        if ($agenda !== null) {
+            $agenda->setBibliotheque($this);
+        }
+
         return $this;
     }
 
