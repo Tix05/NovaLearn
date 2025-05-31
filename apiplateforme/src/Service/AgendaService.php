@@ -69,6 +69,21 @@ class AgendaService
         ];
     }
 
+    public function getTeacherAgendaData(array $mentionIds, string $type): array
+    {
+        $agendaItems = $this->agendaRepository->createQueryBuilder('a')
+            ->leftJoin('a.mention', 'm')
+            ->where('a.type = :type')
+            ->andWhere('m.id IN (:mentionIds)')
+            ->setParameter('type', $type)
+            ->setParameter('mentionIds', $mentionIds)
+            ->orderBy('a.date', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $this->formatAgendaItems($agendaItems);
+    }
+
     private function formatAgendaItems(array $items): array
 {
     return array_map(function ($item) {
