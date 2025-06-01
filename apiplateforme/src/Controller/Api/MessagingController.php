@@ -26,45 +26,55 @@ use Symfony\Component\Security\Core\Security;
             $this->security = $security;
         }
 
-    /**
-     * @Route("/conversations", name="api_messaging_conversations", methods={"GET"})
-     */
-    public function getConversations(): JsonResponse
-    {
-        $user = $this->security->getUser();
-        if (!$user) {
-            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
-        }
+ /**
+ * @Route("/conversations", name="api_messaging_conversations", methods={"GET", "OPTIONS"})
+ */
+public function getConversations(Request $request): JsonResponse
+{
+    // Ignorer les requêtes OPTIONS
+    if ($request->getMethod() === 'OPTIONS') {
+        return new JsonResponse([], 204); // Réponse vide avec statut 204
+    }
 
-        try {
-            $partners = $this->messagingService->getPotentialConversationPartners($user);
-            $data = [];
+    $user = $this->security->getUser();
+    if (!$user) {
+        return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+    }
 
-            foreach ($partners as $partner) {
-                $data[] = [
-                    'id' => $partner['conversationId'] ?? null,
-                    'sujet' => $partner['type'] === 'GROUP' ? $partner['name'] : null,
-                    'type' => $partner['type'] === 'GROUP' ? 'GROUPE_FILIERE' : 'PRIVEE',
-                    'parcoursId' => $partner['type'] === 'GROUP' ? $partner['id'] : null,
-                    'participants' => [
-                        [
-                            'id' => $partner['id'],
-                            'name' => $partner['name'],
-                            'avatar' => $partner['avatar'],
-                            'role' => $partner['role'],
-                            'isOnline' => $partner['isOnline'],
-                        ],
-                    ],
-                    'unreadCount' => 0,
-                    'lastMessage' => null,
-                ];
+    try {
+        $partners = $this->messagingService->getPotentialConversationPartners($user);
+
+        $data = [];
+
+        foreach ($partners as $partner) {
+            if (!isset($partner['id']) || !isset($partner['name']) || !isset($partner['role'])) {
+                continue;
             }
 
-            return $this->json($data);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Erreur serveur: ' . $e->getMessage()], 500);
+            $data[] = [
+                'id' => $partner['conversationId'] ?? null,
+                'sujet' => $partner['type'] === 'GROUP' ? $partner['name'] : null,
+                'type' => $partner['type'] === 'GROUP' ? 'GROUPE_FILIERE' : 'PRIVEE',
+                'parcoursId' => $partner['type'] === 'GROUP' ? $partner['id'] : null,
+                'participants' => [
+                    [
+                        'id' => $partner['id'],
+                        'name' => $partner['name'],
+                        'avatar' => $partner['avatar'] ?? null,
+                        'role' => $partner['role'],
+                        'isOnline' => $partner['isOnline'] ?? false,
+                    ],
+                ],
+                'unreadCount' => 0,
+                'lastMessage' => null,
+            ];
         }
+
+        return $this->json($data);
+    } catch (\Exception $e) {
+        return new JsonResponse(['error' => 'Erreur serveur: ' . $e->getMessage()], 500);
     }
+}
 
     /**
      * @Route("/messages/{conversationId}", name="api_messaging_messages", methods={"GET"})

@@ -67,12 +67,20 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     public function findByParcours(Parcours $parcours): array
+{
+    return $this->createQueryBuilder('u')
+        ->join('u.etudiants', 'e')
+        ->where('e.parcours = :parcours')
+        ->setParameter('parcours', $parcours)
+        ->getQuery()
+        ->getResult();
+}
+
+    public function findByRole(string $role): array
     {
         return $this->createQueryBuilder('u')
-            ->innerJoin('u.etudiants', 'e')
-            ->innerJoin('e.parcours', 'p')
-            ->where('p.id = :parcoursId')
-            ->setParameter('parcoursId', $parcours->getId())
+            ->where('u.roles LIKE :role')
+            ->setParameter('role', '%"' . $role . '"%')
             ->getQuery()
             ->getResult();
     }

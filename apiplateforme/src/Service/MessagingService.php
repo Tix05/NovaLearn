@@ -3,6 +3,8 @@
 namespace App\Service;
 
 use App\Entity\Conversation;
+use App\Entity\Etudiant;
+use App\Entity\Prof;
 use App\Entity\Message;
 use App\Entity\ParticipantConversation;
 use App\Entity\User;
@@ -40,28 +42,142 @@ class MessagingService
     }
 
     public function getPotentialConversationPartners(?User $user): array
-    {
-        if (!$user) {
-            return [];
+{
+    if (!$user) {
+        return [];
+    }
+
+    $result = [];
+    $userRole = $this->getUserRole($user);
+
+    // Récupérer le parcours de l'utilisateur
+    $etudiant = $this->entityManager->getRepository(Etudiant::class)->findOneBy(['user' => $user]);
+    $prof = $this->entityManager->getRepository(Prof::class)->findOneBy(['user' => $user]);
+
+    // Pour les étudiants
+    if ($userRole === 'ETUDIANT' && $etudiant) {
+        $parcours = $etudiant->getParcours();
+        if ($parcours) {
+            // Récupérer les groupes liés au parcours
+            $groups = [$parcours];
+            foreach ($groups as $group) {
+                $result[] = [
+                    'type' => 'GROUP',
+                    'id' => $group->getId(),
+                    'name' => $group->getName() ?? 'Groupe inconnu',
+                    'avatar' => null,
+                    'role' => 'GROUPE_FILIERE',
+                    'isOnline' => false,
+                    'conversationId' => $this->getExistingGroupConversationId($user, $group),
+                ];
+            }
+
+            // Récupérer les professeurs liés au parcours via les EC
+            $profs = $this->entityManager->getRepository(Prof::class)->createQueryBuilder('p')
+                ->join('p.ecs', 'ec')
+                ->join('ec.ue', 'ue')
+                ->join('ue.mention', 'm')
+                ->join('m.parcours', 'par')
+                ->where('par.id = :parcoursId')
+                ->setParameter('parcoursId', $parcours->getId())
+                ->getQuery()
+                ->getResult();
+
+            // Convertir les Prof en User
+            $profUsers = [];
+            foreach ($profs as $prof) {
+                $profUser = $prof->getUser();
+                if ($profUser) {
+                    $profUsers[] = $profUser;
+                }
+            }
+
+            // Récupérer les administrateurs
+            $admins = $this->userRepository->findByRole('ROLE_ADMIN');
+
+            // Ajouter les professeurs et administrateurs comme partenaires
+            $partners = array_merge($profUsers, $admins);
+            foreach ($partners as $partner) {
+                if ($partner->getId() !== $user->getId()) {
+                    $result[] = [
+                        'type' => 'USER',
+                        'id' => $partner->getId(),
+                        'name' => $partner->getName() ?? 'Utilisateur inconnu',
+                        'avatar' => $partner->getAvatar(),
+                        'role' => $this->getUserRole($partner),
+                        'isOnline' => $this->getOnlineStatus($partner),
+                        'conversationId' => $this->getExistingConversationId($user, $partner),
+                    ];
+                }
+            }
         }
+    }
+    // Pour les professeurs
+    elseif ($userRole === 'PROFESSEUR' && $prof) {
+        // Récupérer les parcours liés aux EC enseignés par le professeur
+        $parcoursList = $this->entityManager->getRepository(Parcours::class)
+            ->createQueryBuilder('p')
+            ->join('p.ues', 'ue')
+            ->join('ue.ecs', 'ec')
+            ->where('ec.prof = :prof')
+            ->setParameter('prof', $prof)
+            ->getQuery()
+            ->getResult();
 
-        $users = $this->userRepository->findAllExcept($user->getId());
-        $groups = $this->entityManager->getRepository(Parcours::class)->findAll();
-
-        $result = [];
-
-        foreach ($users as $partner) {
+        // Ajouter les groupes liés aux parcours
+        foreach ($parcoursList as $parcours) {
             $result[] = [
-                'type' => 'USER',
-                'id' => $partner->getId(),
-                'name' => $partner->getName() ?? 'Utilisateur inconnu',
-                'avatar' => $partner->getAvatar(),
-                'role' => $this->getUserRole($partner),
-                'isOnline' => $this->getOnlineStatus($partner),
-                'conversationId' => $this->getExistingConversationId($user, $partner),
+                'type' => 'GROUP',
+                'id' => $parcours->getId(),
+                'name' => $parcours->getName() ?? 'Groupe inconnu',
+                'avatar' => null,
+                'role' => 'GROUPE_FILIERE',
+                'isOnline' => false,
+                'conversationId' => $this->getExistingGroupConversationId($user, $parcours),
             ];
         }
 
+        // Récupérer les étudiants des parcours
+        $etudiants = $this->entityManager->getRepository(Etudiant::class)
+            ->createQueryBuilder('e')
+            ->join('e.parcours', 'p')
+            ->where('p IN (:parcoursList)')
+            ->setParameter('parcoursList', $parcoursList)
+            ->getQuery()
+            ->getResult();
+
+        // Convertir les Etudiant en User
+        $etudiantUsers = [];
+        foreach ($etudiants as $etudiant) {
+            $etudiantUser = $etudiant->getUser();
+            if ($etudiantUser) {
+                $etudiantUsers[] = $etudiantUser;
+            }
+        }
+
+        // Ajouter les administrateurs
+        $admins = $this->userRepository->findByRole('ROLE_ADMIN');
+
+        // Ajouter les étudiants et administrateurs comme partenaires
+        $partners = array_merge($etudiantUsers, $admins);
+        foreach ($partners as $partner) {
+            if ($partner->getId() !== $user->getId()) {
+                $result[] = [
+                    'type' => 'USER',
+                    'id' => $partner->getId(),
+                    'name' => $partner->getName() ?? 'Utilisateur inconnu',
+                    'avatar' => $partner->getAvatar(),
+                    'role' => $this->getUserRole($partner),
+                    'isOnline' => $this->getOnlineStatus($partner),
+                    'conversationId' => $this->getExistingConversationId($user, $partner),
+                ];
+            }
+        }
+    } 
+    // Pour les administrateurs
+    elseif ($userRole === 'ADMIN') {
+        // Récupérer tous les groupes (parcours)
+        $groups = $this->entityManager->getRepository(Parcours::class)->findAll();
         foreach ($groups as $group) {
             $result[] = [
                 'type' => 'GROUP',
@@ -74,8 +190,23 @@ class MessagingService
             ];
         }
 
-        return $result;
+        // Récupérer tous les utilisateurs sauf l'admin lui-même
+        $users = $this->userRepository->findAllExcept($user->getId());
+        foreach ($users as $partner) {
+            $result[] = [
+                'type' => 'USER',
+                'id' => $partner->getId(),
+                'name' => $partner->getName() ?? 'Utilisateur inconnu',
+                'avatar' => $partner->getAvatar(),
+                'role' => $this->getUserRole($partner),
+                'isOnline' => $this->getOnlineStatus($partner),
+                'conversationId' => $this->getExistingConversationId($user, $partner),
+            ];
+        }
     }
+
+    return $result;
+}
 
     private function getUserRole(User $user): string
     {

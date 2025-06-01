@@ -41,15 +41,15 @@ function Message() {
                 return;
             }
             try {
-                const data = await getConversations({ t: Date.now() });
-                // Trier les conversations par date du dernier message (plus récent en premier)
+                const data = await getConversations();
+                console.log('Conversations fetched:', JSON.stringify(data, null, 2));
                 const sortedConversations = data.sort((a, b) => {
                     const dateA = a.lastMessage?.date ? new Date(a.lastMessage.date) : new Date(0);
                     const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
                     return dateB - dateA;
                 });
                 setConversations(sortedConversations);
-                // Sélectionner automatiquement la première conversation si disponible
+                // Ne définir selectedConversation que si elle n'est pas déjà définie
                 if (sortedConversations.length > 0 && !selectedConversation) {
                     setSelectedConversation(sortedConversations[0]);
                 }
@@ -57,44 +57,42 @@ function Message() {
             } catch (error) {
                 setError('Échec du chargement des conversations');
                 setLoading(false);
+                console.error('Error fetching conversations:', error);
             }
         };
 
-        // Réinitialiser les états au montage
-        setConversations([]);
-        setMessages([]);
-        setSelectedConversation(null);
-        setError(null);
-        setLoading(true);
         fetchConversations();
 
         const interval = setInterval(fetchConversations, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [currentUser?.id]);
 
-    // Charger les messages pour la conversation sélectionnée
     useEffect(() => {
-        if (selectedConversation && selectedConversation.id) {
-            const fetchMessages = async () => {
-                try {
-                    const data = await getMessages(selectedConversation.id, { t: Date.now() });
-                    setMessages(data);
-                    // Marquer les messages comme lus
-                    data.forEach(message => {
-                        if (!message.lu && currentUser && message.expediteur.id !== currentUser.id) {
-                            markMessageAsRead(message.id);
-                        }
-                    });
-                } catch (error) {
-                    setError('Échec du chargement des messages');
-                }
-            };
-
-            fetchMessages();
-        } else {
+        if (!selectedConversation || !selectedConversation.id || !currentUser) {
             setMessages([]);
+            return;
         }
-    }, [selectedConversation, currentUser]);
+
+        const fetchMessages = async () => {
+            try {
+                const data = await getMessages(selectedConversation.id);
+                setMessages(data);
+                for (const message of data) {
+                    if (!message.lu && message.expediteur.id !== currentUser.id) {
+                        await markMessageAsRead(message.id);
+                    }
+                }
+            } catch (error) {
+                setError('Échec du chargement des messages');
+                console.error('Error fetching messages:', error);
+            }
+        };
+
+        fetchMessages();
+
+        const interval = setInterval(fetchMessages, 10000);
+        return () => clearInterval(interval);
+    }, [selectedConversation?.id, currentUser?.id]);
 
     // Faire défiler vers le dernier message
     useEffect(() => {
@@ -156,7 +154,9 @@ function Message() {
             return 'Administration';
         }
         const otherParticipants = conv.participants.filter(p => currentUser && p.id !== currentUser.id);
-        return otherParticipants.map(p => p.name).join(', ');
+        return otherParticipants.length > 0
+            ? otherParticipants.map(p => p.name).join(', ')
+            : 'Conversation';
     };
 
     if (loading) {
