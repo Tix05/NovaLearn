@@ -55,6 +55,11 @@ class AdminAuthController extends AbstractController
             ], Response::HTTP_FORBIDDEN);
         }
         
+        // Mettre à jour le statut en ligne
+        $user->setOnlineStatus('ONLINE');
+        $this->doctrine->getManager()->persist($user);
+        $this->doctrine->getManager()->flush();
+        
         $token = $this->JWTManager->create($user);
         
         return $this->json([
@@ -62,7 +67,23 @@ class AdminAuthController extends AbstractController
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
-            'roles' => $user->getRoles()
+            'roles' => $user->getRoles(),
+            'onlineStatus' => $user->getOnlineStatus()
         ]);
+    }
+
+    /**
+     * @Route("/admin/logout", name="api_admin_logout", methods={"POST"})
+     */
+    public function logout(Request $request): Response
+    {
+        $user = $this->getUser();
+        if ($user instanceof User) {
+            $user->setOnlineStatus('OFFLINE');
+            $this->doctrine->getManager()->persist($user);
+            $this->doctrine->getManager()->flush();
+        }
+
+        return $this->json(['message' => 'Déconnexion réussie']);
     }
 }

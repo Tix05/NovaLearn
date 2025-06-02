@@ -47,10 +47,6 @@ export const login = async (email, password) => {
     }
 };
 
-export const logout = () => {
-    localStorage.removeItem('user');
-};
-
 export const getCurrentUser = () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
@@ -73,4 +69,40 @@ export const getStudentMentions = async () => {
         console.error("Error fetching student mentions:", error);
         throw new Error('Erreur lors de la récupération des mentions');
     }
+};
+
+export const logout = async () => {
+    const token = getToken();
+
+    if (token) {
+        try {
+            await axios.post(`${API_URL}/logout`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            console.log('Déconnexion côté serveur réussie');
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion côté serveur:', error);
+        }
+    }
+
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+
+    window.location.href = '/etudiant/login-etudiant';
+
+    console.log('Déconnexion locale réussie');
+};
+
+export const isAuthenticated = () => {
+    const token = getToken();
+    return !!token;
+};
+
+export const forceLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    window.location.href = '/etudiant/login-etudiant';
 };

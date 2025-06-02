@@ -208,7 +208,7 @@ function Message() {
                                     <span className="absolute right-2 top-2 h-3 w-3 bg-red-500 rounded-full"></span>
                                 )}
                                 <Circle
-                                    className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.isOnline ? 'text-green-500' : 'text-gray-500'}`}
+                                    className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-green-500' : 'text-gray-500'}`}
                                     fill="currentColor"
                                 />
                             </button>

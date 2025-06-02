@@ -45,8 +45,40 @@ export const teacherLogin = async (email, password) => {
     }
 };
 
-export const teacherLogout = () => {
+export const teacherLogout = async () => {
+    const token = getTeacherToken();
+
+    if (token) {
+        try {
+            await axios.post(`${API_URL}/logout`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            console.log('Déconnexion côté serveur réussie');
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion côté serveur:', error);
+        }
+    }
+
     localStorage.removeItem('teacher');
+    localStorage.removeItem('token');
+
+    window.location.href = '/enseignant/login-enseignant';
+
+    console.log('Déconnexion locale réussie');
+};
+
+export const isAuthenticated = () => {
+    const token = getTeacherToken();
+    return !!token;
+};
+
+export const forceLogout = () => {
+    localStorage.removeItem('teacher');
+    localStorage.removeItem('token');
+    window.location.href = '/enseignant/login-enseignant';
 };
 
 export const getCurrentTeacher = () => {

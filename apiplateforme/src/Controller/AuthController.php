@@ -62,7 +62,11 @@ class AuthController extends AbstractController
                 'message' => "Vous n'avez pas accès à l'espace étudiant"
             ], Response::HTTP_FORBIDDEN);
         }
-
+        
+        // Mettre à jour le statut en ligne
+        $user->setOnlineStatus('ONLINE');
+        $this->doctrine->getManager()->persist($user);
+        $this->doctrine->getManager()->flush();
         
         $token = $this->JWTManager->create($user);
         
@@ -72,6 +76,7 @@ class AuthController extends AbstractController
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'roles' => $user->getRoles(),
+            'onlineStatus' => $user->getOnlineStatus(),
             'etudiant' => $user->getEtudiants()->first() ? [
                 'matricule' => $user->getEtudiants()->first()->getMatricule(),
                 'mention' => $user->getEtudiants()->first()->getMention()->getName(),
@@ -79,5 +84,20 @@ class AuthController extends AbstractController
                 'niveau' => $user->getEtudiants()->first()->getNiveau()->getNom()
             ] : null
         ]);
+    }
+
+    /**
+     * @Route("/logout", name="api_logout", methods={"POST"})
+     */
+    public function logout(Request $request): Response
+    {
+        $user = $this->getUser();
+        if ($user instanceof User) {
+            $user->setOnlineStatus('OFFLINE');
+            $this->doctrine->getManager()->persist($user);
+            $this->doctrine->getManager()->flush();
+        }
+
+        return $this->json(['message' => 'Déconnexion réussie']);
     }
 }

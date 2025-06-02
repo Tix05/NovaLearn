@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { User, Plus, X } from 'lucide-react';
 import { BiMenuAltLeft } from 'react-icons/bi';
+import { logout } from '../Services/authService';
 
 const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, handleFileChange }) => {
     const [activeTab, setActiveTab] = React.useState('informations');
@@ -245,6 +246,24 @@ const Navbar = ({ isMobile, toggleSidebar }) => {
     const [unreadNewsCount, setUnreadNewsCount] = useState(4);
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(5);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true);
+            setShowProfileDropdown(false);
+
+            await logout();
+
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion:', error);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            window.location.href = '/etudiant/login-etudiant';
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     const [formData, setFormData] = useState({
         nom: 'Jean Dupont',
@@ -422,9 +441,14 @@ const Navbar = ({ isMobile, toggleSidebar }) => {
                                             <MdOutlineSettings className='text-xl mr-2' />
                                             <li className='cursor-pointer'>Paramètres</li>
                                         </div>
-                                        <div className='flex items-center hover:bg-red-200 p-2'>
+                                        <div
+                                            className={`flex items-center hover:bg-red-200 p-2 ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            onClick={!isLoggingOut ? handleLogout : undefined}
+                                        >
                                             <TbLogout2 className='text-xl mr-2' />
-                                            <li className='cursor-pointer'>Déconnexion</li>
+                                            <li className='cursor-pointer'>
+                                                {isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}
+                                            </li>
                                         </div>
                                     </ul>
                                 </motion.div>

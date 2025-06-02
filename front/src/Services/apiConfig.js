@@ -22,7 +22,7 @@ axios.interceptors.response.use(
             if (userData) {
                 localStorage.removeItem(userData.storageKey);
 
-                let redirectPath = '/login';
+                let redirectPath = '/';
                 let errorMessage = 'Session expirée, veuillez vous reconnecter';
 
                 if (userData.type === 'admin') {
@@ -47,5 +47,48 @@ axios.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Fonction de déconnexion centralisée
+export const logout = async () => {
+    const userData = getCurrentUserData();
+
+    if (userData) {
+        const token = userData.data.token;
+
+        if (token) {
+            try {
+                await axios.post('http://localhost:8000/api/logout', {}, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log('Déconnexion côté serveur réussie');
+            } catch (error) {
+                console.error('Erreur lors de la déconnexion côté serveur:', error);
+            }
+        }
+
+        // Supprimer les données du localStorage
+        localStorage.removeItem(userData.storageKey);
+
+        // Rediriger en fonction du type d'utilisateur
+        let redirectPath = '/';
+        if (userData.type === 'admin') {
+            redirectPath = '/admin/login';
+        } else if (userData.type === 'teacher') {
+            redirectPath = '/enseignant/login-enseignant';
+        } else if (userData.type === 'user') {
+            redirectPath = '/etudiant/login-etudiant';
+        }
+
+        window.location.href = redirectPath;
+        console.log('Déconnexion locale réussie');
+    } else {
+        // Si aucun utilisateur n'est connecté, rediriger vers la page par défaut
+        window.location.href = '/';
+        console.log('Aucun utilisateur connecté, redirection vers la page d\'accueil');
+    }
+};
 
 export default axios;

@@ -333,11 +333,7 @@ class MessagingService
     }
 
     public function getOnlineStatus(User $user): bool
-    {
-        $updatedAt = $user->getUpdatedAt();
-        if (!$updatedAt) {
-            return false;
-        }
-        return (new \DateTime())->diff($updatedAt)->i < 5;
-    }
+{
+    return $user->getOnlineStatus() === 'ONLINE';
+}
 }

@@ -63,6 +63,11 @@ class TeacherAuthController extends AbstractController
             ], Response::HTTP_FORBIDDEN);
         }
         
+        // Mettre à jour le statut en ligne
+        $user->setOnlineStatus('ONLINE');
+        $this->doctrine->getManager()->persist($user);
+        $this->doctrine->getManager()->flush();
+        
         $token = $this->JWTManager->create($user);
         
         return $this->json([
@@ -71,6 +76,7 @@ class TeacherAuthController extends AbstractController
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'roles' => $user->getRoles(),
+            'onlineStatus' => $user->getOnlineStatus(),
             'teacher' => $user->getProfs()->first() ? [
                 'id' => $user->getProfs()->first()->getId(),
                 'ecs' => array_map(function($ec) {
@@ -81,5 +87,20 @@ class TeacherAuthController extends AbstractController
                 }, $user->getProfs()->first()->getEcs()->toArray())
             ] : null
         ]);
+    }
+
+    /**
+     * @Route("/teacher/logout", name="api_teacher_logout", methods={"POST"})
+     */
+    public function logout(Request $request): Response
+    {
+        $user = $this->getUser();
+        if ($user instanceof User) {
+            $user->setOnlineStatus('OFFLINE');
+            $this->doctrine->getManager()->persist($user);
+            $this->doctrine->getManager()->flush();
+        }
+
+        return $this->json(['message' => 'Déconnexion réussie']);
     }
 }

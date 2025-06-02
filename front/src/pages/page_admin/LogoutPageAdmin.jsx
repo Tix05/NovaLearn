@@ -7,8 +7,9 @@ const LogoutPageAdmin = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        adminLogout();
-        navigate('/admin/login', { replace: true });
+        adminLogout().then(() => {
+            navigate('/admin/login', { replace: true });
+        });
     }, [navigate]);
 
     return <Loading />;

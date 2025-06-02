@@ -24,6 +24,43 @@ export const getCurrentAdmin = () => {
     return admin ? JSON.parse(admin) : null;
 };
 
-export const adminLogout = () => {
+export const getAdminToken = () => {
+    const admin = getCurrentAdmin();
+    return admin ? admin.token : null;
+};
+
+export const adminLogout = async () => {
+    const token = getAdminToken();
+
+    if (token) {
+        try {
+            await axios.post(`${API_URL}/admin/logout`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            console.log('Déconnexion côté serveur réussie');
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion côté serveur:', error);
+        }
+    }
+
     localStorage.removeItem('admin');
+    localStorage.removeItem('token');
+
+    window.location.href = '/admin/login';
+
+    console.log('Déconnexion locale réussie');
+};
+
+export const isAuthenticated = () => {
+    const token = getToken();
+    return !!token;
+};
+
+export const forceLogout = () => {
+    localStorage.removeItem('admin');
+    localStorage.removeItem('token');
+    window.location.href = '/admin/login';
 };

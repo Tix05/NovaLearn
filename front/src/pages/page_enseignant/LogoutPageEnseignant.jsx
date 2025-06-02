@@ -7,8 +7,9 @@ const LogoutPageEnseignant = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        teacherLogout();
-        navigate('/enseignant/login-enseignant', { replace: true });
+        teacherLogout().then(() => {
+            navigate('/enseignant/login-enseignant', { replace: true });
+        });
     }, [navigate]);
 
     return <Loading />;

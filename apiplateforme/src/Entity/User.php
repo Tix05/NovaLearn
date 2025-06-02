@@ -227,6 +227,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private Collection $examensCrees;
 
+    /**
+     * @ORM\Column(type="string", columnDefinition="ENUM('ONLINE', 'OFFLINE')", nullable=false, options={"default":"OFFLINE"})
+     * @Groups({"user:read", "user:write"})
+     */
+    private string $onlineStatus = 'OFFLINE';
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -739,6 +745,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $examensCree->setAuteur(null);
             }
         }
+        return $this;
+    }
+
+    public function getOnlineStatus(): string
+    {
+        return $this->onlineStatus;
+    }
+
+    public function setOnlineStatus(string $onlineStatus): self
+    {
+        if (!in_array($onlineStatus, ['ONLINE', 'OFFLINE'])) {
+            throw new \InvalidArgumentException("Statut en ligne invalide. Valeurs acceptées : ONLINE, OFFLINE");
+        }
+        $this->onlineStatus = $onlineStatus;
         return $this;
     }
 

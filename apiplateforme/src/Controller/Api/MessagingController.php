@@ -31,9 +31,8 @@ use Symfony\Component\Security\Core\Security;
  */
 public function getConversations(Request $request): JsonResponse
 {
-    // Ignorer les requêtes OPTIONS
     if ($request->getMethod() === 'OPTIONS') {
-        return new JsonResponse([], 204); // Réponse vide avec statut 204
+        return new JsonResponse([], 204);
     }
 
     $user = $this->security->getUser();
@@ -63,6 +62,7 @@ public function getConversations(Request $request): JsonResponse
                         'avatar' => $partner['avatar'] ?? null,
                         'role' => $partner['role'],
                         'isOnline' => $partner['isOnline'] ?? false,
+                        'onlineStatus' => $partner['isOnline'] ? 'ONLINE' : 'OFFLINE',
                     ],
                 ],
                 'unreadCount' => 0,

@@ -1,23 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { logout } from '../../Services/authService';
 
 const LogoutPage = () => {
     const navigate = useNavigate();
 
-    const logout = () => {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        navigate('/etudiant/login-etudiant', { replace: true });
-    };
     useEffect(() => {
-        logout();
-    }, []);
+        logout().then(() => {
+            navigate('/etudiant/login-etudiant', { replace: true });
+        });
+    }, [navigate]);
 
-    return (
-        <div>
-
-        </div>
-    );
+    return <div></div>;
 };
 
 export default LogoutPage;
