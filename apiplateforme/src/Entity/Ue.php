@@ -106,6 +106,11 @@ class Ue
      */
     private $ecs;
 
+    /**
+     * @ORM\OneToMany(targetEntity=UeParcours::class, mappedBy="ue")
+     */
+    private $ueParcours;
+
     
 
     public function __construct()
@@ -207,6 +212,33 @@ class Ue
         if ($this->ecs->removeElement($ec)) {
             if ($ec->getUe() === $this) {
                 $ec->setUe(null);
+            }
+        }
+        return $this;
+    }
+    
+    /**
+     * @return Collection|UeParcours[]
+     */
+    public function getUeParcours(): Collection
+    {
+        return $this->ueParcours;
+    }
+
+    public function addUeParcours(UeParcours $ueParcours): self
+    {
+        if (!$this->ueParcours->contains($ueParcours)) {
+            $this->ueParcours[] = $ueParcours;
+            $ueParcours->setUe($this);
+        }
+        return $this;
+    }
+
+    public function removeUeParcours(UeParcours $ueParcours): self
+    {
+        if ($this->ueParcours->removeElement($ueParcours)) {
+            if ($ueParcours->getUe() === $this) {
+                $ueParcours->setUe(null);
             }
         }
         return $this;

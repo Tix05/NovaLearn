@@ -105,7 +105,7 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
                                     className="flex gap-2 items-center w-full"
                                 >
                                     <div>{item.icons}</div>
-                                    <p className={`${!open && 'w-0 translate-x-24'} duration-500 overflow-hidden text-nowrap`}>{item.label}</p>
+                                    <p className={`${!open && 'w-0 translate-x-24'} duration-500 overflow-hidden text-nowrap z-50`}>{item.label}</p>
                                 </Link>
                                 <p className={`${open && 'hidden'} absolute left-32 shadow-md rounded-md w-0 p-0 text-black bg-white duration-100 overflow-hidden group-hover:w-fit group-hover:p-2 group-hover:left-16 text-nowrap z-50`}>{item.label}</p>
                             </li>

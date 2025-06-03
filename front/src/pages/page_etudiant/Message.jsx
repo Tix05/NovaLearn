@@ -90,7 +90,7 @@ function Message() {
 
         fetchMessages();
 
-        const interval = setInterval(fetchMessages, 10000);
+        const interval = setInterval(fetchMessages, 20000);
         return () => clearInterval(interval);
     }, [selectedConversation?.id, currentUser?.id]);
 
@@ -186,7 +186,7 @@ function Message() {
                             <button
                                 key={`${conv.type}-${conv.participants[0].id}`}
                                 onClick={() => setSelectedConversation(conv)}
-                                className={`w-full flex items-center space-x-3 p-2 rounded-md transition-colors relative ${selectedConversation?.participants[0].id === conv.participants[0].id &&
+                                className={`w-full flex items-center space-x-3 p-2 rounded-md transition-colors ${selectedConversation?.participants[0].id === conv.participants[0].id &&
                                     selectedConversation?.type === conv.type
                                     ? 'bg-blue-600 text-white'
                                     : 'text-gray-800 hover:bg-gray-300'
@@ -207,10 +207,12 @@ function Message() {
                                 {conv.unreadCount > 0 && (
                                     <span className="absolute right-2 top-2 h-3 w-3 bg-red-500 rounded-full"></span>
                                 )}
-                                <Circle
-                                    className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-green-500' : 'text-gray-500'}`}
-                                    fill="currentColor"
-                                />
+                                {conv.type === 'PRIVEE' && (
+                                    <Circle
+                                        className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-green-500' : 'text-gray-500'}`}
+                                        fill="currentColor"
+                                    />
+                                )}
                             </button>
                         ))}
                     </div>

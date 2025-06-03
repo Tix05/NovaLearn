@@ -41,7 +41,7 @@ export const getMessages = async (conversationId) => {
     }
 };
 
-export const sendMessage = async (conversationId, recipientId, parcoursId, content) => {
+export const sendMessage = async (conversationId, recipientId, parcoursId, content, type) => {
     try {
         const token = getTeacherToken();
         if (!token) {
@@ -53,7 +53,8 @@ export const sendMessage = async (conversationId, recipientId, parcoursId, conte
                 conversationId,
                 recipientId,
                 parcoursId,
-                content
+                contenu: content,
+                type
             },
             {
                 headers: {
@@ -69,15 +70,15 @@ export const sendMessage = async (conversationId, recipientId, parcoursId, conte
     }
 };
 
-export const markMessagesAsRead = async (messageIds) => {
+export const markMessageAsRead = async (messageId) => {
     try {
-        const token = await getTeacherToken();
+        const token = getTeacherToken();
         if (!token) {
             throw new Error('No token found');
         }
         const response = await axios.post(
-            `${API_URL}/mark-read`,
-            { messageIds },
+            `${API_URL}/mark-read/${messageId}`,
+            {},
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -87,7 +88,7 @@ export const markMessagesAsRead = async (messageIds) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Error marking messages as read:', error);
+        console.error('Error marking message as read:', error);
         throw error;
     }
 };

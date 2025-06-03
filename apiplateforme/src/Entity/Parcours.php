@@ -129,6 +129,11 @@ class Parcours
      */
     private $notificationGroupes;
 
+    /**
+     * @ORM\OneToMany(targetEntity=UeParcours::class, mappedBy="parcours")
+     */
+    private $ueParcours;
+
     public function __construct()
     {
         $this->profs = new ArrayCollection();
@@ -360,6 +365,34 @@ class Parcours
 
         return $this;
     }
+
+    /**
+     * @return Collection|UeParcours[]
+     */
+    public function getUeParcours(): Collection
+    {
+        return $this->ueParcours;
+    }
+
+    public function addUeParcours(UeParcours $ueParcours): self
+    {
+        if (!$this->ueParcours->contains($ueParcours)) {
+            $this->ueParcours[] = $ueParcours;
+            $ueParcours->setParcours($this);
+        }
+        return $this;
+    }
+
+    public function removeUeParcours(UeParcours $ueParcours): self
+    {
+        if ($this->ueParcours->removeElement($ueParcours)) {
+            if ($ueParcours->getParcours() === $this) {
+                $ueParcours->setParcours(null);
+            }
+        }
+        return $this;
+    }
+    
     /**
      * @ORM\PreUpdate
      */

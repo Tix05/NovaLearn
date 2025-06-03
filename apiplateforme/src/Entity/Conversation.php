@@ -14,6 +14,7 @@ class Conversation
     const TYPE_PRIVEE = 'PRIVEE';
     const TYPE_GROUPE_FILIERE = 'GROUPE_FILIERE';
     const TYPE_ADMIN = 'ADMIN';
+    const TYPE_GROUPE_PROFESSEUR_FILIERE = 'GROUPE_PROFESSEUR_FILIERE';
 
     /**
      * @ORM\Id
