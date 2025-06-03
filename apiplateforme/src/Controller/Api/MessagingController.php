@@ -6,6 +6,7 @@ use App\Entity\Conversation;
 use App\Entity\User;
 use App\Entity\Parcours;
 use App\Service\MessagingService;
+use App\Entity\Message;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
