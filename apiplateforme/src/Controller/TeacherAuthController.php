@@ -94,13 +94,30 @@ class TeacherAuthController extends AbstractController
      */
     public function logout(Request $request): Response
     {
-        $user = $this->getUser();
-        if ($user instanceof User) {
-            $user->setOnlineStatus('OFFLINE');
-            $this->doctrine->getManager()->persist($user);
-            $this->doctrine->getManager()->flush();
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) {
+            return $this->json(['message' => 'Email requis pour la déconnexion'], Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->json(['message' => 'Déconnexion réussie']);
+        $user = $this->doctrine->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($user) {
+            $isTeacher = false;
+            foreach ($user->getProfs() as $prof) {
+                if ($prof->isStatus()) {
+                    $isTeacher = true;
+                    break;
+                }
+            }
+            if ($isTeacher) {
+                $user->setOnlineStatus('OFFLINE');
+                $this->doctrine->getManager()->persist($user);
+                $this->doctrine->getManager()->flush();
+                return $this->json(['message' => 'Déconnexion réussie']);
+            }
+        }
+
+        return $this->json(['message' => 'Utilisateur non trouvé ou non autorisé'], Response::HTTP_NOT_FOUND);
     }
 }

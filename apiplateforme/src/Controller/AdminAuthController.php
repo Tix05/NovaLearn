@@ -77,13 +77,21 @@ class AdminAuthController extends AbstractController
      */
     public function logout(Request $request): Response
     {
-        $user = $this->getUser();
-        if ($user instanceof User) {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? null;
+
+        if (!$email) {
+            return $this->json(['message' => 'Email requis pour la déconnexion'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->doctrine->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($user && in_array('ROLE_ADMIN', $user->getRoles())) {
             $user->setOnlineStatus('OFFLINE');
             $this->doctrine->getManager()->persist($user);
             $this->doctrine->getManager()->flush();
+            return $this->json(['message' => 'Déconnexion réussie']);
         }
 
-        return $this->json(['message' => 'Déconnexion réussie']);
+        return $this->json(['message' => 'Utilisateur non trouvé ou non autorisé'], Response::HTTP_NOT_FOUND);
     }
 }

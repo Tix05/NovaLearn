@@ -13,6 +13,20 @@ const getCurrentUserData = () => {
     return null;
 };
 
+// Fonction pour obtenir l'endpoint de logout selon le type d'utilisateur
+const getLogoutEndpoint = (userType) => {
+    switch (userType) {
+        case 'admin':
+            return 'http://localhost:8000/api/admin/logout';
+        case 'teacher':
+            return 'http://localhost:8000/api/teacher/logout';
+        case 'user':
+            return 'http://localhost:8000/api/logout';
+        default:
+            return 'http://localhost:8000/api/logout';
+    }
+};
+
 axios.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -21,22 +35,19 @@ axios.interceptors.response.use(
 
             if (userData) {
                 try {
-                    // Appel logout vers l'API
-                    const token = userData.data.token;
-                    if (token) {
-                        await axios.post('http://localhost:8000/api/logout', {}, {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                        });
-                        console.log('Déconnexion côté serveur réussie suite à 401');
-                    }
+                    // Envoyer une requête de déconnexion avec l'email
+                    const logoutEndpoint = getLogoutEndpoint(userData.type);
+                    await axios.post(logoutEndpoint, { email: userData.data.email }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    console.log(`Déconnexion côté serveur réussie (${userData.type})`);
                 } catch (logoutError) {
                     console.error('Erreur lors de la déconnexion côté serveur:', logoutError);
                 }
 
-                // Suppression du localStorage
+                // Supprimer les données du localStorage
                 localStorage.removeItem(userData.storageKey);
 
                 // Redirection selon le type
@@ -54,6 +65,7 @@ axios.interceptors.response.use(
                     errorMessage = 'Session étudiant expirée, veuillez vous reconnecter';
                 }
 
+                console.log(`Session expirée pour ${userData.type}, redirection vers ${redirectPath}`);
                 window.location.href = redirectPath;
                 return Promise.reject(new Error(errorMessage));
             }
@@ -72,20 +84,17 @@ export const logout = async () => {
     const userData = getCurrentUserData();
 
     if (userData) {
-        const token = userData.data.token;
-
-        if (token) {
-            try {
-                await axios.post('http://localhost:8000/api/logout', {}, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                console.log('Déconnexion côté serveur réussie');
-            } catch (error) {
-                console.error('Erreur lors de la déconnexion côté serveur:', error);
-            }
+        try {
+            // Envoyer une requête de déconnexion avec l'email
+            const logoutEndpoint = getLogoutEndpoint(userData.type);
+            await axios.post(logoutEndpoint, { email: userData.data.email }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            console.log(`Déconnexion côté serveur réussie (${userData.type})`);
+        } catch (error) {
+            console.error('Erreur lors de la déconnexion côté serveur:', error);
         }
 
         // Supprimer les données du localStorage
@@ -102,9 +111,8 @@ export const logout = async () => {
         }
 
         window.location.href = redirectPath;
-        console.log('Déconnexion locale réussie');
+        console.log(`Déconnexion locale réussie (${userData.type})`);
     } else {
-        // Si aucun utilisateur n'est connecté, rediriger vers la page par défaut
         window.location.href = '/';
         console.log('Aucun utilisateur connecté, redirection vers la page d\'accueil');
     }
