@@ -32,11 +32,15 @@ axios.interceptors.response.use(
     async (error) => {
         if (error.response && error.response.status === 401) {
             const userData = getCurrentUserData();
+            console.log('Intercepteur 401 déclenché', { userData });
 
             if (userData) {
                 try {
-                    // Envoyer une requête de déconnexion avec l'email
                     const logoutEndpoint = getLogoutEndpoint(userData.type);
+                    console.log('Envoi de la requête de déconnexion', {
+                        endpoint: logoutEndpoint,
+                        email: userData.data.email
+                    });
                     await axios.post(logoutEndpoint, { email: userData.data.email }, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -44,7 +48,7 @@ axios.interceptors.response.use(
                     });
                     console.log(`Déconnexion côté serveur réussie (${userData.type})`);
                 } catch (logoutError) {
-                    console.error('Erreur lors de la déconnexion côté serveur:', logoutError);
+                    console.error('Erreur lors de la déconnexion côté serveur:', logoutError.response?.data || logoutError.message);
                 }
 
                 // Supprimer les données du localStorage
@@ -82,11 +86,15 @@ axios.interceptors.response.use(
 // Fonction de déconnexion centralisée
 export const logout = async () => {
     const userData = getCurrentUserData();
+    console.log('Fonction logout appelée', { userData });
 
     if (userData) {
         try {
-            // Envoyer une requête de déconnexion avec l'email
             const logoutEndpoint = getLogoutEndpoint(userData.type);
+            console.log('Envoi de la requête de déconnexion', {
+                endpoint: logoutEndpoint,
+                email: userData.data.email
+            });
             await axios.post(logoutEndpoint, { email: userData.data.email }, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,7 +102,7 @@ export const logout = async () => {
             });
             console.log(`Déconnexion côté serveur réussie (${userData.type})`);
         } catch (error) {
-            console.error('Erreur lors de la déconnexion côté serveur:', error);
+            console.error('Erreur lors de la déconnexion côté serveur:', error.response?.data || error.message);
         }
 
         // Supprimer les données du localStorage
@@ -110,11 +118,11 @@ export const logout = async () => {
             redirectPath = '/etudiant/login-etudiant';
         }
 
-        window.location.href = redirectPath;
         console.log(`Déconnexion locale réussie (${userData.type})`);
+        window.location.href = redirectPath;
     } else {
-        window.location.href = '/';
         console.log('Aucun utilisateur connecté, redirection vers la page d\'accueil');
+        window.location.href = '/';
     }
 };
 

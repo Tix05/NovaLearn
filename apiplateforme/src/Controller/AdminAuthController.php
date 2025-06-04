@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * @Route("/api")
@@ -19,15 +20,18 @@ class AdminAuthController extends AbstractController
     private $passwordHasher;
     private $doctrine;
     private $JWTManager;
+    private $logger;
 
     public function __construct(
         UserPasswordHasherInterface $passwordHasher,
         ManagerRegistry $doctrine,
-        JWTTokenManagerInterface $JWTManager
+        JWTTokenManagerInterface $JWTManager,
+        LoggerInterface $logger
     ) {
         $this->passwordHasher = $passwordHasher;
         $this->doctrine = $doctrine;
         $this->JWTManager = $JWTManager;
+        $this->logger = $logger;
     }
 
     /**
@@ -78,9 +82,19 @@ class AdminAuthController extends AbstractController
     public function logout(Request $request): Response
     {
         $data = json_decode($request->getContent(), true);
+        $this->logger->info('Requête de déconnexion reçue', [
+            'data' => $data,
+            'headers' => $request->headers->all(),
+            'content' => $request->getContent()
+        ]);
+
         $email = $data['email'] ?? null;
 
         if (!$email) {
+            $this->logger->warning('Email manquant dans la requête de déconnexion', [
+                'data' => $data,
+                'content' => $request->getContent()
+            ]);
             return $this->json(['message' => 'Email requis pour la déconnexion'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -89,9 +103,11 @@ class AdminAuthController extends AbstractController
             $user->setOnlineStatus('OFFLINE');
             $this->doctrine->getManager()->persist($user);
             $this->doctrine->getManager()->flush();
+            $this->logger->info('Déconnexion réussie pour l\'utilisateur', ['email' => $email]);
             return $this->json(['message' => 'Déconnexion réussie']);
         }
 
+        $this->logger->warning('Utilisateur non trouvé ou non autorisé', ['email' => $email]);
         return $this->json(['message' => 'Utilisateur non trouvé ou non autorisé'], Response::HTTP_NOT_FOUND);
     }
 }

@@ -11,7 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { User, Plus, X } from 'lucide-react';
 import { BiMenuAltLeft } from 'react-icons/bi';
-import { teacherLogout } from '../Services/teacherAuthService';
+import { logout } from '../Services/apiConfig';
 
 const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, handleFileChange }) => {
     const [activeTab, setActiveTab] = React.useState('informations');
@@ -237,7 +237,7 @@ const NavbarEnseignant = ({ isMobile, toggleSidebar }) => {
             setIsLoggingOut(true);
             setShowProfileDropdown(false);
 
-            await teacherLogout();
+            await logout();
 
         } catch (error) {
             console.error('Erreur lors de la déconnexion:', error);

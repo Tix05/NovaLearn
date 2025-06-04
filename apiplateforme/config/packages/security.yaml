@@ -11,9 +11,10 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
-        login:
-            pattern: ^/api/login
+        public_api:
+            pattern: ^/api/(login|logout|teacher/login|teacher/logout|admin/login|admin/logout)
             stateless: true
+            security: false # Désactive l'authentification pour ces routes
         api:
             pattern: ^/api
             stateless: true
@@ -23,14 +24,9 @@ security:
             lazy: true
             provider: app_user_provider
     access_control:
-        - { path: ^/api/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/teacher/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/admin/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/logout, roles: PUBLIC_ACCESS }
-        - { path: ^/api/teacher/logout, roles: PUBLIC_ACCESS }
-        - { path: ^/api/admin/logout, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/(login|logout|teacher/login|teacher/logout|admin/login|admin/logout), roles: PUBLIC_ACCESS }
         - { path: ^/api/teacher, roles: ROLE_PROFESSEUR }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:

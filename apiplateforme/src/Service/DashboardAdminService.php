@@ -4,9 +4,10 @@ namespace App\Service;
 
 use App\Entity\Etudiant;
 use App\Entity\Prof;
+use App\Entity\Ec;
 use App\Entity\Mention;
 use App\Entity\EtudiantExamenStatut;
-use App\Entity\User;
+use App\Entity\ConnectionLog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -47,7 +48,7 @@ class DashboardAdminService
                 'id' => $student->getId(),
                 'photo' => $avatar,
                 'nom' => $student->getUser()->getName(),
-                'prenom' => '', // Ajustez si vous avez un champ prénom séparé
+                'prenom' => '',
                 'email' => $student->getUser()->getEmail(),
                 'telephone' => $student->getUser()->getTelephone(),
                 'niveau' => $student->getNiveau()->getNom(),
@@ -75,7 +76,7 @@ class DashboardAdminService
                 'id' => $teacher->getId(),
                 'photo' => $avatar,
                 'nom' => $teacher->getUser()->getName(),
-                'prenom' => '', // Ajustez si vous avez un champ prénom séparé
+                'prenom' => '',
                 'email' => $teacher->getUser()->getEmail(),
                 'telephone' => $teacher->getUser()->getTelephone(),
                 'matiere' => $this->getTeacherMainSubject($teacher),
@@ -94,7 +95,7 @@ class DashboardAdminService
         return [
             'students' => $formattedStudents,
             'teachers' => $formattedTeachers,
-            'adminCount' => 1, // Supposons un seul admin
+            'adminCount' => 1,
             'examPresence' => $examPresenceData,
             'connectionEvolution' => $connectionEvolution,
             'studentEvolution' => $studentEvolution,
@@ -121,6 +122,16 @@ class DashboardAdminService
                 ],
             ],
         ];
+
+        if (empty($mentions)) {
+            $data['labels'] = ['Aucune donnée'];
+            $data['datasets'][0]['data'] = [1];
+            $data['datasets'][0]['backgroundColor'] = ['#D1D5DB'];
+            $data['datasets'][0]['hoverBackgroundColor'] = ['#9CA3AF'];
+            return $data;
+        }
+
+        $hasData = false;
 
         foreach ($mentions as $mention) {
             $mentionId = $mention->getId();
@@ -152,6 +163,18 @@ class DashboardAdminService
             // Calculer le taux de présence
             $presenceRate = $totalStudents > 0 ? ($presentStudents / $totalStudents) * 100 : 0;
             $data['datasets'][0]['data'][] = round($presenceRate, 2);
+
+            if ($presenceRate > 0) {
+                $hasData = true;
+            }
+        }
+
+        // Si aucune donnée valide (tous les taux sont 0), retourner un dataset par défaut
+        if (!$hasData && array_sum($data['datasets'][0]['data']) === 0) {
+            $data['labels'] = ['Aucune donnée'];
+            $data['datasets'][0]['data'] = [1];
+            $data['datasets'][0]['backgroundColor'] = ['#D1D5DB'];
+            $data['datasets'][0]['hoverBackgroundColor'] = ['#9CA3AF'];
         }
 
         return $data;
@@ -164,31 +187,42 @@ class DashboardAdminService
             'datasets' => [],
         ];
 
+        $currentYear = (new \DateTime())->format('Y');
+
         foreach ($mentions as $index => $mention) {
             $dataset = [
                 'label' => $mention->getName(),
-                'data' => [],
+                'data' => array_fill(0, 7, 0),
                 'fill' => false,
                 'borderColor' => ['#EF4444', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'][$index % 5],
                 'tension' => 0.4,
             ];
 
-            // Compter les connexions par mois pour les étudiants de cette mention
-            for ($month = 1; $month <= 7; $month++) {
-                $count = $this->entityManager->getRepository(User::class)
-                    ->createQueryBuilder('u')
-                    ->select('COUNT(DISTINCT u.id)')
-                    ->join('u.etudiants', 'e')
-                    ->where('e.mention = :mention')
-                    ->andWhere('u.online_statut = :statut')
-                    ->andWhere('MONTH(u.updated_at) = :month')
+            try {
+                // Récupérer les connexions pour l'année en cours
+                $results = $this->entityManager->createQueryBuilder()
+                    ->select('DISTINCT cl.id, cl.loginTime')
+                    ->from(ConnectionLog::class, 'cl')
+                    ->leftJoin(Etudiant::class, 'e', 'WITH', 'e.user = cl.user')
+                    ->leftJoin('e.mention', 'm')
+                    ->where('m.id = :mention OR m.id IS NULL')
+                    ->andWhere('cl.loginTime >= :startDate')
+                    ->andWhere('cl.loginTime < :endDate')
                     ->setParameter('mention', $mention->getId())
-                    ->setParameter('statut', 'online')
-                    ->setParameter('month', $month)
+                    ->setParameter('startDate', new \DateTime("$currentYear-01-01"))
+                    ->setParameter('endDate', new \DateTime(($currentYear + 1)."-01-01"))
                     ->getQuery()
-                    ->getSingleScalarResult();
+                    ->getResult();
 
-                $dataset['data'][] = (int)$count;
+                // Compter les connexions par mois
+                foreach ($results as $result) {
+                    $month = (int)$result['loginTime']->format('n') - 1; // Mois de 0 (janvier) à 6 (juillet)
+                    if ($month >= 0 && $month < 7) {
+                        $dataset['data'][$month]++;
+                    }
+                }
+            } catch (\Exception $e) {
+                $dataset['data'] = array_fill(0, 7, 0);
             }
 
             $data['datasets'][] = $dataset;
@@ -204,30 +238,36 @@ class DashboardAdminService
             'datasets' => [],
         ];
 
+        $currentYear = (new \DateTime())->format('Y');
+
         foreach ($mentions as $index => $mention) {
             $dataset = [
                 'label' => $mention->getName(),
-                'data' => [],
+                'data' => array_fill(0, 7, 0),
                 'fill' => false,
                 'borderColor' => ['#EF4444', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'][$index % 5],
                 'tension' => 0.4,
             ];
 
-            // Compter les inscriptions d'étudiants par mois
-            for ($month = 1; $month <= 7; $month++) {
-                $count = $this->entityManager->getRepository(Etudiant::class)
-                    ->createQueryBuilder('e')
-                    ->select('COUNT(e.id)')
-                    ->where('e.mention = :mention')
-                    ->andWhere('e.status = :status')
-                    ->andWhere('MONTH(e.created_at) = :month')
-                    ->setParameter('mention', $mention->getId())
-                    ->setParameter('status', true)
-                    ->setParameter('month', $month)
-                    ->getQuery()
-                    ->getSingleScalarResult();
+            $results = $this->entityManager->getRepository(Etudiant::class)
+                ->createQueryBuilder('e')
+                ->select('e.id, e.created_at')
+                ->where('e.mention = :mention')
+                ->andWhere('e.status = :status')
+                ->andWhere('e.created_at >= :startYear')
+                ->andWhere('e.created_at < :endYear')
+                ->setParameter('mention', $mention)
+                ->setParameter('status', true)
+                ->setParameter('startYear', new \DateTime("$currentYear-01-01"))
+                ->setParameter('endYear', new \DateTime(($currentYear + 1)."-01-01"))
+                ->getQuery()
+                ->getResult();
 
-                $dataset['data'][] = (int)$count;
+            foreach ($results as $result) {
+                $month = (int)$result['created_at']->format('n') - 1;
+                if ($month >= 0 && $month < 7) {
+                    $dataset['data'][$month]++;
+                }
             }
 
             $data['datasets'][] = $dataset;
@@ -243,32 +283,38 @@ class DashboardAdminService
             'datasets' => [],
         ];
 
+        $currentYear = (new \DateTime())->format('Y');
+
         foreach ($mentions as $index => $mention) {
             $dataset = [
                 'label' => $mention->getName(),
-                'data' => [],
+                'data' => array_fill(0, 7, 0),
                 'fill' => false,
                 'borderColor' => ['#EF4444', '#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'][$index % 5],
                 'tension' => 0.4,
             ];
 
-            // Compter les enseignants par mois (en fonction des ECs associés à la mention)
-            for ($month = 1; $month <= 7; $month++) {
-                $count = $this->entityManager->getRepository(Prof::class)
-                    ->createQueryBuilder('p')
-                    ->select('COUNT(DISTINCT p.id)')
-                    ->join('p.ecs', 'ec')
-                    ->join('ec.ue', 'ue')
-                    ->where('ue.mention = :mention')
-                    ->andWhere('p.status = :status')
-                    ->andWhere('MONTH(p.created_at) = :month')
-                    ->setParameter('mention', $mention->getId())
-                    ->setParameter('status', true)
-                    ->setParameter('month', $month)
-                    ->getQuery()
-                    ->getSingleScalarResult();
+            $results = $this->entityManager->getRepository(Prof::class)
+                ->createQueryBuilder('p')
+                ->select('DISTINCT p.id, p.created_at')
+                ->join('p.ecs', 'ec')
+                ->join('ec.ue', 'ue')
+                ->where('ue.mention = :mention')
+                ->andWhere('p.status = :status')
+                ->andWhere('p.created_at >= :startYear')
+                ->andWhere('p.created_at < :endYear')
+                ->setParameter('mention', $mention)
+                ->setParameter('status', true)
+                ->setParameter('startYear', new \DateTime("$currentYear-01-01"))
+                ->setParameter('endYear', new \DateTime(($currentYear + 1)."-01-01"))
+                ->getQuery()
+                ->getResult();
 
-                $dataset['data'][] = (int)$count;
+            foreach ($results as $result) {
+                $month = (int)$result['created_at']->format('n') - 1;
+                if ($month >= 0 && $month < 7) {
+                    $dataset['data'][$month]++;
+                }
             }
 
             $data['datasets'][] = $dataset;

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\ConnectionLog;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
@@ -65,8 +66,17 @@ class AuthController extends AbstractController
         
         // Mettre à jour le statut en ligne
         $user->setOnlineStatus('ONLINE');
-        $this->doctrine->getManager()->persist($user);
-        $this->doctrine->getManager()->flush();
+        $user->setUpdatedAt(new \DateTimeImmutable());
+
+        // Enregistrer la connexion
+        $connectionLog = new ConnectionLog();
+        $connectionLog->setUser($user);
+        $connectionLog->setLoginTime(new \DateTimeImmutable());
+
+        $entityManager = $this->doctrine->getManager();
+        $entityManager->persist($user);
+        $entityManager->persist($connectionLog);
+        $entityManager->flush();
         
         $token = $this->JWTManager->create($user);
         
@@ -109,6 +119,7 @@ class AuthController extends AbstractController
             }
             if ($isEtudiant) {
                 $user->setOnlineStatus('OFFLINE');
+                $user->setUpdatedAt(new \DateTimeImmutable());
                 $this->doctrine->getManager()->persist($user);
                 $this->doctrine->getManager()->flush();
                 return $this->json(['message' => 'Déconnexion réussie']);

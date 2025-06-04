@@ -11,7 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { User, Plus, X } from 'lucide-react';
 import { BiMenuAltLeft } from 'react-icons/bi';
-import { logout } from '../Services/authService';
+import { logout } from '../Services/apiConfig';
 
 const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, handleFileChange }) => {
     const [activeTab, setActiveTab] = React.useState('informations');

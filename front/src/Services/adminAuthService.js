@@ -64,3 +64,22 @@ export const forceLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/admin/login';
 };
+
+export const getDashboardData = async () => {
+    const token = getAdminToken();
+    if (!token) {
+        throw new Error('Utilisateur non authentifié');
+    }
+
+    try {
+        const response = await axios.get(`${API_URL}/admin/dashboard`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.error || 'Erreur lors de la récupération des données');
+    }
+};
