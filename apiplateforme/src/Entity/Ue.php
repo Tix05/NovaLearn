@@ -24,11 +24,19 @@ use DateTimeImmutable;
  *     denormalizationContext={"groups"={"ue:write"}},
  *     collectionOperations={
  *         "get",
- *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *         "post"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "controller"=UeController::class,
+ *             "deserialize"=false
+ *         }
  *     },
  *     itemOperations={
  *         "get",
- *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "put"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "controller"=UeController::class,
+ *             "deserialize"=false
+ *         },
  *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
  *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
  *     }
@@ -107,15 +115,15 @@ class Ue
     private $ecs;
 
     /**
-     * @ORM\OneToMany(targetEntity=UeParcours::class, mappedBy="ue")
+     * @ORM\OneToMany(targetEntity=UeParcours::class, mappedBy="ue", cascade={"persist", "remove"})
+     * @Groups({"ue:read", "ue:write"})
      */
     private $ueParcours;
-
-    
 
     public function __construct()
     {
         $this->ecs = new ArrayCollection();
+        $this->ueParcours = new ArrayCollection();
         $this->created_at = new DateTimeImmutable();
     }
 
@@ -216,7 +224,7 @@ class Ue
         }
         return $this;
     }
-    
+
     /**
      * @return Collection|UeParcours[]
      */

@@ -15,17 +15,16 @@ use Symfony\Component\Validator\Constraints as Assert;
 use DateTimeImmutable;
 
 /**
- * /**
  * @ApiResource(
  *     collectionOperations={
- *         "get",
+ *         "get"={"normalization_context"={"groups"={"parcours:read"}}},
  *         "post"={
  *             "security"="is_granted('ROLE_ADMIN')",
  *             "denormalization_context"={"groups"={"parcours:write"}}
  *         }
  *     },
  *     itemOperations={
- *         "get",
+ *         "get"={"normalization_context"={"groups"={"parcours:read"}}},
  *         "put"={
  *             "security"="is_granted('ROLE_ADMIN')",
  *             "denormalization_context"={"groups"={"parcours:write"}}
@@ -59,7 +58,7 @@ class Parcours
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"parcours:read", "parcours:write"})
+     * @Groups({"parcours:read", "parcours:write", "ue:read"})
      * @Assert\NotBlank
      * @Assert\Length(max=255)
      */
@@ -67,7 +66,7 @@ class Parcours
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"parcours:read", "parcours:write"})
+     * @Groups({"parcours:read", "parcours:write", "ue:read"})
      * @Assert\NotBlank
      * @Assert\Length(max=255)
      */
@@ -119,7 +118,6 @@ class Parcours
 
     /**
      * @ORM\OneToMany(targetEntity=Conversation::class, mappedBy="parcours")
-     * @Groups({"parcours:read"})
      */
     private $conversations;
 
@@ -143,6 +141,7 @@ class Parcours
         $this->conversations = new ArrayCollection();
         $this->notificationGroupes = new ArrayCollection();
         $this->created_at = new DateTimeImmutable();
+        $this->ueParcours = new ArrayCollection();
     }
 
     public function getId(): ?int

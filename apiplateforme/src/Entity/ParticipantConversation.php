@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity
@@ -28,9 +29,9 @@ class ParticipantConversation
     /**
      * @ORM\ManyToOne(targetEntity=Conversation::class, inversedBy="participants")
      * @ORM\JoinColumn(nullable=false)
+     * @Groups({"participant:details"}) // Utilisez un groupe spécifique
      */
     private $conversation;
-
     /**
      * @ORM\Column(type="string", length=50)
      */

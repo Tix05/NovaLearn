@@ -93,6 +93,8 @@ class Semestre
     /**
      * @ORM\ManyToOne(targetEntity=Niveau::class, inversedBy="semestres")
      * @ORM\JoinColumn(nullable=false) // Mettre nullable=true si un Semestre peut exister sans Niveau
+     * @Groups({"semestre:read", "semestre:write"})
+     * @Assert\NotNull
      */
     private ?Niveau $niveau = null;
 

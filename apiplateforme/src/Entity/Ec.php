@@ -86,7 +86,7 @@ class Ec
 
     /**
      * @ORM\ManyToOne(targetEntity=Prof::class, inversedBy="ecs")
-     * @ORM\JoinColumn(nullable=false)
+     * @ORM\JoinColumn(name="prof_id", referencedColumnName="id", nullable=false)
      * @Groups({"ec:read", "ec:write"})
      * @Assert\NotNull
      */
@@ -147,6 +147,14 @@ class Ec
      * @ORM\OneToMany(targetEntity=Examen::class, mappedBy="ec")
      */
     private Collection $examens;
+
+    /**
+     * @Groups({"ec:read"})
+     */
+    public function getProfName(): ?string
+    {
+        return $this->prof && $this->prof->getUser() ? $this->prof->getUser()->getName() : null;
+    }
 
     public function __construct()
     {

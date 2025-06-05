@@ -25,12 +25,18 @@ use DateTimeImmutable;
  *     normalizationContext={"groups"={"mention:read"}},
  *     denormalizationContext={"groups"={"mention:write"}},
  *     collectionOperations={
-  *         "get"={"normalization_context"={"groups"={"mention:read"}}},
- *         "post"={"security"="is_granted('ROLE_ADMIN')"}
+ *         "get"={"normalization_context"={"groups"={"mention:read"}}},
+ *         "post"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "input_formats"={"multipart"={"multipart/form-data"}}
+ *         }
  *     },
  *     itemOperations={
  *         "get"={"normalization_context"={"groups"={"mention:read"}}},
- *         "put"={"security"="is_granted('ROLE_ADMIN')"},
+ *         "put"={
+ *             "security"="is_granted('ROLE_ADMIN')",
+ *             "input_formats"={"multipart"={"multipart/form-data"}}
+ *         },
  *         "patch"={"security"="is_granted('ROLE_ADMIN')"},
  *         "delete"={"security"="is_granted('ROLE_ADMIN')"}
  *     }
@@ -97,12 +103,6 @@ class Mention
      */
     private ?\DateTimeImmutable $updated_at = null;
 
-    // /**
-    //  * @ORM\OneToMany(targetEntity=Prof::class, mappedBy="mention")
-    //  * @Groups({"mention:read"})
-    //  */
-    // private Collection $profs;
-
     /**
      * @ORM\OneToMany(targetEntity=Etudiant::class, mappedBy="mention")
      * @Groups({"mention:read"})
@@ -134,13 +134,12 @@ class Mention
     private Collection $notificationGroupes;
 
     /**
-    * @ORM\OneToMany(targetEntity=Parcours::class, mappedBy="mention")
-    */
-    private $parcours;
+     * @ORM\OneToMany(targetEntity=Parcours::class, mappedBy="mention")
+     */
+    private Collection $parcours;
 
     public function __construct()
     {
-        $this->profs = new ArrayCollection();
         $this->etudiants = new ArrayCollection();
         $this->ues = new ArrayCollection();
         $this->agendas = new ArrayCollection();
@@ -150,6 +149,7 @@ class Mention
         $this->created_at = new DateTimeImmutable();
     }
 
+    // Getters et setters
     public function getId(): ?int
     {
         return $this->id;
@@ -221,33 +221,6 @@ class Mention
     public function setUpdatedAt(?DateTimeImmutable $updated_at): self
     {
         $this->updated_at = $updated_at;
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Prof>
-     */
-    public function getProfs(): Collection
-    {
-        return $this->profs;
-    }
-
-    public function addProf(Prof $prof): self
-    {
-        if (!$this->profs->contains($prof)) {
-            $this->profs[] = $prof;
-            $prof->setMention($this);
-        }
-        return $this;
-    }
-
-    public function removeProf(Prof $prof): self
-    {
-        if ($this->profs->removeElement($prof)) {
-            if ($prof->getMention() === $this) {
-                $prof->setMention(null);
-            }
-        }
         return $this;
     }
 
@@ -387,32 +360,29 @@ class Mention
     }
 
     /**
-     * @return Collection|Parcours[]
+     * @return Collection<int, Parcours>
      */
     public function getParcours(): Collection
     {
         return $this->parcours;
     }
 
-    public function addParcour(Parcours $parcour): self
+    public function addParcour($parcours): self
     {
-        if (!$this->parcours->contains($parcour)) {
-            $this->parcours[] = $parcour;
-            $parcour->setMention($this);
+        if (!$this->parcours->contains($parcours)) {
+            $this->parcours[] = $parcours;
+            $parcours->setMention($this);
         }
-
         return $this;
     }
 
-    public function removeParcour(Parcours $parcour): self
+    public function removeParcour($parcours): self
     {
-        if ($this->parcours->removeElement($parcour)) {
-            // set the owning side to null (unless already changed)
-            if ($parcour->getMention() === $this) {
-                $parcour->setMention(null);
+        if ($this->parcours->removeElement($parcours)) {
+            if ($parcours->getMention() === $this) {
+                $parcours->setMention(null);
             }
         }
-
         return $this;
     }
 

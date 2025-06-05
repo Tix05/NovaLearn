@@ -54,9 +54,8 @@ class Years
     /**
      * @ORM\Column(type="boolean")
      * @Groups({"years:read", "years:write"})
-     * @Assert\NotNull
      */
-    private $current = false;
+    private $current;
 
     /**
      * @ORM\Column(type="string", length=255)

@@ -18,7 +18,7 @@ use DateTimeImmutable;
 /**
  * @ApiResource(
  *     attributes={
- *         "order"={"user.nom": "ASC"},
+ *         "order"={"user.name": "ASC"},
  *         "pagination_client_items_per_page"=true
  *     },
  *     normalizationContext={"groups"={"prof:read"}},
@@ -35,10 +35,9 @@ use DateTimeImmutable;
  *     }
  * )
  * @ApiFilter(SearchFilter::class, properties={
- *     "user.nom": "partial",
- *     "user.prenom": "partial",
+ *     "user.name": "partial",
  * })
- * @ApiFilter(OrderFilter::class, properties={"id", "user.nom", "created_at"})
+ * @ApiFilter(OrderFilter::class, properties={"id", "user.name", "created_at"})
  * @ApiFilter(BooleanFilter::class, properties={"status"})
  * @ORM\Entity(repositoryClass=ProfRepository::class)
  * @ORM\HasLifecycleCallbacks()
@@ -74,10 +73,18 @@ class Prof
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="profs")
      * @ORM\JoinColumn(nullable=false)
-     * @Groups({"prof:read", "prof:write"})
+     * @Groups({"prof:read", "prof:write", "ec:read"})
      * @Assert\NotNull
      */
     private $user;
+
+    /**
+     * @Groups({"prof:read", "ec:read"})
+     */
+    public function getUserName(): ?string
+    {
+        return $this->user ? $this->user->getName() : null;
+    }
 
     /**
      * @ORM\OneToMany(targetEntity=Ec::class, mappedBy="prof")

@@ -5,6 +5,7 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ConversationRepository")
@@ -46,6 +47,7 @@ class Conversation
 
     /**
      * @ORM\OneToMany(targetEntity=ParticipantConversation::class, mappedBy="conversation")
+     * @Groups({"conversation:details"}) // Utilisez un groupe spécifique au lieu de "parcours:read"
      */
     private $participants;
 
