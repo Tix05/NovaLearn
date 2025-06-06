@@ -211,8 +211,7 @@ export const addTeacherSupport = async (ecId, titre, type, fichier, mimeType, ur
                 'Content-Type': 'multipart/form-data'
             },
             onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                if (onProgress) onProgress(percentCompleted);
+                if (onProgress) onProgress(progressEvent);
             }
         });
 

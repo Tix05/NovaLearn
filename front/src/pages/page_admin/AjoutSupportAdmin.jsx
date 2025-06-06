@@ -44,6 +44,7 @@ const AjoutSupportAdmin = () => {
             } catch (err) {
                 setError(err.message);
                 setLoading(false);
+                showToast('error', 'Erreur', 'Échec du chargement des détails du cours');
             }
         };
         fetchCoursDetails();
@@ -78,7 +79,10 @@ const AjoutSupportAdmin = () => {
 
     const handleFileSelect = (e, type) => {
         const file = e.files[0];
-        if (!file) return;
+        if (!file) {
+            showToast('warn', 'Attention', 'Aucun fichier sélectionné');
+            return;
+        }
 
         if (type === 'video' && !validVideoTypes.includes(file.type)) {
             showToast('error', 'Erreur', 'Format vidéo non supporté. Formats acceptés : MP4, WebM, OGG.');
@@ -107,6 +111,18 @@ const AjoutSupportAdmin = () => {
         }
     };
 
+    const simulateProgress = (callback) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            if (progress >= 90) {
+                clearInterval(interval);
+            }
+            callback({ loaded: progress, total: 100 });
+        }, 100);
+        return interval;
+    };
+
     const handleSubmit = async () => {
         const currentType = supportTypes[activeIndex].name;
 
@@ -128,6 +144,14 @@ const AjoutSupportAdmin = () => {
         setIsSubmitting(true);
         setUploadProgress(0);
 
+        let progressInterval = null;
+        if (currentType !== 'lien') {
+            progressInterval = simulateProgress((progressEvent) => {
+                const percentage = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                setUploadProgress(percentage);
+            });
+        }
+
         try {
             const response = await addAdminSupport(
                 coursId,
@@ -137,7 +161,11 @@ const AjoutSupportAdmin = () => {
                 selectedFiles[currentType]?.type || null,
                 currentType === 'lien' ? linkUrl : null,
                 true,
-                (progress) => setUploadProgress(progress)
+                (progressEvent) => {
+                    if (progressInterval) clearInterval(progressInterval);
+                    const percentage = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                    setUploadProgress(percentage);
+                }
             );
 
             setCours(prev => ({
@@ -161,10 +189,13 @@ const AjoutSupportAdmin = () => {
             setLinkUrl('');
             handleCancelUpload(currentType);
         } catch (error) {
-            showToast('error', 'Erreur', error.message);
+            if (progressInterval) clearInterval(progressInterval);
+            showToast('error', 'Erreur', error.message || 'Échec de l\'ajout du support');
         } finally {
+            if (progressInterval) clearInterval(progressInterval);
             setIsSubmitting(false);
-            setUploadProgress(0);
+            setUploadProgress(100);
+            setTimeout(() => setUploadProgress(0), 1000);
         }
     };
 
@@ -194,6 +225,14 @@ const AjoutSupportAdmin = () => {
                         placeholder="Rechercher..."
                     />
                 </IconField>
+            </div>
+        );
+    };
+
+    const progressBarValueTemplate = () => {
+        return (
+            <div className="flex items-center justify-center text-sm font-medium text-white">
+                {uploadProgress > 0 ? `${uploadProgress}%` : 'Chargement...'}
             </div>
         );
     };
@@ -237,7 +276,24 @@ const AjoutSupportAdmin = () => {
                 <h1 className='text-2xl font-semibold text-gray-800 p-3'>Ajouter un support pour le cours {cours.titre}</h1>
                 {isSubmitting && (
                     <div className='p-3'>
-                        <ProgressBar value={uploadProgress} style={{ height: '6px' }} />
+                        <ProgressBar
+                            value={uploadProgress}
+                            displayValueTemplate={progressBarValueTemplate}
+                            className="h-6 bg-gray-200 rounded-lg overflow-hidden transition-all duration-300"
+                            style={{
+                                backgroundColor: '#e5e7eb',
+                                '--p-progressbar-background': '#e5e7eb',
+                                '--p-progressbar-value-background': '#2196F3'
+                            }}
+                            pt={{
+                                value: {
+                                    className: 'bg-[#2196F3] transition-all duration-300'
+                                },
+                                label: {
+                                    className: 'text-sm font-medium text-white'
+                                }
+                            }}
+                        />
                     </div>
                 )}
                 <TabView
@@ -292,7 +348,7 @@ const AjoutSupportAdmin = () => {
                                                             mode="basic"
                                                             name={`file_${type.name}`}
                                                             accept={type.accept}
-                                                            maxFileSize={10000000}
+                                                            maxFileSize={100000000}
                                                             chooseLabel="Sélectionner un fichier"
                                                             onSelect={(e) => handleFileSelect(e, type.name)}
                                                             auto

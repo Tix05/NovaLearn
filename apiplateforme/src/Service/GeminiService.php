@@ -131,7 +131,6 @@ EOD;
                 throw new \Exception('Réponse invalide de Gemini : tableau de questions attendu');
             }
 
-            // Validate questions
             foreach ($questions as $index => &$question) {
                 if (!isset($question['text']) || !isset($question['type']) || !isset($question['points'])) {
                     $this->logger->warning('Question invalide', ['index' => $index, 'question' => $question]);
@@ -139,7 +138,6 @@ EOD;
                     continue;
                 }
 
-                // Ensure points are float
                 $question['points'] = (float) $question['points'];
 
                 if ($question['type'] === 'radio') {
@@ -148,7 +146,6 @@ EOD;
                         unset($questions[$index]);
                         continue;
                     }
-                    // Validate correct answers (1 to n-1, no duplicates)
                     $numOptions = count($question['options']);
                     $correctAnswers = $question['correctAnswers'];
                     if (!is_array($correctAnswers) || count($correctAnswers) < 1 || count($correctAnswers) >= $numOptions) {
@@ -156,14 +153,12 @@ EOD;
                         unset($questions[$index]);
                         continue;
                     }
-                    // Check for duplicates
                     $uniqueCorrectAnswers = array_unique($correctAnswers);
                     if (count($uniqueCorrectAnswers) !== count($correctAnswers)) {
                         $this->logger->warning('Doublons dans les réponses correctes', ['index' => $index, 'correctAnswers' => $correctAnswers]);
                         unset($questions[$index]);
                         continue;
                     }
-                    // Verify correct answers exist in options
                     $optionValues = array_column($question['options'], 'value');
                     foreach ($correctAnswers as $correct) {
                         if (!in_array($correct, $optionValues)) {
@@ -181,19 +176,16 @@ EOD;
 
             $questions = array_values($questions);
 
-            // Verify total points sum to 20
             $totalPoints = array_sum(array_column($questions, 'points'));
-            if (abs($totalPoints - 20.0) > 0.01) { // Allow small float precision error
+            if (abs($totalPoints - 20.0) > 0.01) { 
                 $this->logger->warning('Total des points incorrect', [
                     'total' => $totalPoints,
                     'attendu' => 20.0,
                     'tentative' => $attempt + 1
                 ]);
-                // Adjust points to sum to 20
                 $questions = $this->adjustPoints($questions);
             }
 
-            // Verify question count and types
             $expectedCount = $this->extractExpectedQuestionCount($instructions);
             if ($expectedCount && count($questions) !== $expectedCount) {
                 $this->logger->warning('Nombre de questions incorrect', [
@@ -252,7 +244,6 @@ EOD;
 
         foreach ($questions as &$question) {
             $question['points'] = round($question['points'] * $scaleFactor, 2);
-            // Ensure points are within valid range
             if ($question['type'] === 'radio') {
                 $question['points'] = max(0.25, min(2.0, $question['points']));
             } elseif ($question['type'] === 'essay') {
@@ -260,16 +251,13 @@ EOD;
             }
         }
 
-        // Recalculate total to handle rounding errors
         $newTotal = array_sum(array_column($questions, 'points'));
         if (abs($newTotal - $targetTotal) > 0.01) {
-            // Distribute remaining difference across questions
             $difference = $targetTotal - $newTotal;
             $perQuestionAdjustment = $difference / $numQuestions;
             foreach ($questions as &$question) {
                 $question['points'] += $perQuestionAdjustment;
                 $question['points'] = round($question['points'], 2);
-                // Re-ensure points are within valid range
                 if ($question['type'] === 'radio') {
                     $question['points'] = max(0.25, min(2.0, $question['points']));
                 } elseif ($question['type'] === 'essay') {
@@ -278,13 +266,11 @@ EOD;
             }
         }
 
-        // Final check to ensure exact 20
         $finalTotal = array_sum(array_column($questions, 'points'));
         if (abs($finalTotal - $targetTotal) > 0.01) {
             $lastIndex = $numQuestions - 1;
             $questions[$lastIndex]['points'] += ($targetTotal - $finalTotal);
             $questions[$lastIndex]['points'] = round($questions[$lastIndex]['points'], 2);
-            // Ensure last question's points are still valid
             if ($questions[$lastIndex]['type'] === 'radio') {
                 $questions[$lastIndex]['points'] = max(0.25, min(2.0, $questions[$lastIndex]['points']));
             } elseif ($questions[$lastIndex]['type'] === 'essay') {
@@ -522,18 +508,15 @@ EOD;
             throw new \Exception('Erreur lors du parsing de la correction : ' . json_last_error_msg());
         }
 
-        // Valider et ajuster les notes pour respecter les points maximum
         $totalScore = 0;
         foreach ($questions as $question) {
             $questionId = $question->getId();
             $maxPoints = $question->getPoints();
             $score = $correction['questions'][$questionId]['score'] ?? 0;
-            // S'assurer que la note est entre 0 et maxPoints, avec deux décimales
             $correction['questions'][$questionId]['score'] = round(min(max(0, (float)$score), $maxPoints), 2);
             $correction['questions'][$questionId]['feedback'] = $correction['questions'][$questionId]['feedback'] ?? 'Aucune réponse fournie';
             $totalScore += $correction['questions'][$questionId]['score'];
         }
-        // S'assurer que la note totale ne dépasse pas 20, avec deux décimales
         $correction['total_score'] = round(min($totalScore, 20.0), 2);
 
         $this->logger->info('Correction générée', [

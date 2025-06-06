@@ -100,7 +100,6 @@ class AgendaService
             'examenId' => $item->getExamens()->first() ? $item->getExamens()->first()->getId() : null,
         ];
 
-        // Ne pas inclure image/video/url pour les examens
         if ($item->getType() !== Agenda::TYPE_EXAMEN) {
             $formattedItem['image'] = $item->getImage() ? '/uploads/agenda/images/' . $item->getImage() : null;
             $formattedItem['video'] = $item->getVideo() ? '/uploads/agenda/videos/' . $item->getVideo() : null;

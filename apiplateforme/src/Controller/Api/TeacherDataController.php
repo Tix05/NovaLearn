@@ -249,40 +249,7 @@ class TeacherDataController extends AbstractController
             $filePath = $this->getParameter('supports_directory') . '/' . $fileName;
             $file->move($this->getParameter('supports_directory'), $fileName);
 
-            // Compression pour les vidéos
-            if ($type === 'VIDEO') {
-                try {
-                    $compressedFileName = 'compressed_' . $fileName;
-                    $compressedFilePath = $this->getParameter('supports_directory') . '/' . $compressedFileName;
-
-                    $ffmpegPath = 'C:\ffmpeg\bin\ffmpeg.exe';
-                    $command = sprintf(
-                        '%s -i %s -vcodec libx264 -b:v 1000k -acodec aac -b:a 128k %s',
-                        escapeshellarg($ffmpegPath),
-                        escapeshellarg($filePath),
-                        escapeshellarg($compressedFilePath)
-                    );
-                    $logger->info('Exécution de la commande FFmpeg', ['command' => $command]);
-                    exec($command, $output, $returnVar);
-
-                    if ($returnVar !== 0) {
-                        $logger->error('Erreur lors de la compression vidéo', ['output' => $output, 'return_var' => $returnVar]);
-                        return $this->json(['message' => 'Erreur lors de la compression vidéo'], Response::HTTP_INTERNAL_SERVER_ERROR);
-                    }
-
-                    $support->setFichier($compressedFileName);
-
-                    // Supprimer le fichier original
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                } catch (\Exception $e) {
-                    $logger->error('Erreur lors de la compression vidéo', ['error' => $e->getMessage(), 'file' => $filePath]);
-                    return $this->json(['message' => 'Erreur lors de la compression de la vidéo : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-                }
-            } else {
-                $support->setFichier($fileName);
-            }
+            $support->setFichier($fileName);
         }
 
         $entityManager->persist($support);

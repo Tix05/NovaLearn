@@ -147,8 +147,7 @@ class DashboardAdminService
                 ->setParameter('status', true)
                 ->getQuery()
                 ->getSingleScalarResult();
-
-            // Étudiants présents aux examens
+                
             $presentStudents = $this->entityManager->getRepository(EtudiantExamenStatut::class)
                 ->createQueryBuilder('ees')
                 ->select('COUNT(DISTINCT ees.etudiant)')
@@ -160,7 +159,6 @@ class DashboardAdminService
                 ->getQuery()
                 ->getSingleScalarResult();
 
-            // Calculer le taux de présence
             $presenceRate = $totalStudents > 0 ? ($presentStudents / $totalStudents) * 100 : 0;
             $data['datasets'][0]['data'][] = round($presenceRate, 2);
 
@@ -169,7 +167,6 @@ class DashboardAdminService
             }
         }
 
-        // Si aucune donnée valide (tous les taux sont 0), retourner un dataset par défaut
         if (!$hasData && array_sum($data['datasets'][0]['data']) === 0) {
             $data['labels'] = ['Aucune donnée'];
             $data['datasets'][0]['data'] = [1];
@@ -199,7 +196,6 @@ class DashboardAdminService
             ];
 
             try {
-                // Récupérer les connexions pour l'année en cours
                 $results = $this->entityManager->createQueryBuilder()
                     ->select('DISTINCT cl.id, cl.loginTime')
                     ->from(ConnectionLog::class, 'cl')
@@ -214,9 +210,8 @@ class DashboardAdminService
                     ->getQuery()
                     ->getResult();
 
-                // Compter les connexions par mois
                 foreach ($results as $result) {
-                    $month = (int)$result['loginTime']->format('n') - 1; // Mois de 0 (janvier) à 6 (juillet)
+                    $month = (int)$result['loginTime']->format('n') - 1;
                     if ($month >= 0 && $month < 7) {
                         $dataset['data'][$month]++;
                     }

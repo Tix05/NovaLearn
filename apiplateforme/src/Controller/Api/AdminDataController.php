@@ -187,7 +187,7 @@ class AdminDataController extends AbstractController
         ]);
     }
 
- /**
+    /**
      * Récupère les détails d'un cours (EC)
      * @Route("/mentions/{mentionId}/niveaux/{niveauId}/semestres/{semestreId}/cours/{coursId}", name="api_admin_cours_details", methods={"GET"})
      */
@@ -227,7 +227,6 @@ class AdminDataController extends AbstractController
                 'content' => $commentaire->getContenu(),
                 'date' => $commentaire->getTime()->format('Y-m-d'),
                 'replies' => array_map(function ($reply) {
-                    // Construire l'URL complète pour l'avatar des réponses
                     $replyAvatar = $reply->getUser()->getAvatar();
                     $replyAvatarUrl = $replyAvatar ? '/uploads/avatars/' . $replyAvatar : null;
 
@@ -265,6 +264,7 @@ class AdminDataController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié ou non autorisé'], Response::HTTP_UNAUTHORIZED);
         }
 
+        $data = $request->request->all();
         $data = $request->request->all();
         $ecId = $data['ec_id'] ?? null;
         $titre = $data['titre'] ?? null;
@@ -319,38 +319,7 @@ class AdminDataController extends AbstractController
             $filePath = $this->getParameter('supports_directory') . '/' . $fileName;
             $file->move($this->getParameter('supports_directory'), $fileName);
 
-            // Compression pour les vidéos
-            if ($type === 'VIDEO') {
-                try {
-                    $compressedFileName = 'compressed_' . $fileName;
-                    $compressedFilePath = $this->getParameter('supports_directory') . '/' . $compressedFileName;
-
-                    $ffmpegPath = 'C:\ffmpeg\bin\ffmpeg.exe';
-                    $command = sprintf(
-                        '%s -i %s -vcodec libx264 -b:v 1000k -acodec aac -b:a 128k %s',
-                        escapeshellarg($ffmpegPath),
-                        escapeshellarg($filePath),
-                        escapeshellarg($compressedFilePath)
-                    );
-                    $this->logger->info('Exécution de la commande FFmpeg', ['command' => $command]);
-                    exec($command, $output, $returnVar);
-
-                    if ($returnVar !== 0) {
-                        $this->logger->error('Erreur lors de la compression vidéo', ['output' => $output, 'return_var' => $returnVar]);
-                        return $this->json(['message' => 'Erreur lors de la compression vidéo'], Response::HTTP_INTERNAL_SERVER_ERROR);
-                    }
-
-                    $support->setFichier($compressedFileName);
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                } catch (\Exception $e) {
-                    $this->logger->error('Erreur lors de la compression vidéo', ['error' => $e->getMessage(), 'file' => $filePath]);
-                    return $this->json(['message' => 'Erreur lors de la compression de la vidéo : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-                }
-            } else {
-                $support->setFichier($fileName);
-            }
+            $support->setFichier($fileName);
         }
 
         $entityManager->persist($support);

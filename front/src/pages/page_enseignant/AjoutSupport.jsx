@@ -12,6 +12,7 @@ import { FaFileAudio, FaFileVideo, FaLink } from 'react-icons/fa6';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { IconField } from 'primereact/iconfield';
+import { InputIcon } from 'primereact/inputicon';
 import { addTeacherSupport, getTeacherMentions } from '../../Services/teacherAuthService';
 
 const AjoutSupport = () => {
@@ -23,11 +24,10 @@ const AjoutSupport = () => {
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentions, setMentions] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0); // État pour la progression
+    const [uploadProgress, setUploadProgress] = useState(0);
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
 
-    // Types MIME valides pour vidéo et audio
     const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
     const validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
 
@@ -37,7 +37,7 @@ const AjoutSupport = () => {
                 const data = await getTeacherMentions();
                 setMentions(data);
             } catch (err) {
-                showToast('error', 'Erreur', err.message);
+                showToast('error', 'Erreur', err.message || 'Échec du chargement des données');
             }
         };
         fetchData();
@@ -65,9 +65,11 @@ const AjoutSupport = () => {
 
     const handleFileSelect = (e, type) => {
         const file = e.files[0];
-        if (!file) return;
+        if (!file) {
+            showToast('warn', 'Attention', 'Aucun fichier sélectionné');
+            return;
+        }
 
-        // Validation des types MIME
         if (type === 'video' && !validVideoTypes.includes(file.type)) {
             showToast('error', 'Erreur', 'Format vidéo non supporté. Formats acceptés : MP4, WebM, OGG.');
             return;
@@ -95,6 +97,18 @@ const AjoutSupport = () => {
         }
     };
 
+    const simulateProgress = (callback) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            if (progress >= 90) {
+                clearInterval(interval);
+            }
+            callback({ loaded: progress, total: 100 });
+        }, 100);
+        return interval;
+    };
+
     const handleSubmit = async () => {
         const currentType = supportTypes[activeIndex].name;
 
@@ -114,7 +128,15 @@ const AjoutSupport = () => {
         }
 
         setIsSubmitting(true);
-        setUploadProgress(0); // Réinitialiser la progression
+        setUploadProgress(0);
+
+        let progressInterval = null;
+        if (currentType !== 'lien') {
+            progressInterval = simulateProgress((progressEvent) => {
+                const percentage = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                setUploadProgress(percentage);
+            });
+        }
 
         try {
             const response = await addTeacherSupport(
@@ -122,10 +144,14 @@ const AjoutSupport = () => {
                 titre,
                 currentType,
                 currentType !== 'lien' ? selectedFiles[currentType] : null,
-                selectedFiles[currentType]?.type || null, // Envoyer le type MIME
+                selectedFiles[currentType]?.type || null,
                 currentType === 'lien' ? linkUrl : null,
                 true,
-                (progress) => setUploadProgress(progress) // Callback pour la progression
+                (progressEvent) => {
+                    if (progressInterval) clearInterval(progressInterval);
+                    const percentage = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                    setUploadProgress(percentage);
+                }
             );
 
             setMentions(prev => {
@@ -149,8 +175,8 @@ const AjoutSupport = () => {
                                                                 id: response.support.id,
                                                                 titre: response.support.titre,
                                                                 type: response.support.type,
-                                                                url: response.support.url,
-                                                                fichier: response.support.fichier,
+                                                                url: response.support.url || '',
+                                                                fichier: response.support.fichier || '',
                                                                 date_ajout: response.support.date_ajout,
                                                                 estPublique: true
                                                             }
@@ -175,16 +201,19 @@ const AjoutSupport = () => {
             setLinkUrl('');
             handleCancelUpload(currentType);
         } catch (error) {
-            showToast('error', 'Erreur', error.message);
+            if (progressInterval) clearInterval(progressInterval);
+            showToast('error', 'Erreur', error.message || 'Échec de l\'ajout du support');
         } finally {
+            if (progressInterval) clearInterval(progressInterval);
             setIsSubmitting(false);
-            setUploadProgress(0);
+            setUploadProgress(100);
+            setTimeout(() => setUploadProgress(0), 1000);
         }
     };
 
     const showToast = (severity, summary, detail) => {
-        toast.current.show({ severity, summary, detail, life: 3000, position: 'bottom-right' });
-    };
+        toast.current.show({ severity, summary, detail, life: 3000 });
+    }
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
@@ -195,13 +224,21 @@ const AjoutSupport = () => {
             <div className="flex justify-between items-center">
                 <span className="text-xl font-bold">Supports {type}</span>
                 <IconField iconPosition="left">
+                    <InputIcon className="pi pi-search" />
                     <InputText
                         value={globalFilterValue}
                         onChange={onGlobalFilterChange}
                         placeholder="Rechercher..."
                     />
-                    <i className="pi pi-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                 </IconField>
+            </div>
+        );
+    };
+
+    const progressBarValueTemplate = () => {
+        return (
+            <div className="flex items-center justify-center text-sm font-medium text-white">
+                {uploadProgress > 0 ? `${uploadProgress}%` : 'Chargement...'}
             </div>
         );
     };
@@ -211,6 +248,28 @@ const AjoutSupport = () => {
             <Toast ref={toast} position="bottom-right" className="mb-5 mr-5" />
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <h1 className='text-2xl font-semibold text-gray-800 p-3'>Ajouter un support pour le cours {cours?.titre}</h1>
+                {isSubmitting && (
+                    <div className='p-3'>
+                        <ProgressBar
+                            value={uploadProgress}
+                            displayValueTemplate={progressBarValueTemplate}
+                            className="h-6 bg-gray-200 rounded-lg overflow-hidden transition-all duration-300"
+                            style={{
+                                backgroundColor: '#e5e7eb',
+                                '--p-progressbar-background': '#e5e7eb',
+                                '--p-progressbar-value-background': '#2196F3'
+                            }}
+                            pt={{
+                                value: {
+                                    className: 'bg-[#2196F3] transition-all duration-300'
+                                },
+                                label: {
+                                    className: 'text-sm font-medium text-white'
+                                }
+                            }}
+                        />
+                    </div>
+                )}
                 <TabView
                     activeIndex={activeIndex}
                     onTabChange={(e) => setActiveIndex(e.index)}
@@ -246,7 +305,7 @@ const AjoutSupport = () => {
                                                             value={linkUrl}
                                                             onChange={(e) => setLinkUrl(e.target.value)}
                                                             placeholder="https://..."
-                                                            className='w-full'
+                                                            className='input-focus w-full'
                                                         />
                                                     ) : hasSelectedFile ? (
                                                         <div className="flex items-center gap-2">
@@ -263,7 +322,7 @@ const AjoutSupport = () => {
                                                             mode="basic"
                                                             name={`file_${type.name}`}
                                                             accept={type.accept}
-                                                            maxFileSize={100000000} // 100MB
+                                                            maxFileSize={100000000}
                                                             chooseLabel="Sélectionner un fichier"
                                                             onSelect={(e) => handleFileSelect(e, type.name)}
                                                             auto
@@ -274,13 +333,6 @@ const AjoutSupport = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        {isSubmitting && (
-                                            <ProgressBar
-                                                value={uploadProgress}
-                                                className="mb-3"
-                                                showValue={true}
-                                            />
-                                        )}
                                         <div className="flex gap-3 justify-end w-full">
                                             <Button
                                                 label="Annuler"
@@ -331,7 +383,7 @@ const AjoutSupport = () => {
                     })}
                 </TabView>
             </div>
-        </LayoutEnseignant>
+        </LayoutEnseignant >
     );
 };
 

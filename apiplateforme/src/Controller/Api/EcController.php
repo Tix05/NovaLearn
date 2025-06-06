@@ -48,7 +48,6 @@ use Symfony\Component\Security\Core\Security;
         $profs = [];
         $uniqueProfs = [];
 
-        // Base URL pour les avatars (peut être configuré dans parameters.yaml si besoin)
         $avatarBaseUrl = $this->getParameter('app.base_url') . '/uploads/avatars';
 
         foreach ($ecs as $ec) {
@@ -65,14 +64,13 @@ use Symfony\Component\Security\Core\Security;
                     'id' => $prof->getId(),
                     'user' => [
                         'nomComplet' => $prof->getUser()->getName(),
-                        'avatar' => $avatarUrl, // URL complète de l'avatar
+                        'avatar' => $avatarUrl, 
                     ],
                     'ecs' => [],
                     'niveau' => $niveau->getNom()
                 ];
             }
-        
-            // Ajouter l'EC au professeur
+  
             foreach ($profs as &$p) {
                 if ($p['id'] === $profId) {
                     $p['ecs'][] = $ec->getName();
