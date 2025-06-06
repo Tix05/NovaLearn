@@ -48,7 +48,6 @@ const DashboardAdmin = () => {
 
         fetchData();
 
-        // Configuration des options des graphiques
         const documentStyle = getComputedStyle(document.documentElement);
         const textColor = documentStyle.getPropertyValue('--text-color');
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
@@ -147,7 +146,7 @@ const DashboardAdmin = () => {
                 <img
                     src={rowData.photo}
                     alt={`${rowData.nom} ${rowData.prenom}`}
-                    className="absolute w-full h-full rounded-full object-cover border-2 border-gray rounded"
+                    className="absolute w-full h-full rounded-full object-cover border-2 border-gray"
                 />
             </div>
         </div>

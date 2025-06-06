@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use App\Repository\CommentaireRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Annotation\ApiFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
@@ -104,10 +106,24 @@ class Commentaire
      */
     private $ec;
 
+    /**
+     * @ORM\ManyToOne(targetEntity=Commentaire::class, inversedBy="children")
+     * @ORM\JoinColumn(name="parent_id", referencedColumnName="id", nullable=true)
+     * @Groups({"commentaire:read", "commentaire:write"})
+     */
+    private $parent;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Commentaire::class, mappedBy="parent")
+     * @Groups({"commentaire:read"})
+     */
+    private $children;
+
     public function __construct()
     {
         $this->time = new \DateTime();
         $this->createdAt = new \DateTimeImmutable();
+        $this->children = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -178,6 +194,44 @@ class Commentaire
     public function setEc(?Ec $ec): self
     {
         $this->ec = $ec;
+        return $this;
+    }
+
+    public function getParent(): ?self
+    {
+        return $this->parent;
+    }
+
+    public function setParent(?self $parent): self
+    {
+        $this->parent = $parent;
+        return $this;
+    }
+
+    /**
+     * @return Collection|self[]
+     */
+    public function getChildren(): Collection
+    {
+        return $this->children;
+    }
+
+    public function addChild(self $child): self
+    {
+        if (!$this->children->contains($child)) {
+            $this->children[] = $child;
+            $child->setParent($this);
+        }
+        return $this;
+    }
+
+    public function removeChild(self $child): self
+    {
+        if ($this->children->removeElement($child)) {
+            if ($child->getParent() === $this) {
+                $child->setParent(null);
+            }
+        }
         return $this;
     }
 

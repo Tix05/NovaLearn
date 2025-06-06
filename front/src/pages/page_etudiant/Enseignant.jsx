@@ -29,7 +29,6 @@ export default function Enseignant() {
     }, []);
 
     useEffect(() => {
-        // Données fictives pour un étudiant en L1 Informatique
         const examProgress = [
             {
                 course: 'Algorithmique',

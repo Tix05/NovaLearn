@@ -1,43 +1,54 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import LayoutAdmin from '../../components/LayoutAdmin';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { InputText } from "primereact/inputtext";
 import { FileUpload } from 'primereact/fileupload';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { ProgressBar } from 'primereact/progressbar';
 import { useParams } from 'react-router-dom';
 import { IoIosDocument } from 'react-icons/io';
-import { FaFileAudio, FaFileVideo } from 'react-icons/fa';
+import { FaFileAudio, FaFileVideo, FaLink } from 'react-icons/fa6';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
-import { mentions } from '../../../public/constants/data';
+import { addAdminSupport, getAdminCoursDetails } from '../../Services/adminAuthService';
+import { ProgressSpinner } from 'primereact/progressspinner';
+import { MdErrorOutline } from 'react-icons/md';
 
 const AjoutSupportAdmin = () => {
-    const { mentionId, semestreId, coursId, niveauId } = useParams();
+    const { mentionId, niveauId, semestreId, coursId } = useParams();
     const [activeIndex, setActiveIndex] = useState(0);
     const [titre, setTitre] = useState('');
     const [selectedFiles, setSelectedFiles] = useState({});
+    const [linkUrl, setLinkUrl] = useState('');
     const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [cours, setCours] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const toast = useRef(null);
     const fileUploadRefs = useRef({});
 
-    const mention = mentions.find((m) => m.id === parseInt(mentionId));
-    const niveau = mention?.niveaux?.find((n) => n.id === niveauId);
-    const semestre = niveau?.semestres?.find((s) => s.id === semestreId);
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    const validAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
 
-
-    let cours = null;
-    if (semestre) {
-        for (const ue of semestre.ues) {
-            const foundCours = ue.cours.find((c) => c.id === parseInt(coursId));
-            if (foundCours) {
-                cours = foundCours;
-                break;
+    useEffect(() => {
+        const fetchCoursDetails = async () => {
+            try {
+                const data = await getAdminCoursDetails(mentionId, niveauId, semestreId, coursId);
+                setCours(data);
+                setLoading(false);
+            } catch (err) {
+                setError(err.message);
+                setLoading(false);
             }
-        }
-    }
+        };
+        fetchCoursDetails();
+    }, [mentionId, niveauId, semestreId, coursId]);
+
     const supportTypes = [
         {
             name: 'document',
@@ -48,21 +59,39 @@ const AjoutSupportAdmin = () => {
         {
             name: 'video',
             icon: <FaFileVideo className='text-2xl' />,
-            accept: 'video/*',
+            accept: 'video/mp4,video/webm,video/ogg',
             label: 'Vidéo'
         },
         {
             name: 'audio',
             icon: <FaFileAudio className='text-2xl' />,
-            accept: 'audio/*',
+            accept: 'audio/mpeg,audio/wav,audio/ogg',
             label: 'Audio'
+        },
+        {
+            name: 'lien',
+            icon: <FaLink className='text-2xl' />,
+            accept: null,
+            label: 'Lien'
         }
     ];
 
     const handleFileSelect = (e, type) => {
+        const file = e.files[0];
+        if (!file) return;
+
+        if (type === 'video' && !validVideoTypes.includes(file.type)) {
+            showToast('error', 'Erreur', 'Format vidéo non supporté. Formats acceptés : MP4, WebM, OGG.');
+            return;
+        }
+        if (type === 'audio' && !validAudioTypes.includes(file.type)) {
+            showToast('error', 'Erreur', 'Format audio non supporté. Formats acceptés : MP3, WAV, OGG.');
+            return;
+        }
+
         setSelectedFiles(prev => ({
             ...prev,
-            [type]: e.files[0] // Stocke seulement le premier fichier
+            [type]: file
         }));
     };
 
@@ -72,38 +101,71 @@ const AjoutSupportAdmin = () => {
             delete newFiles[type];
             return newFiles;
         });
-
-        // Réinitialise le composant FileUpload
+        setLinkUrl('');
         if (fileUploadRefs.current[type]) {
             fileUploadRefs.current[type].clear();
         }
     };
 
-    const handleDelete = (support) => {
-        // Implémentez la suppression ici
-        showToast('success', 'Succès', 'Support supprimé avec succès');
-    };
-
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const currentType = supportTypes[activeIndex].name;
 
-        if (!titre || !selectedFiles[currentType]) {
-            showToast('warn', 'Attention', 'Veuillez remplir tous les champs et sélectionner un fichier');
+        if (!titre) {
+            showToast('warn', 'Attention', 'Veuillez remplir le champ titre');
             return;
         }
 
-        // Simulation d'envoi avec date actuelle
-        const newSupport = {
-            id: Math.random(),
-            titre,
-            nom: selectedFiles[currentType].name,
-            type: currentType,
-            date: new Date().toLocaleDateString('fr-FR')
-        };
+        if (currentType !== 'lien' && !selectedFiles[currentType]) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner un fichier');
+            return;
+        }
 
-        showToast('success', 'Succès', 'Support ajouté avec succès');
-        setTitre('');
-        handleCancelUpload(currentType);
+        if (currentType === 'lien' && !linkUrl) {
+            showToast('warn', 'Attention', 'Veuillez fournir une URL');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setUploadProgress(0);
+
+        try {
+            const response = await addAdminSupport(
+                coursId,
+                titre,
+                currentType,
+                currentType !== 'lien' ? selectedFiles[currentType] : null,
+                selectedFiles[currentType]?.type || null,
+                currentType === 'lien' ? linkUrl : null,
+                true,
+                (progress) => setUploadProgress(progress)
+            );
+
+            setCours(prev => ({
+                ...prev,
+                supports: [
+                    ...(prev.supports || []),
+                    {
+                        id: response.support.id,
+                        titre: response.support.titre,
+                        type: response.support.type,
+                        url: response.support.url,
+                        fichier: response.support.fichier,
+                        date_ajout: response.support.date_ajout,
+                        estPublique: response.support.estPublique
+                    }
+                ]
+            }));
+
+            showToast('success', 'Succès', 'Support ajouté avec succès');
+            setTitre('');
+            setLinkUrl('');
+            handleCancelUpload(currentType);
+        } catch (error) {
+            showToast('error', 'Erreur', error.message);
+        } finally {
+            setIsSubmitting(false);
+            setUploadProgress(0);
+        }
     };
 
     const showToast = (severity, summary, detail) => {
@@ -136,20 +198,55 @@ const AjoutSupportAdmin = () => {
         );
     };
 
+    if (loading) {
+        return (
+            <LayoutAdmin>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
+                </div>
+            </LayoutAdmin>
+        );
+    }
+
+    if (error) {
+        return (
+            <LayoutAdmin>
+                <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
+                    <MdErrorOutline size={60} />
+                    <p className="text-xl font-bold">Erreur lors du chargement des données</p>
+                    <p className="text-lg font-semibold">{error}</p>
+                </div>
+            </LayoutAdmin>
+        );
+    }
+
+    if (!cours) {
+        return (
+            <LayoutAdmin>
+                <div className='w-full text-gray-800 custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
+                    <h1 className='text-3xl font-normal p-3'>Cours non trouvé</h1>
+                </div>
+            </LayoutAdmin>
+        );
+    }
+
     return (
         <LayoutAdmin>
             <Toast ref={toast} position="bottom-right" className="mb-5 mr-5" />
-
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className='text-2xl font-semibold text-gray-800 p-3'>Ajouter un support pour le cours {cours?.titre}</h1>
-
+                <h1 className='text-2xl font-semibold text-gray-800 p-3'>Ajouter un support pour le cours {cours.titre}</h1>
+                {isSubmitting && (
+                    <div className='p-3'>
+                        <ProgressBar value={uploadProgress} style={{ height: '6px' }} />
+                    </div>
+                )}
                 <TabView
                     activeIndex={activeIndex}
                     onTabChange={(e) => setActiveIndex(e.index)}
                     className='custom-tabview'
                 >
                     {supportTypes.map((type) => {
-                        const supports = cours?.supports?.filter((s) => s.type === type.name) || [];
+                        const supports = cours.supports?.filter((s) => s.type === type.name) || [];
                         const hasSelectedFile = !!selectedFiles[type.name];
 
                         return (
@@ -173,7 +270,14 @@ const AjoutSupportAdmin = () => {
                                             <div className='flex items-center gap-3 flex-1'>
                                                 <span className='font-medium'>Fichier :</span>
                                                 <div className="flex items-center gap-2">
-                                                    {hasSelectedFile ? (
+                                                    {type.name === 'lien' ? (
+                                                        <InputText
+                                                            value={linkUrl}
+                                                            onChange={(e) => setLinkUrl(e.target.value)}
+                                                            placeholder="URL du lien"
+                                                            className='input-focus w-full'
+                                                        />
+                                                    ) : hasSelectedFile ? (
                                                         <div className="flex items-center gap-2">
                                                             <span>{selectedFiles[type.name].name}</span>
                                                             <Button
@@ -205,13 +309,13 @@ const AjoutSupportAdmin = () => {
                                                 icon="pi pi-times"
                                                 severity="secondary"
                                                 onClick={() => handleCancelUpload(type.name)}
-                                                disabled={!hasSelectedFile}
+                                                disabled={type.name === 'lien' ? !linkUrl : !hasSelectedFile}
                                             />
                                             <Button
-                                                label="Enregistrer"
-                                                icon="pi pi-save"
+                                                label={isSubmitting ? "Enregistrement..." : "Enregistrer"}
+                                                icon={isSubmitting ? "pi pi-spin pi-spinner" : "pi pi-save"}
                                                 onClick={handleSubmit}
-                                                disabled={!titre || !hasSelectedFile}
+                                                disabled={isSubmitting || !titre || (type.name !== 'lien' && !hasSelectedFile) || (type.name === 'lien' && !linkUrl)}
                                             />
                                         </div>
                                     </div>
@@ -240,13 +344,14 @@ const AjoutSupportAdmin = () => {
                                                 style={{ minWidth: '10rem' }}
                                             />
                                             <Column
-                                                field="nom"
-                                                header="Fichier"
+                                                field="fichier"
+                                                header={type.name === 'lien' ? 'URL' : 'Fichier'}
                                                 sortable
                                                 style={{ minWidth: '5rem' }}
+                                                body={(rowData) => rowData.fichier || rowData.url || 'Non disponible'}
                                             />
                                             <Column
-                                                field="date"
+                                                field="date_ajout"
                                                 header="Date d'ajout"
                                                 sortable
                                                 style={{ minWidth: '8rem' }}

@@ -10,7 +10,7 @@ use App\Repository\MentionRepository;
 use App\Repository\EcRepository;
 use App\Repository\FichierSupportRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface; // Importation correcte
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
