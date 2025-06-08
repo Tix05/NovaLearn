@@ -106,3 +106,139 @@ export const forceLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/etudiant/login-etudiant';
 };
+
+export const getStudentCoursDetails = async (mentionId, semestreId, coursId) => {
+    const token = getToken();
+    if (!token) {
+        throw new Error('Aucun token trouvé');
+    }
+
+    try {
+        const response = await axios.get(
+            `${API_URL}/student/mentions/${mentionId}/semestres/${semestreId}/cours/${coursId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        let errorMessage = 'Erreur lors de la récupération des détails du cours';
+        if (error.response) {
+            if (error.response.status === 401) {
+                errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
+    }
+};
+
+export const addComment = async (coursId, contenu, parentId = null) => {
+    const token = getToken();
+    if (!token) {
+        throw new Error('Aucun token trouvé');
+    }
+
+    try {
+        const response = await axios.post(
+            `${API_URL}/student/commentaires`,
+            {
+                coursId,
+                contenu,
+                parentId
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        let errorMessage = 'Erreur lors de l\'ajout du commentaire';
+        if (error.response) {
+            if (error.response.status === 401) {
+                errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
+    }
+};
+
+export const updateComment = async (commentId, contenu) => {
+    const token = getToken();
+    if (!token) {
+        throw new Error('Aucun token trouvé');
+    }
+
+    try {
+        const response = await axios.put(
+            `${API_URL}/student/commentaires/${commentId}`,
+            { contenu },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        let errorMessage = 'Erreur lors de la mise à jour du commentaire';
+        if (error.response) {
+            if (error.response.status === 401) {
+                errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
+    }
+};
+
+export const deleteComment = async (commentId) => {
+    const token = getToken();
+    if (!token) {
+        throw new Error('Aucun token trouvé');
+    }
+
+    try {
+        const response = await axios.delete(
+            `${API_URL}/student/commentaires/${commentId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        let errorMessage = 'Erreur lors de la suppression du commentaire';
+        if (error.response) {
+            if (error.response.status === 401) {
+                errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
+    }
+};
