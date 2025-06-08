@@ -59,7 +59,7 @@ class Years
 
     /**
      * @ORM\Column(type="string", length=255)
-     * @Groups({"years:read", "years:write"})
+     * @Groups({"years:read", "years:write", "etudiant:read"})
      * @Assert\NotBlank
      * @Assert\Length(max=255)
      * @Assert\Regex(

@@ -39,6 +39,23 @@ class ParcoursRepository extends ServiceEntityRepository
         }
     }
 
+    public function findByMentionAndNiveau(?int $mentionId, ?int $niveauId): array
+    {
+        $qb = $this->createQueryBuilder('p');
+        
+        if ($mentionId) {
+            $qb->andWhere('p.mention = :mentionId')
+               ->setParameter('mentionId', $mentionId);
+        }
+        
+        if ($niveauId) {
+            $qb->andWhere('p.niveau = :niveauId')
+               ->setParameter('niveauId', $niveauId);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
 //    /**
 //     * @return Parcours[] Returns an array of Parcours objects
 //     */

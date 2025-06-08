@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LayoutAdmin from '../../components/LayoutAdmin';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { DataTable } from 'primereact/datatable';
@@ -13,6 +13,7 @@ import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import { Plus, User } from 'react-feather';
 import { Password } from 'primereact/password';
+import { getUsers, createEtudiant, createProf, createAdmin, updateEtudiant, updateProf, updateAdmin, deleteEtudiant, deleteProf, deleteAdmin, getMentions, getParcours, getNiveaux, getProvinces, getYears, uploadUserAvatar } from '../../Services/userManagementService';
 
 const GestionUser = () => {
     const [globalFilterValue, setGlobalFilterValue] = useState('');
@@ -22,144 +23,9 @@ const GestionUser = () => {
     const [isNewUser, setIsNewUser] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [activeDialogTab, setActiveDialogTab] = useState(0);
-    const toast = React.useRef(null);
-
-    const roleOptions = [
-        { label: 'Administrateur', value: 'admin' },
-        { label: 'Super Administrateur', value: 'super_admin' },
-        { label: 'Gestionnaire', value: 'manager' }
-    ];
-
-    // Options pour les dropdowns
-    const paymentTypes = [
-        { label: 'Espèces', value: 'especes' },
-        { label: 'Chèque', value: 'cheque' },
-        { label: 'Virement', value: 'virement' },
-        { label: 'Mobile Money', value: 'mobile_money' }
-    ];
-
-    const regionalCenters = [
-        { label: 'Dakar', value: 'dakar' },
-        { label: 'Thiès', value: 'thies' },
-        { label: 'Saint-Louis', value: 'saint_louis' },
-        { label: 'Ziguinchor', value: 'ziguinchor' },
-        { label: 'Kaolack', value: 'kaolack' }
-    ];
-
-    // Options pour les niveaux
-    const niveauOptions = [
-        { label: 'L1', value: 'L1' },
-        { label: 'L2', value: 'L2' },
-        { label: 'L3', value: 'L3' },
-        { label: 'M1', value: 'M1' },
-        { label: 'M2', value: 'M2' }
-    ];
-
-    // Options pour les mentions
-    const mentionOptions = [
-        { label: 'Informatique', value: 'Informatique' },
-        { label: 'Mathématiques', value: 'Mathématiques' },
-        { label: 'Physique', value: 'Physique' },
-        { label: 'Chimie', value: 'Chimie' },
-        { label: 'Biologie', value: 'Biologie' },
-        { label: 'Économie', value: 'Économie' },
-        { label: 'Droit', value: 'Droit' },
-        { label: 'Histoire', value: 'Histoire' },
-        { label: 'Géographie', value: 'Géographie' },
-        { label: 'Philosophie', value: 'Philosophie' }
-    ];
-
-    const parcoursOptions = {
-        'Informatique': [
-            { label: 'Développement Web', value: 'Développement Web' },
-            { label: 'Intelligence Artificielle', value: 'Intelligence Artificielle' },
-            { label: 'Systèmes Informatiques', value: 'Systèmes Informatiques' }
-        ],
-        'Mathématiques': [
-            { label: 'Analyse', value: 'Analyse' },
-            { label: 'Algèbre', value: 'Algèbre' },
-            { label: 'Statistiques', value: 'Statistiques' }
-        ],
-        'Physique': [
-            { label: 'Physique Quantique', value: 'Physique Quantique' },
-            { label: 'Physique des Matériaux', value: 'Physique des Matériaux' },
-            { label: 'Astrophysique', value: 'Astrophysique' }
-        ],
-        'Chimie': [
-            { label: 'Chimie Organique', value: 'Chimie Organique' },
-            { label: 'Chimie Analytique', value: 'Chimie Analytique' },
-            { label: 'Chimie Physique', value: 'Chimie Physique' }
-        ],
-        'Biologie': [
-            { label: 'Biologie Moléculaire', value: 'Biologie Moléculaire' },
-            { label: 'Biologie Cellulaire', value: 'Biologie Cellulaire' },
-            { label: 'Écologie', value: 'Écologie' }
-        ],
-        'Économie': [
-            { label: 'Économétrie', value: 'Économétrie' },
-            { label: 'Économie Internationale', value: 'Économie Internationale' },
-            { label: 'Finance', value: 'Finance' }
-        ],
-        'Droit': [
-            { label: 'Droit International', value: 'Droit International' },
-            { label: 'Droit des Affaires', value: 'Droit des Affaires' },
-            { label: 'Droit Public', value: 'Droit Public' }
-        ],
-        'Histoire': [
-            { label: 'Histoire Contemporaine', value: 'Histoire Contemporaine' },
-            { label: 'Histoire Ancienne', value: 'Histoire Ancienne' },
-            { label: 'Histoire Médiévale', value: 'Histoire Médiévale' }
-        ],
-        'Géographie': [
-            { label: 'Géographie Humaine', value: 'Géographie Humaine' },
-            { label: 'Géographie Physique', value: 'Géographie Physique' },
-            { label: 'Aménagement du Territoire', value: 'Aménagement du Territoire' }
-        ],
-        'Philosophie': [
-            { label: 'Philosophie Politique', value: 'Philosophie Politique' },
-            { label: 'Philosophie des Sciences', value: 'Philosophie des Sciences' },
-            { label: 'Éthique', value: 'Éthique' }
-        ]
-    };
-
-
-    const initialStudents = [
-        { id: 1, photo: 'https://randomuser.me/api/portraits/women/1.jpg', matricule: 'ET2023001', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.com', telephone: '06 12 34 56 78', niveau: 'L3', mention: 'Informatique', parcours: 'Développement Web', typePaiement: 'especes', referencePaiement: 'REF001', centreRegional: 'dakar', statut: true },
-        { id: 2, photo: 'https://randomuser.me/api/portraits/men/1.jpg', matricule: 'ET2023002', nom: 'Martin', prenom: 'Jean', email: 'jean.martin@email.com', telephone: '06 23 45 67 89', niveau: 'M1', mention: 'Mathématiques', parcours: 'Analyse', typePaiement: 'virement', referencePaiement: 'REF002', centreRegional: 'thies', statut: false },
-        { id: 3, photo: 'https://randomuser.me/api/portraits/women/2.jpg', matricule: 'ET2023003', nom: 'Bernard', prenom: 'Sophie', email: 'sophie.bernard@email.com', telephone: '06 34 56 78 90', niveau: 'L2', mention: 'Physique', parcours: 'Physique Quantique', typePaiement: 'cheque', referencePaiement: 'REF003', centreRegional: 'saint_louis', statut: true },
-        { id: 4, photo: 'https://randomuser.me/api/portraits/men/2.jpg', matricule: 'ET2023004', nom: 'Petit', prenom: 'Pierre', email: 'pierre.petit@email.com', telephone: '06 45 67 89 01', niveau: 'M2', mention: 'Chimie', parcours: 'Chimie Organique', typePaiement: 'mobile_money', referencePaiement: 'REF004', centreRegional: 'ziguinchor', statut: true },
-        { id: 5, photo: 'https://randomuser.me/api/portraits/women/3.jpg', matricule: 'ET2023005', nom: 'Durand', prenom: 'Isabelle', email: 'isabelle.durand@email.com', telephone: '06 56 78 90 12', niveau: 'L1', mention: 'Biologie', parcours: 'Biologie Moléculaire', typePaiement: 'especes', referencePaiement: 'REF005', centreRegional: 'kaolack', statut: false },
-        { id: 6, photo: 'https://randomuser.me/api/portraits/men/3.jpg', matricule: 'ET2023006', nom: 'Leroy', prenom: 'Thomas', email: 'thomas.leroy@email.com', telephone: '06 67 89 01 23', niveau: 'L3', mention: 'Économie', parcours: 'Économétrie', typePaiement: 'virement', referencePaiement: 'REF006', centreRegional: 'dakar', statut: true },
-        { id: 7, photo: 'https://randomuser.me/api/portraits/women/4.jpg', matricule: 'ET2023007', nom: 'Moreau', prenom: 'Céline', email: 'celine.moreau@email.com', telephone: '06 78 90 12 34', niveau: 'M1', mention: 'Droit', parcours: 'Droit International', typePaiement: 'cheque', referencePaiement: 'REF007', centreRegional: 'thies', statut: true },
-        { id: 8, photo: 'https://randomuser.me/api/portraits/men/4.jpg', matricule: 'ET2023008', nom: 'Simon', prenom: 'Nicolas', email: 'nicolas.simon@email.com', telephone: '06 89 01 23 45', niveau: 'L2', mention: 'Histoire', parcours: 'Histoire Contemporaine', typePaiement: 'mobile_money', referencePaiement: 'REF008', centreRegional: 'saint_louis', statut: false },
-        { id: 9, photo: 'https://randomuser.me/api/portraits/women/5.jpg', matricule: 'ET2023009', nom: 'Laurent', prenom: 'Valérie', email: 'valerie.laurent@email.com', telephone: '06 90 12 34 56', niveau: 'M2', mention: 'Géographie', parcours: 'Géographie Humaine', typePaiement: 'especes', referencePaiement: 'REF009', centreRegional: 'ziguinchor', statut: true },
-        { id: 10, photo: 'https://randomuser.me/api/portraits/men/5.jpg', matricule: 'ET2023010', nom: 'Michel', prenom: 'François', email: 'francois.michel@email.com', telephone: '06 01 23 45 67', niveau: 'L1', mention: 'Philosophie', parcours: 'Philosophie Politique', typePaiement: 'virement', referencePaiement: 'REF010', centreRegional: 'kaolack', statut: true }
-    ];
-
-    const initialTeachers = [
-        { id: 1, photo: 'https://randomuser.me/api/portraits/men/6.jpg', nom: 'Roux', prenom: 'Michel', email: 'michel.roux@email.com', telephone: '06 12 34 56 78', centreRegional: 'dakar', statut: true },
-        { id: 2, photo: 'https://randomuser.me/api/portraits/women/6.jpg', nom: 'Fournier', prenom: 'Isabelle', email: 'isabelle.fournier@email.com', telephone: '06 23 45 67 89', centreRegional: 'thies', statut: true },
-        { id: 3, photo: 'https://randomuser.me/api/portraits/men/7.jpg', nom: 'Lefebvre', prenom: 'Philippe', email: 'philippe.lefebvre@email.com', telephone: '06 34 56 78 90', centreRegional: 'saint_louis', statut: false },
-        { id: 4, photo: 'https://randomuser.me/api/portraits/women/7.jpg', nom: 'Dumont', prenom: 'Élodie', email: 'elodie.dumont@email.com', telephone: '06 45 67 89 01', centreRegional: 'ziguinchor', statut: true },
-        { id: 5, photo: 'https://randomuser.me/api/portraits/men/8.jpg', nom: 'Girard', prenom: 'Jacques', email: 'jacques.girard@email.com', telephone: '06 56 78 90 12', centreRegional: 'kaolack', statut: true },
-        { id: 6, photo: 'https://randomuser.me/api/portraits/women/8.jpg', nom: 'Bonnet', prenom: 'Christine', email: 'christine.bonnet@email.com', telephone: '06 67 89 01 23', centreRegional: 'dakar', statut: false },
-        { id: 7, photo: 'https://randomuser.me/api/portraits/men/9.jpg', nom: 'Francois', prenom: 'Patrick', email: 'patrick.francois@email.com', telephone: '06 78 90 12 34', centreRegional: 'thies', statut: true },
-        { id: 8, photo: 'https://randomuser.me/api/portraits/women/9.jpg', nom: 'Mercier', prenom: 'Nathalie', email: 'nathalie.mercier@email.com', telephone: '06 89 01 23 45', centreRegional: 'saint_louis', statut: true },
-        { id: 9, photo: 'https://randomuser.me/api/portraits/men/10.jpg', nom: 'Legrand', prenom: 'Éric', email: 'eric.legrand@email.com', telephone: '06 90 12 34 56', centreRegional: 'ziguinchor', statut: false },
-        { id: 10, photo: 'https://randomuser.me/api/portraits/women/10.jpg', nom: 'Faure', prenom: 'Sandrine', email: 'sandrine.faure@email.com', telephone: '06 01 23 45 67', centreRegional: 'kaolack', statut: true }
-    ];
-
-    const initialAdmins = [
-        { id: 1, photo: 'https://randomuser.me/api/portraits/men/11.jpg', nom: 'Admin', prenom: 'Super', email: 'super.admin@email.com', telephone: '06 11 22 33 44', centreRegional: 'dakar', role: 'super_admin', statut: true },
-        { id: 2, photo: 'https://randomuser.me/api/portraits/women/11.jpg', nom: 'Admin', prenom: 'Principal', email: 'admin.principal@email.com', telephone: '06 22 33 44 55', centreRegional: 'thies', role: 'admin', statut: true },
-        { id: 3, photo: 'https://randomuser.me/api/portraits/men/12.jpg', nom: 'Gestionnaire', prenom: 'Campus', email: 'gestion.campus@email.com', telephone: '06 33 44 55 66', centreRegional: 'saint_louis', role: 'manager', statut: true },
-        { id: 4, photo: 'https://randomuser.me/api/portraits/women/12.jpg', nom: 'Responsable', prenom: 'Finances', email: 'finances@email.com', telephone: '06 44 55 66 77', centreRegional: 'ziguinchor', role: 'manager', statut: false },
-        { id: 5, photo: 'https://randomuser.me/api/portraits/men/13.jpg', nom: 'Coordinateur', prenom: 'Regional', email: 'coord.regional@email.com', telephone: '06 55 66 77 88', centreRegional: 'kaolack', role: 'manager', statut: true }
-    ];
-
-    const [dataStudent, setDataStudent] = useState(initialStudents);
-    const [dataTeacher, setDataTeacher] = useState(initialTeachers);
-    const [dataAdmin, setDataAdmin] = useState(initialAdmins);
+    const [dataStudent, setDataStudent] = useState([]);
+    const [dataTeacher, setDataTeacher] = useState([]);
+    const [dataAdmin, setDataAdmin] = useState([]);
     const [user, setUser] = useState({
         photo: '',
         matricule: '',
@@ -172,12 +38,73 @@ const GestionUser = () => {
         parcours: '',
         typePaiement: '',
         referencePaiement: '',
-        centreRegional: '',
+        province: '',
+        ville: '',
+        year: '',
         statut: true,
         password: '',
         confirmPassword: ''
     });
     const [tempPhoto, setTempPhoto] = useState(null);
+    const [mentionOptions, setMentionOptions] = useState([]);
+    const [parcoursOptions, setParcoursOptions] = useState([]);
+    const [niveauOptions, setNiveauOptions] = useState([]);
+    const [provinceOptions, setProvinceOptions] = useState([]);
+    const [yearOptions, setYearOptions] = useState([]);
+    const toast = useRef(null);
+
+    const paymentTypes = [
+        { label: 'Espèces', value: 'especes' },
+        { label: 'Chèque', value: 'cheque' },
+        { label: 'Virement', value: 'virement' },
+        { label: 'Mobile Money', value: 'mobile_money' }
+    ];
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const users = await getUsers();
+                const formattedUsers = users.map(user => ({
+                    ...user,
+                    statut: user.status,
+                    telephone: user.telephone || 'N/A',
+                    province: user.province || 'N/A',
+                    ville: user.ville || 'N/A',
+                    typePaiement: user.typePaiement || 'N/A',
+                    referencePaiement: user.referencePaiement || 'N/A',
+                    avatar: user.avatar || user.photo,
+                    mention: user.mention || '',
+                    parcours: user.parcours || '',
+                    niveau: user.niveau || '',
+                    year: user.year || 'N/A'
+                }));
+                setDataStudent(formattedUsers.filter(u => u.type === 'etudiant'));
+                setDataTeacher(formattedUsers.filter(u => u.type === 'prof'));
+                setDataAdmin(formattedUsers.filter(u => u.type === 'admin'));
+
+                const mentions = await getMentions();
+                setMentionOptions(mentions);
+
+                const niveaux = await getNiveaux();
+                setNiveauOptions(niveaux);
+
+                const provinces = await getProvinces();
+                setProvinceOptions(provinces);
+
+                const years = await getYears();
+                setYearOptions(years);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message || 'Erreur lors du chargement des données',
+                    life: 3000
+                });
+            }
+        };
+        fetchData();
+    }, []);
 
     const onGlobalFilterChange = (e) => {
         setGlobalFilterValue(e.target.value);
@@ -196,26 +123,66 @@ const GestionUser = () => {
             parcours: '',
             typePaiement: '',
             referencePaiement: '',
-            centreRegional: '',
+            province: '',
+            ville: '',
+            year: '',
             statut: true,
             password: '',
             confirmPassword: ''
         });
         setTempPhoto(null);
+        setParcoursOptions([]);
         setIsNewUser(true);
         setActiveDialogTab(0);
         setDisplayDialog(true);
     };
 
-    const openEdit = (userData) => {
-        setUser({
-            ...userData,
+    const openEdit = async (userData) => {
+        const mentionId = userData.mentionId || '';
+        const niveauId = userData.niveauId || '';
+        const provinceId = userData.provinceId || '';
+        const yearId = userData.yearId || '';
+
+        const formattedUser = {
+            id: userData.id,
+            etudiantId: userData.etudiantId || null,
+            profId: userData.profId || null,
+            type: userData.type,
+            nom: userData.nom,
+            prenom: userData.prenom,
+            email: userData.email,
             password: '',
-            confirmPassword: ''
-        });
+            confirmPassword: '',
+            statut: userData.status,
+            telephone: userData.telephone === 'N/A' ? '' : userData.telephone,
+            province: provinceId,
+            ville: userData.ville === 'N/A' ? '' : userData.ville,
+            typePaiement: userData.typePaiement === 'N/A' ? '' : userData.typePaiement,
+            referencePaiement: userData.referencePaiement || '',
+            matricule: userData.matricule || '',
+            mention: mentionId,
+            parcours: userData.parcoursId || '',
+            niveau: niveauId,
+            year: yearId,
+            photo: userData.avatar || ''
+        };
+
+        let parcoursOptionsFetched = [];
+        if (mentionId && niveauId) {
+            const parcours = await getParcours(mentionId, niveauId);
+            parcoursOptionsFetched = parcours;
+            setParcoursOptions(parcours);
+            if (userData.parcoursId && !parcours.find(p => p.value === userData.parcoursId)) {
+                formattedUser.parcours = '';
+            }
+        } else {
+            setParcoursOptions([]);
+        }
+
+        setUser(formattedUser);
         setTempPhoto(null);
         setIsNewUser(false);
-        setActiveDialogTab(0);
+        setActiveDialogTab(userData.type === 'etudiant' ? 0 : userData.type === 'prof' ? 1 : 2);
         setDisplayDialog(true);
     };
 
@@ -223,6 +190,7 @@ const GestionUser = () => {
         setDisplayDialog(false);
         setUser({});
         setTempPhoto(null);
+        setParcoursOptions([]);
     };
 
     const hideDeleteDialog = () => {
@@ -233,69 +201,265 @@ const GestionUser = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            setTempPhoto(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setTempPhoto(reader.result);
+                setUser(prev => ({ ...prev, photo: reader.result }));
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const saveUser = () => {
-        // Gestion de la photo
-        let photoUrl = tempPhoto || user.photo;
-        if (!photoUrl) {
-            photoUrl = `https://randomuser.me/api/portraits/${activeTab === 0 ? 'women' : 'men'}/${Math.floor(Math.random() * 50)}.jpg`;
-        }
-
-        if (isNewUser) {
-            // Ajouter un nouvel utilisateur
-            const newId = activeTab === 0
-                ? Math.max(...dataStudent.map(u => u.id)) + 1
-                : Math.max(...dataTeacher.map(u => u.id)) + 1;
-
-            const newUser = {
-                ...user,
-                id: newId,
-                photo: photoUrl
-            };
-
-            if (activeTab === 0) {
-                setDataStudent([...dataStudent, newUser]);
-            } else {
-                setDataTeacher([...dataTeacher, newUser]);
+    const fetchParcours = async (mentionId, niveauId) => {
+        try {
+            if (!mentionId || !niveauId) {
+                setParcoursOptions([]);
+                return;
             }
-
+            const parcours = await getParcours(mentionId, niveauId);
+            setParcoursOptions(parcours);
+            // Reset parcours if current selection is invalid
+            if (user.parcours && !parcours.find(p => p.value === user.parcours)) {
+                setUser(prev => ({ ...prev, parcours: '' }));
+            }
+        } catch (error) {
+            console.error('Error fetching parcours:', error);
             toast.current.show({
-                severity: 'success',
-                summary: 'Succès',
-                detail: 'Utilisateur créé avec succès',
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur lors de la récupération des parcours',
                 life: 3000
             });
+            setParcoursOptions([]);
+        }
+    };
+
+    const handleMentionChange = async (e) => {
+        const mention = e.value;
+        let _user = { ...user, mention, parcours: '' };
+        setUser(_user);
+        if (mention && user.niveau) {
+            await fetchParcours(mention, user.niveau);
         } else {
-            // Modifier un utilisateur existant
-            const updatedUser = {
-                ...user,
-                photo: photoUrl
-            };
+            setParcoursOptions([]);
+        }
+    };
 
-            if (activeTab === 0) {
-                setDataStudent([...dataStudent, newUser]);
-            } else if (activeTab === 1) {
-                setDataTeacher([...dataTeacher, newUser]);
-            } else {
-                setDataAdmin([...dataAdmin, newUser]);
-            }
+    const handleNiveauChange = async (e) => {
+        const niveau = e.value;
+        let _user = { ...user, niveau, parcours: '' };
+        setUser(_user);
+        if (niveau && user.mention) {
+            await fetchParcours(user.mention, niveau);
+        } else {
+            setParcoursOptions([]);
+        }
+    };
 
+    const saveUser = async () => {
+        if (user.password !== user.confirmPassword) {
             toast.current.show({
-                severity: 'success',
-                summary: 'Succès',
-                detail: 'Utilisateur mis à jour avec succès',
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Les mots de passe ne correspondent pas',
+                life: 3000
+            });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('nom', user.nom);
+        formData.append('prenom', user.prenom);
+        formData.append('email', user.email);
+        formData.append('telephone', user.telephone || '');
+        formData.append('province', user.province || '');
+        formData.append('ville', user.ville || '');
+        formData.append('status', user.statut ? '1' : '0');
+        if (user.password) {
+            formData.append('password', user.password);
+        }
+        if (tempPhoto) {
+            formData.append('avatarFile', tempPhoto);
+        }
+
+        try {
+            let response;
+            let avatarResponse;
+            if (isNewUser) {
+                if (activeTab === 0) {
+                    if (!user.matricule || !user.mention || !user.parcours || !user.niveau || !user.year) {
+                        toast.current.show({
+                            severity: 'error',
+                            summary: 'Erreur',
+                            detail: 'Veuillez remplir tous les champs obligatoires pour l\'étudiant',
+                            life: 3000
+                        });
+                        return;
+                    }
+                    if (!parcoursOptions.find(p => p.value === user.parcours)) {
+                        toast.current.show({
+                            severity: 'error',
+                            summary: 'Erreur',
+                            detail: 'Parcours sélectionné non valide',
+                            life: 3000
+                        });
+                        return;
+                    }
+                    formData.append('matricule', user.matricule);
+                    formData.append('mention', user.mention);
+                    formData.append('parcours', user.parcours);
+                    formData.append('niveau', user.niveau);
+                    formData.append('type_payement', user.typePaiement || '');
+                    formData.append('reference', user.referencePaiement || '');
+                    formData.append('year', user.year);
+                    response = await createEtudiant(formData);
+                    setDataStudent([...dataStudent, {
+                        ...response,
+                        statut: response.status,
+                        telephone: response.telephone || 'N/A',
+                        province: response.province || 'N/A',
+                        ville: response.ville || 'N/A',
+                        typePaiement: response.typePaiement || 'N/A',
+                        referencePaiement: response.referencePaiement || 'N/A',
+                        mention: response.mention,
+                        parcours: response.parcours,
+                        niveau: response.niveau,
+                        year: response.year
+                    }]);
+                } else if (activeTab === 1) {
+                    response = await createProf(formData);
+                    setDataTeacher([...dataTeacher, {
+                        id: response.id,
+                        profId: response.profId,
+                        type: response.type,
+                        nom: response.nom,
+                        prenom: response.prenom,
+                        email: response.email,
+                        telephone: response.telephone || 'N/A',
+                        avatar: response.avatar,
+                        statut: response.status,
+                        province: response.province || 'N/A',
+                        provinceId: response.provinceId || '',
+                        ville: response.ville || 'N/A'
+                    }]);
+                } else {
+                    response = await createAdmin(formData);
+                    setDataAdmin([...dataAdmin, {
+                        ...response,
+                        statut: response.status,
+                        telephone: response.telephone || 'N/A',
+                        province: response.province || 'N/A',
+                        ville: response.ville || 'N/A'
+                    }]);
+                }
+                toast.current.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Utilisateur créé avec succès',
+                    life: 3000
+                });
+                hideDialog();
+            } else {
+                const data = {
+                    nom: user.nom,
+                    prenom: user.prenom,
+                    email: user.email,
+                    telephone: user.telephone || null,
+                    province: user.province || null,
+                    ville: user.ville || null,
+                    status: user.statut,
+                    ...(user.password && { password: user.password }),
+                    ...(activeTab === 0 && {
+                        matricule: user.matricule,
+                        mention: user.mention,
+                        parcours: user.parcours,
+                        niveau: user.niveau,
+                        type_payement: user.typePaiement || null,
+                        reference: user.referencePaiement || null,
+                        year: user.year || null
+                    })
+                };
+
+                if (activeTab === 0) {
+                    if (!parcoursOptions.find(p => p.value === user.parcours)) {
+                        toast.current.show({
+                            severity: 'error',
+                            summary: 'Erreur',
+                            detail: 'Parcours sélectionné non valide',
+                            life: 3000
+                        });
+                        return;
+                    }
+                    response = await updateEtudiant(user.etudiantId, data);
+                    if (tempPhoto) {
+                        avatarResponse = await uploadUserAvatar(user.id, tempPhoto);
+                    }
+                    setDataStudent(dataStudent.map(u => u.id === user.id ? {
+                        ...u,
+                        ...response,
+                        avatar: avatarResponse ? avatarResponse.avatar : u.avatar,
+                        statut: response.status,
+                        telephone: response.telephone || 'N/A',
+                        province: response.province ? provinceOptions.find(p => p.value === response.provinceId)?.label || 'N/A' : 'N/A',
+                        ville: response.ville || 'N/A',
+                        typePaiement: response.typePaiement || 'N/A',
+                        referencePaiement: response.referencePaiement || 'N/A',
+                        mention: response.mention || u.montion,
+                        mentionId: response.mentionId || u.montionId,
+                        parcours: response.parcours || u.parcours,
+                        parcoursId: response.parcoursId || u.parcoursId,
+                        niveau: response.niveau || u.niveau,
+                        niveauId: response.niveauId || u.niveauId,
+                        year: response.year || u.year,
+                        yearId: response.yearId || u.yearId
+                    } : u));
+                } else if (activeTab === 1) {
+                    response = await updateProf(user.profId, data);
+                    if (tempPhoto) {
+                        avatarResponse = await uploadUserAvatar(user.id, tempPhoto);
+                    }
+                    setDataTeacher(dataTeacher.map(u => u.id === user.id ? {
+                        ...u,
+                        ...response,
+                        avatar: avatarResponse ? avatarResponse.avatar : u.avatar,
+                        statut: response.status,
+                        telephone: response.telephone || 'N/A',
+                        province: response.province ? provinceOptions.find(p => p.value === response.provinceId)?.label || 'N/A' : 'N/A',
+                        ville: response.ville || 'N/A'
+                    } : u));
+                } else {
+                    response = await updateAdmin(user.id, data);
+                    if (tempPhoto) {
+                        avatarResponse = await uploadUserAvatar(user.id, tempPhoto);
+                    }
+                    setDataAdmin(dataAdmin.map(u => u.id === user.id ? {
+                        ...u,
+                        ...response,
+                        avatar: avatarResponse ? avatarResponse.avatar : u.avatar,
+                        statut: response.status,
+                        telephone: response.telephone || 'N/A',
+                        province: response.province ? provinceOptions.find(p => p.value === response.provinceId)?.label || 'N/A' : 'N/A',
+                        ville: response.ville || 'N/A'
+                    } : u));
+                }
+
+                toast.current.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Utilisateur mis à jour avec succès',
+                    life: 3000
+                });
+                hideDialog();
+            }
+        } catch (error) {
+            console.error('Error saving user:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur de l\'enregistrement de l\'utilisateur',
                 life: 3000
             });
         }
-
-        hideDialog();
     };
 
     const confirmDelete = (user) => {
@@ -303,38 +467,58 @@ const GestionUser = () => {
         setDisplayDeleteDialog(true);
     };
 
-    const deleteUser = () => {
-        if (activeTab === 0) {
-            setDataStudent(dataStudent.filter(u => u.id !== selectedUser.id));
-        } else if (activeTab === 1) {
-            setDataTeacher(dataTeacher.filter(u => u.id !== selectedUser.id));
-        } else {
-            setDataAdmin(dataAdmin.filter(u => u.id !== selectedUser.id));
+    const deleteUser = async () => {
+        try {
+            if (activeTab === 0) {
+                await deleteEtudiant(selectedUser.etudiantId); // Utiliser etudiantId
+                setDataStudent(dataStudent.filter(u => u.etudiantId !== selectedUser.etudiantId));
+            } else if (activeTab === 1) {
+                await deleteProf(selectedUser.profId); // Utiliser profId
+                setDataTeacher(dataTeacher.filter(u => u.profId !== selectedUser.profId));
+            } else {
+                await deleteAdmin(selectedUser.id); // Utiliser userId pour les admins
+                setDataAdmin(dataAdmin.filter(u => u.id !== selectedUser.id));
+            }
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: 'Utilisateur supprimé avec succès',
+                life: 3000
+            });
+            hideDeleteDialog();
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur lors de la suppression de l\'utilisateur',
+                life: 3000
+            });
         }
-
-        toast.current.show({
-            severity: 'success',
-            summary: 'Succès',
-            detail: 'Utilisateur supprimé avec succès',
-            life: 3000
-        });
-        hideDeleteDialog();
     };
 
-    const onStatusChange = (e, user) => {
+    const onStatusChange = async (e, user) => {
         const newStatus = e.value;
-        if (activeTab === 0) {
-            setDataStudent(dataStudent.map(u =>
-                u.id === user.id ? { ...u, statut: newStatus } : u
-            ));
-        } else if (activeTab === 1) {
-            setDataTeacher(dataTeacher.map(u =>
-                u.id === user.id ? { ...u, statut: newStatus } : u
-            ));
-        } else {
-            setDataAdmin(dataAdmin.map(u =>
-                u.id === user.id ? { ...u, statut: newStatus } : u
-            ));
+        try {
+            const data = { status: newStatus };
+            if (activeTab === 0) {
+                await updateEtudiant(user.id, data);
+                setDataStudent(dataStudent.map(u => u.id === user.id ? { ...u, statut: newStatus } : u));
+            } else if (activeTab === 1) {
+                await updateProf(user.id, data);
+                setDataTeacher(dataTeacher.map(u => u.id === user.id ? { ...u, statut: newStatus } : u));
+            } else {
+                await updateAdmin(user.id, data);
+                setDataAdmin(dataAdmin.map(u => u.id === user.id ? { ...u, statut: newStatus } : u));
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Erreur lors de la mise à jour du statut',
+                life: 3000
+            });
         }
     };
 
@@ -394,14 +578,8 @@ const GestionUser = () => {
             <InputSwitch
                 checked={rowData.statut}
                 onChange={(e) => onStatusChange(e, rowData)}
-                disabled
             />
         );
-    };
-
-    const roleTemplate = (rowData) => {
-        const role = roleOptions.find(r => r.value === rowData.role);
-        return <span>{role ? role.label : rowData.role}</span>;
     };
 
     const actionBodyTemplate = (rowData) => {
@@ -410,7 +588,6 @@ const GestionUser = () => {
                 <Button icon="pi pi-pencil" severity="info" className="p-2 bg-transparent hover:bg-blue-100 text-blue-600 border-none" rounded text
                     onClick={() => openEdit(rowData)}
                     tooltip="Modifier" tooltipOptions={{ position: 'top' }} />
-
                 <Button icon="pi pi-trash" severity="danger" className="p-2 bg-transparent hover:bg-red-100 text-red-600 border-none" rounded text
                     onClick={() => confirmDelete(rowData)}
                     tooltip="Supprimer" tooltipOptions={{ position: 'top' }} />
@@ -423,7 +600,7 @@ const GestionUser = () => {
             <div className="flex items-center justify-center">
                 <div className="relative w-10 h-10">
                     <img
-                        src={rowData.photo}
+                        src={rowData.avatar || rowData.photo}
                         alt={`${rowData.nom} ${rowData.prenom}`}
                         className="absolute w-full h-full rounded-full object-cover border-2 border-white shadow-sm"
                     />
@@ -436,14 +613,29 @@ const GestionUser = () => {
         return <span>{rowData.nom} {rowData.prenom}</span>;
     };
 
-    const paymentTypeTemplate = (rowData) => {
-        const payment = paymentTypes.find(p => p.value === rowData.typePaiement);
-        return <span>{payment ? payment.label : rowData.typePaiement}</span>;
+    const mentionTemplate = (rowData) => {
+        return <span>{rowData.mention || 'N/A'}</span>;
     };
 
-    const centerTemplate = (rowData) => {
-        const center = regionalCenters.find(c => c.value === rowData.centreRegional);
-        return <span>{center ? center.label : rowData.centreRegional}</span>;
+    const parcoursTemplate = (rowData) => {
+        return <span>{rowData.parcours || 'N/A'}</span>;
+    };
+
+    const niveauTemplate = (rowData) => {
+        return <span>{rowData.niveau || 'N/A'}</span>;
+    };
+
+    const paymentTypeTemplate = (rowData) => {
+        const paymentLabel = paymentTypes.find(pt => pt.value === rowData.typePaiement)?.label || 'N/A';
+        return <span>{paymentLabel}</span>;
+    };
+
+    const villeTemplate = (rowData) => {
+        return <span>{rowData.ville || 'N/A'}</span>;
+    };
+
+    const yearTemplate = (rowData) => {
+        return <span>{rowData.year || 'N/A'}</span>;
     };
 
     const dialogFooter = (
@@ -460,29 +652,12 @@ const GestionUser = () => {
         </>
     );
 
-    const headerStudent = renderHeaderStudent();
-    const headerTeacher = renderHeaderTeacher();
-    const headerAdmin = renderHeaderAdmin();
-
-    const onInputChange = (e, name) => {
-        const val = (e.target && e.target.value) || '';
-        let _user = { ...user };
-        _user[`${name}`] = val;
-        setUser(_user);
-    };
-
-    const onDropdownChange = (e, name) => {
-        let _user = { ...user };
-        _user[`${name}`] = e.value;
-        setUser(_user);
-    };
-
     const renderPhotoUpload = () => {
         return (
-            <div className=" relative mb-4 items-center justify-center flex">
+            <div className="relative mb-4 items-center justify-center flex">
                 {tempPhoto || user.photo ? (
                     <img
-                        src={tempPhoto || user.photo}
+                        src={tempPhoto ? URL.createObjectURL(tempPhoto) : user.photo}
                         alt="Profil"
                         className="w-24 h-24 rounded-full mb-4 object-cover"
                     />
@@ -503,13 +678,6 @@ const GestionUser = () => {
             </div>
         );
     };
-    const [filteredParcours, setFilteredParcours] = useState([]);
-    const handleMentionChange = (e) => {
-        const mention = e.value;
-        let _user = { ...user, mention, parcours: '' }; // Réinitialiser le parcours quand la mention change
-        setUser(_user);
-        setFilteredParcours(parcoursOptions[mention] || []);
-    };
 
     const renderProfileTab = () => {
         return (
@@ -518,7 +686,6 @@ const GestionUser = () => {
                     {renderPhotoUpload()}
                 </div>
 
-                {/* Champ matricule visible seulement pour les étudiants */}
                 {activeTab === 0 && (
                     <div className="col-12">
                         <div className="field">
@@ -534,7 +701,6 @@ const GestionUser = () => {
                     </div>
                 )}
 
-                {/* Champs communs à tous les utilisateurs */}
                 <div className="col-12">
                     <div className="field">
                         <label htmlFor="nom">Nom</label>
@@ -583,12 +749,10 @@ const GestionUser = () => {
                             value={user.telephone}
                             onChange={(e) => onInputChange(e, 'telephone')}
                             className='custom-input'
-                            required
                         />
                     </div>
                 </div>
 
-                {/* Champs spécifiques aux étudiants */}
                 {activeTab === 0 && (
                     <>
                         <div className="col-12 md:col-6">
@@ -598,9 +762,10 @@ const GestionUser = () => {
                                     id="niveau"
                                     value={user.niveau}
                                     options={niveauOptions}
-                                    onChange={(e) => onDropdownChange(e, 'niveau')}
-                                    placeholder="Sélectionner un niveau"
+                                    onChange={handleNiveauChange}
+                                    placeholder={niveauOptions.length ? "Sélectionner un niveau" : "Aucun niveau disponible"}
                                     className="w-full"
+                                    disabled={!niveauOptions.length}
                                 />
                             </div>
                         </div>
@@ -613,8 +778,9 @@ const GestionUser = () => {
                                     value={user.mention}
                                     options={mentionOptions}
                                     onChange={handleMentionChange}
-                                    placeholder="Sélectionner une mention"
+                                    placeholder={mentionOptions.length ? "Sélectionner une mention" : "Aucune mention disponible"}
                                     className="w-full"
+                                    disabled={!mentionOptions.length}
                                 />
                             </div>
                         </div>
@@ -625,11 +791,26 @@ const GestionUser = () => {
                                 <Dropdown
                                     id="parcours"
                                     value={user.parcours}
-                                    options={filteredParcours}
+                                    options={parcoursOptions}
                                     onChange={(e) => onDropdownChange(e, 'parcours')}
-                                    placeholder="Sélectionner un parcours"
+                                    placeholder={parcoursOptions.length ? "Sélectionner un parcours" : "Aucun parcours disponible"}
                                     className="w-full"
-                                    disabled={!user.mention}
+                                    disabled={!user.mention || !user.niveau || !parcoursOptions.length}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="col-12 md:col-6">
+                            <div className="field">
+                                <label htmlFor="year">Année</label>
+                                <Dropdown
+                                    id="year"
+                                    value={user.year}
+                                    options={yearOptions}
+                                    onChange={(e) => onDropdownChange(e, 'year')}
+                                    placeholder={yearOptions.length ? "Sélectionner une année" : "Aucune année disponible"}
+                                    className="w-full"
+                                    disabled={!yearOptions.length}
                                 />
                             </div>
                         </div>
@@ -663,45 +844,39 @@ const GestionUser = () => {
                     </>
                 )}
 
-                {/* Champ spécifique aux administrateurs */}
-                {activeTab === 2 && (
-                    <div className="col-12">
-                        <div className="field">
-                            <label htmlFor="role">Rôle</label>
-                            <Dropdown
-                                id="role"
-                                value={user.role}
-                                options={roleOptions}
-                                optionLabel="label"
-                                onChange={(e) => onDropdownChange(e, 'role')}
-                                placeholder="Sélectionner un rôle"
-                                className="w-full"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {/* Champ centre régional commun à tous */}
                 <div className="col-12">
                     <div className="field">
-                        <label htmlFor="centreRegional">Centre régional</label>
+                        <label htmlFor="province">Province</label>
                         <Dropdown
-                            id="centreRegional"
-                            value={user.centreRegional}
-                            options={regionalCenters}
+                            id="province"
+                            value={user.province}
+                            options={provinceOptions}
                             optionLabel="label"
-                            onChange={(e) => onDropdownChange(e, 'centreRegional')}
-                            placeholder="Sélectionner"
+                            onChange={(e) => onDropdownChange(e, 'province')}
+                            placeholder={provinceOptions.length ? "Sélectionner une province" : "Aucune province disponible"}
                             className="w-full"
+                            disabled={!provinceOptions.length}
                         />
                     </div>
                 </div>
 
-                {/* Champ statut commun à tous */}
+                <div className="col-12">
+                    <div className="field">
+                        <label htmlFor="ville">Ville</label>
+                        <InputText
+                            id="ville"
+                            value={user.ville}
+                            onChange={(e) => onInputChange(e, 'ville')}
+                            className='custom-input'
+                        />
+                    </div>
+                </div>
+
                 <div className="col-12">
                     <div className="field flex items-center justify-start space-x-5">
                         <label htmlFor="statut">Statut</label>
                         <InputSwitch
+                            id="statut"
                             checked={user.statut}
                             onChange={(e) => setUser({ ...user, statut: e.value })}
                         />
@@ -726,6 +901,7 @@ const GestionUser = () => {
                         />
                     </div>
                 </div>
+
                 <div className="col-12">
                     <div className="field">
                         <label htmlFor="confirmPassword">Confirmer le mot de passe</label>
@@ -742,50 +918,98 @@ const GestionUser = () => {
         );
     };
 
+    const onInputChange = (e, name) => {
+        const val = (e.target && e.target.value) || '';
+        let _user = { ...user };
+        _user[`${name}`] = val;
+        setUser(_user);
+    };
 
+    const onDropdownChange = (e, name) => {
+        let _user = { ...user };
+        _user[name] = e.value;
+        setUser(_user);
+    };
+
+    const headerStudent = renderHeaderStudent();
+    const headerTeacher = renderHeaderTeacher();
+    const headerAdmin = renderHeaderAdmin();
 
     return (
         <LayoutAdmin>
             <Toast ref={toast} />
             <div className="card custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <h1 className='text-4xl font-semibold text-gray-800 p-5'>Gestion des utilisateurs</h1>
+                <h1 className='text-4xl font-semibold text-gray-800 p-5 mb-4'>Gestion des utilisateurs</h1>
                 <div>
-                    <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)} className='custom-tabview'>
+                    <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)} className="ml-4 md:ml-0 custom-tabview">
                         <TabPanel header="Liste des étudiants" className='flex flex-col items-center'>
-                            <DataTable value={dataStudent} paginator rows={7} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={headerStudent} emptyMessage="Aucune donnée trouvée." className='w-full'>
-                                <Column field="photo" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
+                            <DataTable
+                                value={dataStudent}
+                                paginator
+                                rows={5}
+                                dataKey="id"
+                                sortField="nom"
+                                sortOrder={1}
+                                globalFilter={globalFilterValue}
+                                header={headerStudent}
+                                emptyMessage="Aucune donnée trouvée."
+                                className="w-full"
+                            >
+                                <Column field="avatar" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
                                 <Column field="matricule" header="Matricule" sortable style={{ minWidth: '5rem' }} />
                                 <Column field="nom" header="Nom et Prénom" body={nameBodyTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="email" header="Email" sortable style={{ minWidth: '5rem' }} />
                                 <Column field="telephone" header="Téléphone" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="niveau" header="Niveau" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="mention" header="Mention" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="parcours" header="Parcours" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="typePaiement" header="Type Paiement" body={paymentTypeTemplate} sortable style={{ minWidth: '5rem' }} />
-                                <Column field="centreRegional" header="Centre" body={centerTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="niveau" header="Niveau" body={niveauTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="mention" header="Mention" body={mentionTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="parcours" header="Parcours" body={parcoursTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="year" header="Année" body={yearTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="typePaiement" header="Type de paiement" body={paymentTypeTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="ville" header="Ville" body={villeTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="statut" header="Statut" body={statusBodyTemplate} style={{ minWidth: '5rem' }} />
                                 <Column body={actionBodyTemplate} style={{ minWidth: '8rem' }} />
                             </DataTable>
                         </TabPanel>
                         <TabPanel header="Liste des enseignants" className='flex flex-col items-center'>
-                            <DataTable value={dataTeacher} paginator rows={7} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={headerTeacher} emptyMessage="Aucune donnée trouvée." className='w-full'>
-                                <Column field="photo" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
+                            <DataTable
+                                value={dataTeacher}
+                                paginator
+                                rows={5}
+                                dataKey="id"
+                                sortField="nom"
+                                sortOrder={1}
+                                globalFilter={globalFilterValue}
+                                header={headerTeacher}
+                                emptyMessage="Aucune donnée trouvée."
+                                className="w-full"
+                            >
+                                <Column field="avatar" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
                                 <Column field="nom" header="Nom et Prénom" body={nameBodyTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="email" header="Email" sortable style={{ minWidth: '5rem' }} />
                                 <Column field="telephone" header="Téléphone" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="centreRegional" header="Centre" body={centerTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="ville" header="Ville" body={villeTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="statut" header="Statut" body={statusBodyTemplate} style={{ minWidth: '5rem' }} />
                                 <Column body={actionBodyTemplate} style={{ minWidth: '8rem' }} />
                             </DataTable>
                         </TabPanel>
                         <TabPanel header="Liste des administrateurs" className='flex flex-col items-center'>
-                            <DataTable value={dataAdmin} paginator rows={7} dataKey="id" sortField="nom" sortOrder={1} globalFilter={globalFilterValue} header={headerAdmin} emptyMessage="Aucune donnée trouvée." className='w-full'>
-                                <Column field="photo" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
+                            <DataTable
+                                value={dataAdmin}
+                                paginator
+                                rows={5}
+                                dataKey="id"
+                                sortField="nom"
+                                sortOrder={1}
+                                globalFilter={globalFilterValue}
+                                header={headerAdmin}
+                                emptyMessage="Aucune donnée trouvée."
+                                className="w-full"
+                            >
+                                <Column field="avatar" header="Profil" body={imageBodyTemplate} style={{ width: '5rem' }} />
                                 <Column field="nom" header="Nom et Prénom" body={nameBodyTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="email" header="Email" sortable style={{ minWidth: '5rem' }} />
                                 <Column field="telephone" header="Téléphone" sortable style={{ minWidth: '5rem' }} />
-                                <Column field="role" header="Rôle" body={roleTemplate} sortable style={{ minWidth: '5rem' }} />
-                                <Column field="centreRegional" header="Centre" body={centerTemplate} sortable style={{ minWidth: '5rem' }} />
+                                <Column field="ville" header="Ville" body={villeTemplate} sortable style={{ minWidth: '5rem' }} />
                                 <Column field="statut" header="Statut" body={statusBodyTemplate} style={{ minWidth: '5rem' }} />
                                 <Column body={actionBodyTemplate} style={{ minWidth: '8rem' }} />
                             </DataTable>
@@ -794,7 +1018,6 @@ const GestionUser = () => {
                 </div>
             </div>
 
-            {/* Dialog pour ajouter/modifier un utilisateur */}
             <Dialog visible={displayDialog} style={{ width: '500px' }} header={isNewUser ? 'Nouvel Utilisateur' : 'Modifier Utilisateur'} modal className="p-fluid" footer={dialogFooter} onHide={hideDialog}>
                 <TabView activeIndex={activeDialogTab} onTabChange={(e) => setActiveDialogTab(e.index)}>
                     <TabPanel header="Profil">
