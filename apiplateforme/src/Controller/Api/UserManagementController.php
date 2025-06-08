@@ -80,7 +80,7 @@ class UserManagementController extends AbstractController
 
         $etudiants = $this->etudiantRepository->findAll();
         $profs = $this->profRepository->findAll();
-        $admins = $this->userRepository->findByRole('ROLE_ADMIN');
+        $admins = $this->userRepository->findByRole('ROLE_ADMIN', $user->getId());
 
         $items = [];
 
@@ -148,30 +148,34 @@ class UserManagementController extends AbstractController
         }
 
         foreach ($admins as $admin) {
-            $nameParts = $admin->getName() ? explode(' ', $admin->getName()) : ['N/A', ''];
-            $items[] = [
-                '@id' => '/api/users/' . $admin->getId(),
-                'id' => $admin->getId(),
-                'type' => 'admin',
-                'nom' => $nameParts[0],
-                'prenom' => $nameParts[1] ?? '',
-                'email' => $admin->getEmail() ?? 'N/A',
-                'telephone' => $admin->getTelephone() ?? 'N/A',
-                'avatar' => $admin->getAvatar() ? $baseUrl . '/uploads/avatars/' . $admin->getAvatar() : null,
-                'status' => $admin->isStatus(),
-                'province' => $admin->getProvince() ? [
-                    'id' => $admin->getProvince()->getId(),
-                    'region' => $admin->getProvince()->getRegion()
-                ] : null,
-                'ville' => $admin->getVille() ?? 'N/A',
-            ];
+        // Exclure l'administrateur connecté
+        if ($admin->getId() === $currentUserId) {
+            continue; // Passer à l'itération suivante si l'admin est l'utilisateur connecté
         }
-
-        return $this->json([
-            'hydra:member' => $items,
-            'hydra:totalItems' => count($items),
-        ], Response::HTTP_OK, [], ['groups' => ['user:list']]);
+        $nameParts = $admin->getName() ? explode(' ', $admin->getName()) : ['N/A', ''];
+        $items[] = [
+            '@id' => '/api/users/' . $admin->getId(),
+            'id' => $admin->getId(),
+            'type' => 'admin',
+            'nom' => $nameParts[0],
+            'prenom' => $nameParts[1] ?? '',
+            'email' => $admin->getEmail() ?? 'N/A',
+            'telephone' => $admin->getTelephone() ?? 'N/A',
+            'avatar' => $admin->getAvatar() ? $baseUrl . '/uploads/avatars/' . $admin->getAvatar() : null,
+            'status' => $admin->isStatus(),
+            'province' => $admin->getProvince() ? [
+                'id' => $admin->getProvince()->getId(),
+                'region' => $admin->getProvince()->getRegion()
+            ] : null,
+            'ville' => $admin->getVille() ?? 'N/A',
+        ];
     }
+
+    return $this->json([
+        'hydra:member' => $items,
+        'hydra:totalItems' => count($items),
+    ], Response::HTTP_OK, [], ['groups' => ['user:list']]);
+}
 
     /**
      * @Route("/etudiants", name="api_create_etudiant", methods={"POST"})

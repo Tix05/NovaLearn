@@ -49,6 +49,12 @@ class TeacherAuthController extends AbstractController
                 'message' => 'Email ou mot de passe incorrect'
             ], Response::HTTP_UNAUTHORIZED);
         }
+
+        if (!$user->isStatus()) {
+            return $this->json([
+                'message' => 'Votre compte est désactivé. Veuillez contacter l\'administrateur.'
+            ], Response::HTTP_FORBIDDEN);
+        }
         
         $isTeacher = false;
         foreach ($user->getProfs() as $prof) {

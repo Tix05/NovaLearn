@@ -52,6 +52,12 @@ class AdminAuthController extends AbstractController
                 'message' => 'Email ou mot de passe incorrect'
             ], Response::HTTP_UNAUTHORIZED);
         }
+
+        if (!$user->isStatus()) {
+            return $this->json([
+                'message' => 'Votre compte est désactivé. Veuillez contacter l\'administrateur.'
+            ], Response::HTTP_FORBIDDEN);
+        }
         
         if (!in_array('ROLE_ADMIN', $user->getRoles())) {
             return $this->json([
