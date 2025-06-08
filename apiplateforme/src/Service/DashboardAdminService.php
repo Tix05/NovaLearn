@@ -155,7 +155,7 @@ class DashboardAdminService
                 ->where('e.mention = :mention')
                 ->andWhere('ees.statut = :statut')
                 ->setParameter('mention', $mentionId)
-                ->setParameter('statut', 'present')
+                ->setParameter('statut', 'SOUMIS')
                 ->getQuery()
                 ->getSingleScalarResult();
 
