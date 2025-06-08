@@ -145,7 +145,7 @@ class Examen
     /**
      * @ORM\ManyToOne(targetEntity=Ec::class)
      * @ORM\JoinColumn(nullable=false)
-     * @Groups({"examen:read", "examen:write"})
+     * @Groups({"examen:read", "examen:write", "correction:read"})
      * @Assert\NotNull
      */
     private ?Ec $ec = null;

@@ -47,6 +47,7 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
         const defaultUser = {
             name: 'Utilisateur',
             email: 'utilisateur@example.com',
+            avatar: null,
             ...userData // Cela écrasera les valeurs par défaut avec celles de userData si elles existent
         };
 
@@ -116,7 +117,8 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
                 {user && (
                     <div className={`flex items-center py-2 transition-all duration-500 ${!open ? 'space-x-0 px-0' : 'space-x-5 px-2'}`}>
                         <Avatar
-                            icon="pi pi-user"
+                            image={user.avatar ? `/uploads/avatars/${user.avatar}` : null}
+                            icon={!user.avatar ? "pi pi-user" : null}
                             size="large"
                             shape="circle"
                             className={`transition-all duration-500 ${!open ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}

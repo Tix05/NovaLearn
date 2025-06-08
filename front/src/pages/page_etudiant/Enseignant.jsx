@@ -6,14 +6,19 @@ import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
 import Layout from '../../components/Layout';
 import { Button } from 'primereact/button';
-import { getEnseignantsByEtudiant } from '../../Services/enseignantService';
+import { getEnseignantsByEtudiant, getNotesByEtudiant } from '../../Services/enseignantService';
 import { Chart } from 'primereact/chart';
+import { ProgressSpinner } from 'primereact/progressspinner';
+import { Message } from 'primereact/message';
+import { MdErrorOutline } from 'react-icons/md';
 
 export default function Enseignant() {
     const [data, setData] = useState([]);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
-    const [chartDataStudent, setChartDataStudent] = useState({});
-    const [chartOptionsStudent, setChartOptionsStudent] = useState({});
+    const [chartDataStudent, setChartDataStudent] = useState(null);
+    const [chartOptionsStudent, setChartOptionsStudent] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,149 +34,121 @@ export default function Enseignant() {
     }, []);
 
     useEffect(() => {
-        const examProgress = [
-            {
-                course: 'Algorithmique',
-                semesters: [
-                    { name: 'S1', score: 60 },
-                    { name: 'S2', score: 75 },
-                ],
-            },
-            {
-                course: 'Base de données',
-                semesters: [
-                    { name: 'S1', score: 45 },
-                    { name: 'S2', score: 65 },
-                ],
-            },
-            {
-                course: 'Réseaux',
-                semesters: [
-                    { name: 'S1', score: 70 },
-                    { name: 'S2', score: 80 },
-                ],
-            },
-            {
-                course: 'Mathématiques',
-                semesters: [
-                    { name: 'S1', score: 55 },
-                    { name: 'S2', score: 70 },
-                ],
-            },
-            {
-                course: 'Programmation',
-                semesters: [
-                    { name: 'S1', score: 65 },
-                    { name: 'S2', score: 85 },
-                ],
-            },
-        ];
+        const fetchNotes = async () => {
+            try {
+                setLoading(true);
+                const notes = await getNotesByEtudiant();
 
-        const documentStyle = getComputedStyle(document.documentElement);
-        const textColor = documentStyle.getPropertyValue('--text-color');
-        const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
-        const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
+                if (!notes || notes.length === 0) {
+                    setError('Aucune note trouvée pour cet étudiant.');
+                    setLoading(false);
+                    return;
+                }
 
-        // Matières (x-axis labels)
-        const courses = examProgress.map(course => course.course);
+                const documentStyle = getComputedStyle(document.documentElement);
+                const textColor = documentStyle.getPropertyValue('--text-color');
+                const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
+                const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
 
-        // Datasets pour S1 et S2
-        const datasets = [
-            {
-                label: 'Semestre 1',
-                backgroundColor: documentStyle.getPropertyValue('--red-400'),
-                data: examProgress.map(course => course.semesters.find(s => s.name === 'S1').score),
-            },
-            {
-                label: 'Semestre 2',
-                backgroundColor: documentStyle.getPropertyValue('--green-500'),
-                data: examProgress.map(course => course.semesters.find(s => s.name === 'S2').score),
-            },
-        ];
+                const ecs = notes.map(item => item.ec);
+                const dataset = {
+                    label: 'Notes des examens',
+                    backgroundColor: documentStyle.getPropertyValue('--blue-500'),
+                    data: notes.map(item => item.note),
+                    barThickness: 20
+                };
 
-        const dataStudent = {
-            labels: courses,
-            datasets,
-        };
+                const dataStudent = {
+                    labels: ecs,
+                    datasets: [dataset]
+                };
 
-        const options = {
-            maintainAspectRatio: false,
-            aspectRatio: 0.6,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: textColor,
-                        font: { size: 14 },
-                    },
-                },
-                tooltip: {
-                    enabled: true,
-                    callbacks: {
-                        label: (context) => {
-                            const score = context.parsed.y;
-                            const semester = context.dataset.label;
-                            const advice = score < 50 ? ' (Note basse, envisagez de réviser)' : '';
-                            return `${semester} - ${context.label}: ${score}/100${advice}`;
+                const options = {
+                    maintainAspectRatio: false,
+                    aspectRatio: 0.6,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: textColor,
+                                font: { size: 14 }
+                            }
                         },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: (context) => {
+                                    const score = context.parsed.y;
+                                    const ec = context.label;
+                                    const advice = score < 10 ? ' (Note basse, envisagez de réviser)' : '';
+                                    return `${ec}: ${score}/20${advice}`;
+                                }
+                            }
+                        }
                     },
-                },
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Matières',
-                        color: textColor,
-                        font: { size: 16 },
-                    },
-                    ticks: {
-                        color: textColorSecondary,
-                        font: { size: 12 },
-                    },
-                    grid: {
-                        color: surfaceBorder,
-                    },
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Note (/100)',
-                        color: textColor,
-                        font: { size: 16 },
-                    },
-                    ticks: {
-                        color: textColorSecondary,
-                        font: { size: 12 },
-                        beginAtZero: true,
-                        max: 100,
-                    },
-                    grid: {
-                        color: surfaceBorder,
-                    },
-                    // Ligne de référence pour la note minimale de passage (50/100)
-                    afterBuildTicks: (axis) => {
-                        axis.ticks.push({ value: 50 });
-                    },
-                    afterDraw: (chart) => {
-                        const ctx = chart.ctx;
-                        const yAxis = chart.scales.y;
-                        const yValue = yAxis.getPixelForValue(50);
-                        ctx.save();
-                        ctx.beginPath();
-                        ctx.moveTo(yAxis.left, yValue);
-                        ctx.lineTo(yAxis.right, yValue);
-                        ctx.strokeStyle = documentStyle.getPropertyValue('--red-500');
-                        ctx.lineWidth = 2;
-                        ctx.setLineDash([5, 5]);
-                        ctx.stroke();
-                        ctx.restore();
-                    },
-                },
-            },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Éléments Constitutifs (EC)',
+                                color: textColor,
+                                font: { size: 16 }
+                            },
+                            ticks: {
+                                color: textColorSecondary,
+                                font: { size: 12 }
+                            },
+                            grid: {
+                                color: surfaceBorder
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Note (/20)',
+                                color: textColor,
+                                font: { size: 16 }
+                            },
+                            ticks: {
+                                color: textColorSecondary,
+                                font: { size: 12 },
+                                beginAtZero: true,
+                                max: 20
+                            },
+                            grid: {
+                                color: surfaceBorder
+                            },
+                            afterBuildTicks: (axis) => {
+                                axis.ticks.push({ value: 10 });
+                            },
+                            afterDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const yAxis = chart.scales.y;
+                                const yValue = yAxis.getPixelForValue(10);
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(yAxis.left, yValue);
+                                ctx.lineTo(yAxis.right, yValue);
+                                ctx.strokeStyle = documentStyle.getPropertyValue('--red-500');
+                                ctx.lineWidth = 2;
+                                ctx.setLineDash([5, 5]);
+                                ctx.stroke();
+                                ctx.restore();
+                            }
+                        }
+                    }
+                };
+
+                setChartDataStudent(dataStudent);
+                setChartOptionsStudent(options);
+                setLoading(false);
+            } catch (error) {
+                console.error("Erreur lors du chargement des notes:", error);
+                setError('Erreur lors de la récupération des notes. Veuillez réessayer.');
+                setLoading(false);
+            }
         };
 
-        setChartDataStudent(dataStudent);
-        setChartOptionsStudent(options);
+        fetchNotes();
     }, []);
 
     const onGlobalFilterChange = (e) => {
@@ -218,9 +195,23 @@ export default function Enseignant() {
     return (
         <Layout>
             <div className='custom-scrollbar' style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
-                <div className='w-full p-10'>
-                    <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Notes par matière pour les semestres 1 et 2 (L1 Informatique)</h1>
-                    <Chart type="bar" data={chartDataStudent} options={chartOptionsStudent} />
+                <div className='w-full p-10 flex flex-col items-center justify-center'>
+                    <h1 className='text-xl py-3 font-bold text-gray-700 text-center'>Notes par EC</h1>
+                    {loading ? (
+                        <ProgressSpinner style={{ width: '50px', height: '50px' }} />
+                    ) : error ? (
+                        <div className="flex justify-center items-center mt-2 text-red-500 font-semibold space-x-1">
+                            <MdErrorOutline size={20} />
+                            <p >{error}</p>
+
+                        </div>
+                    ) : chartDataStudent && chartOptionsStudent ? (
+                        <Chart type="bar" data={chartDataStudent} options={chartOptionsStudent} className='w-full' />
+                    ) : (
+                        <div className="flex justify-center items-center mt-2 text-gray-500 font-semibold space-x-1">
+                            <p>Aucune donnée de graphique disponible.</p>
+                        </div>
+                    )}
                 </div>
                 <DataTable
                     value={data}

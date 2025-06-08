@@ -100,6 +100,14 @@ class CorrectionExamen
      */
     private Collection $reponses;
 
+    /**
+     * @Groups({"correction:read"})
+     */
+    public function getNomEc(): ?string
+    {
+        return $this->examen && $this->examen->getEc() ? $this->examen->getEc()->getName() : null;
+    }
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
