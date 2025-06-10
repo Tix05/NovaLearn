@@ -73,53 +73,63 @@ class AdminDataController extends AbstractController
     }
 
     /**
-     * Récupère les niveaux et parcours pour une mention
-     * @Route("/mentions/{mentionId}/niveaux", name="api_admin_niveaux", methods={"GET"})
-     */
-    public function getNiveaux(int $mentionId): JsonResponse
-    {
-        $user = $this->security->getUser();
-        if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-            $this->logger->error('Utilisateur non authentifié ou non administrateur', [
-                'user' => $user ? $user->getEmail() : null,
-                'roles' => $user ? $user->getRoles() : null
-            ]);
-            return $this->json(['message' => 'Utilisateur non authentifié ou non autorisé'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $mention = $this->mentionRepository->find($mentionId);
-        if (!$mention) {
-            $this->logger->warning('Mention non trouvée', ['mention_id' => $mentionId]);
-            return $this->json(['message' => 'Mention non trouvée'], Response::HTTP_NOT_FOUND);
-        }
-
-        $niveauxData = [];
-        $parcoursRepo = $this->entityManager->getRepository(\App\Entity\Parcours::class);
-        $niveauRepo = $this->entityManager->getRepository(\App\Entity\Niveau::class);
-        $semestreRepo = $this->entityManager->getRepository(\App\Entity\Semestre::class);
-
-        $parcours = $parcoursRepo->findBy(['mention' => $mention]);
-        foreach ($parcours as $parcour) {
-            $niveau = $parcour->getNiveau();
-            $niveauId = $niveau->getId();
-
-            if (!isset($niveauxData[$niveauId])) {
-                $semestres = $semestreRepo->findBy(['niveau' => $niveau]);
-                $premierSemestre = $semestres[0] ?? null;
-
-                $niveauxData[$niveauId] = [
-                    'id' => $niveau->getId(),
-                    'nom' => $niveau->getNom(),
-                    'parcours' => [$parcour->getName()],
-                    'premierSemestreId' => $premierSemestre ? $premierSemestre->getId() : null,
-                ];
-            } else {
-                $niveauxData[$niveauId]['parcours'][] = $parcour->getName();
-            }
-        }
-
-        return $this->json(array_values($niveauxData));
+ * Récupère les niveaux et parcours pour une mention
+ * @Route("/mentions/{mentionId}/niveaux", name="api_admin_niveaux", methods={"GET"})
+ */
+public function getNiveaux(int $mentionId): JsonResponse
+{
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
+        $this->logger->error('Utilisateur non authentifié ou non administrateur', [
+            'user' => $user ? $user->getEmail() : null,
+            'roles' => $user ? $user->getRoles() : null
+        ]);
+        return $this->json(['message' => 'Utilisateur non authentifié ou non autorisé'], Response::HTTP_UNAUTHORIZED);
     }
+
+    $mention = $this->mentionRepository->find($mentionId);
+    if (!$mention) {
+        $this->logger->warning('Mention non trouvée', ['mention_id' => $mentionId]);
+        return $this->json(['message' => 'Mention non trouvée'], Response::HTTP_NOT_FOUND);
+    }
+
+    $niveauxData = [];
+    $parcoursRepo = $this->entityManager->getRepository(\App\Entity\Parcours::class);
+    $niveauRepo = $this->entityManager->getRepository(\App\Entity\Niveau::class);
+    $semestreRepo = $this->entityManager->getRepository(\App\Entity\Semestre::class);
+
+    $parcours = $parcoursRepo->findBy(['mention' => $mention]);
+    foreach ($parcours as $parcour) {
+        $niveau = $parcour->getNiveau();
+        $niveauId = $niveau->getId();
+        if (!isset($niveauxData[$niveauId])) {
+            $semestres = $semestreRepo->findBy(['niveau' => $niveau]);
+            $semestresData = array_map(function ($semestre) {
+                return [
+                    'id' => $semestre->getId(),
+                    'name' => $semestre->getName(), // Inclure le nom du semestre
+                ];
+            }, $semestres);
+
+            $niveauxData[$niveauId] = [
+                'id' => $niveau->getId(),
+                'nom' => $niveau->getNom(),
+                'parcours' => [[
+                    'id' => $parcour->getId(),
+                    'name' => $parcour->getName(),
+                ]],
+                'semestres' => $semestresData,
+            ];
+        } else {
+            $niveauxData[$niveauId]['parcours'][] = [
+                'id' => $parcour->getId(),
+                'name' => $parcour->getName(),
+            ];
+        }
+    }
+
+    return $this->json(array_values($niveauxData));
+}
 
     /**
      * Récupère les cours (UEs et ECs) pour un semestre

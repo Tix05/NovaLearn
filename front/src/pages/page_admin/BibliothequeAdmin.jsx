@@ -76,7 +76,7 @@ export default function BibliothequeAdmin() {
         ...Array.from(new Set(data.map(item => item.ecName))).map(e => ({ label: e, value: e })),
     ];
 
-    // Charger les données initiales
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -154,21 +154,28 @@ export default function BibliothequeAdmin() {
 
         const selectedNiveau = niveaux.find((n) => n.value === niveauId);
         if (selectedNiveau) {
+            // Mettre à jour les parcours
             setParcours([
                 { label: 'Veuillez choisir le parcours', value: '' },
                 ...selectedNiveau.parcours,
             ]);
+
+            // Mettre à jour les semestres avec la liste complète
             setSemestres([
                 { label: 'Veuillez choisir le semestre', value: '' },
-                { label: 'Semestre', value: selectedNiveau.premierSemestreId },
+                ...selectedNiveau.semestres.map((semestre) => ({
+                    label: semestre.name, // Utiliser le nom du semestre
+                    value: semestre.id,
+                })),
             ]);
-            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
-            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+
+            setUes([{ label: "Veuillez choisir l'UE", value: '' }]);
+            setEcs([{ label: "Veuillez choisir l'EC", value: '' }]);
         } else {
             setParcours([{ label: 'Veuillez choisir le parcours', value: '' }]);
             setSemestres([{ label: 'Veuillez choisir le semestre', value: '' }]);
-            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
-            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+            setUes([{ label: "Veuillez choisir l'UE", value: '' }]);
+            setEcs([{ label: "Veuillez choisir l'EC", value: '' }]);
         }
     };
 
@@ -361,7 +368,7 @@ export default function BibliothequeAdmin() {
         }
     };
 
-    const handleEdit = (rowData) => {
+    const handleEdit = async (rowData) => {
         if (rowData.source !== 'bibliotheque') return;
         setSelectedItem(rowData);
 
@@ -370,44 +377,78 @@ export default function BibliothequeAdmin() {
 
         const fetchNiveauxAndSetForm = async () => {
             try {
+                // Charger les niveaux
                 const niveauxData = await getAdminNiveaux(mentionId);
                 setNiveaux([
                     { label: 'Veuillez choisir le niveau', value: '' },
                     ...niveauxData,
                 ]);
 
+                // Trouver le niveau correspondant
                 const selectedNiveau = niveauxData.find((n) => n.label === rowData.niveauNom);
                 const niveauId = selectedNiveau ? selectedNiveau.value : '';
+
+                // Trouver le parcours correspondant
                 const selectedParcours = selectedNiveau?.parcours.find((p) => p.label === rowData.parcoursName);
                 const parcoursName = selectedParcours ? selectedParcours.value : '';
-                const semestreId = selectedNiveau ? selectedNiveau.premierSemestreId : '';
 
                 setParcours([
                     { label: 'Veuillez choisir le parcours', value: '' },
                     ...(selectedNiveau?.parcours || []),
                 ]);
 
+                // Trouver le semestre correspondant en explorant les UEs/ECs
+                let semestreId = '';
+                let selectedSemestre = null;
+                let uesData = [];
+                let selectedUe = null;
+                let ueId = '';
+                let selectedEc = null;
+                let ecId = '';
+
+                for (const semestre of selectedNiveau?.semestres || []) {
+                    const tempUesData = await getAdminCours(mentionId, niveauId, semestre.id);
+                    const foundUe = tempUesData.find((u) => u.ecs.some((ec) => ec.label === rowData.ecName));
+                    if (foundUe) {
+                        selectedSemestre = semestre;
+                        semestreId = semestre.id;
+                        uesData = tempUesData;
+                        selectedUe = foundUe;
+                        ueId = foundUe.value;
+                        selectedEc = foundUe.ecs.find((ec) => ec.label === rowData.ecName);
+                        ecId = selectedEc ? selectedEc.value : '';
+                        break;
+                    }
+                }
+
                 setSemestres([
                     { label: 'Veuillez choisir le semestre', value: '' },
-                    { label: 'Semestre', value: semestreId },
+                    ...(selectedNiveau?.semestres.map((semestre) => ({
+                        label: semestre.name,
+                        value: semestre.id,
+                    })) || []),
                 ]);
 
-                const uesData = await getAdminCours(mentionId, niveauId, semestreId);
                 setUes([
                     { label: 'Veuillez choisir l\'UE', value: '' },
                     ...uesData,
                 ]);
 
-                const selectedUe = uesData.find((u) => u.ecs.some((ec) => ec.label === rowData.ecName));
-                const ueId = selectedUe ? selectedUe.value : '';
-
                 setEcs([
-                    { label: 'Veuillez choisir l\'EC', value: '' },
+                    { label: ' ', value: '' },
                     ...(selectedUe?.ecs || []),
                 ]);
 
-                const selectedEc = selectedUe?.ecs.find((ec) => ec.label === rowData.ecName);
-                const ecId = selectedEc ? selectedEc.value : '';
+                // Vérifier que tous les champs nécessaires sont présents
+                if (!mentionId || !niveauId || !semestreId || !ueId || !ecId || !parcoursName || !rowData.type || !rowData.titre) {
+                    toast.current.show({
+                        severity: 'error',
+                        summary: 'Erreur',
+                        detail: 'Impossible de charger les données pour la modification. Vérifiez les données de l\'élément.',
+                        life: 5000,
+                    });
+                    return;
+                }
 
                 setFormData({
                     mention: mentionId,
@@ -426,6 +467,7 @@ export default function BibliothequeAdmin() {
                 setChecked(rowData.isPublished);
                 setShowEditDialog(true);
             } catch (error) {
+                console.error('Erreur dans handleEdit:', error);
                 toast.current.show({
                     severity: 'error',
                     summary: 'Erreur',
@@ -436,7 +478,7 @@ export default function BibliothequeAdmin() {
         };
 
         if (mentionId) {
-            fetchNiveauxAndSetForm();
+            await fetchNiveauxAndSetForm();
         } else {
             toast.current.show({
                 severity: 'error',

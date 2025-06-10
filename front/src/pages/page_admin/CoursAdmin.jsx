@@ -21,7 +21,7 @@ export default function CoursAdmin() {
             try {
                 // Récupérer les niveaux
                 const niveaux = await getAdminNiveaux(mentionId);
-                console.log('Réponse de getAdminNiveaux:', { mentionId, niveaux }); // Débogage
+                console.log('Réponse de getAdminNiveaux:', { mentionId, niveaux });
 
                 // Normaliser niveauId en chaîne pour la comparaison
                 const currentNiveau = niveaux.find(n => String(n.id) === String(niveauId));
@@ -30,34 +30,27 @@ export default function CoursAdmin() {
                     throw new Error(`Niveau non trouvé pour l'ID ${niveauId}`);
                 }
                 setNiveauData(currentNiveau);
-                console.log('Niveau sélectionné:', currentNiveau); // Débogage
+                console.log('Niveau sélectionné:', currentNiveau);
+
+                // Vérifier les semestres disponibles
+                if (!currentNiveau.semestres?.length) {
+                    throw new Error('Aucun semestre disponible pour ce niveau');
+                }
 
                 // Si aucun semestreId n'est spécifié, rediriger vers le premier semestre
                 if (!semestreId) {
-                    const semestres = currentNiveau.semestres || [];
-                    if (semestres.length > 0) {
-                        const firstSemestreId = semestres[0].id;
-                        console.log('Redirection vers le premier semestre:', firstSemestreId);
-                        navigate(`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${firstSemestreId}/cours`, {
-                            replace: true,
-                        });
-                        setSelectedSemestre(String(firstSemestreId));
-                        return;
-                    } else if (currentNiveau.premierSemestreId) {
-                        console.log('Redirection vers premierSemestreId:', currentNiveau.premierSemestreId);
-                        navigate(`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${currentNiveau.premierSemestreId}/cours`, {
-                            replace: true,
-                        });
-                        setSelectedSemestre(String(currentNiveau.premierSemestreId));
-                        return;
-                    } else {
-                        throw new Error('Aucun semestre disponible pour ce niveau');
-                    }
+                    const firstSemestreId = currentNiveau.semestres[0].id;
+                    console.log('Redirection vers le premier semestre:', firstSemestreId);
+                    navigate(`/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${firstSemestreId}/cours`, {
+                        replace: true,
+                    });
+                    setSelectedSemestre(String(firstSemestreId));
+                    return;
                 }
 
                 // Récupérer les cours
                 const coursResponse = await getAdminCours(mentionId, niveauId, semestreId);
-                console.log('Réponse de getAdminCours:', coursResponse); // Débogage
+                console.log('Réponse de getAdminCours:', coursResponse);
                 setData(coursResponse);
                 setSelectedSemestre(String(semestreId));
                 setLoading(false);
@@ -92,14 +85,24 @@ export default function CoursAdmin() {
         );
     }
 
+    if (!niveauData?.semestres?.length) {
+        return (
+            <LayoutAdmin>
+                <div className="h-[90vh] w-full flex flex-col text-red-500 items-center space-y-5 justify-center">
+                    <MdErrorOutline size={60} />
+                    <p className="text-xl font-bold">Aucun semestre disponible</p>
+                    <p className="text-lg font-semibold">Veuillez vérifier la configuration des semestres pour ce niveau.</p>
+                </div>
+            </LayoutAdmin>
+        );
+    }
+
     // Gestion des parcours
     const parcours = niveauData?.parcours?.length > 0
-        ? niveauData.parcours.join(', ')
-        : data?.niveau?.parcours?.length > 0
-            ? data.niveau.parcours.join(', ')
-            : 'Non spécifié';
+        ? niveauData.parcours.map(p => p.name).join(', ')
+        : 'Non spécifié';
 
-    const semestres = data?.semestre ? [data.semestre] : [];
+    const semestres = niveauData?.semestres || [];
 
     const renderHeader = () => {
         return (
@@ -116,7 +119,7 @@ export default function CoursAdmin() {
                                 }`}
                             onClick={() => setSelectedSemestre(String(s.id))}
                         >
-                            {s.intitule}
+                            {s.name}
                         </Link>
                     ))}
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
 import LayoutAdmin from '../../components/LayoutAdmin';
 import { Divider } from 'primereact/divider';
@@ -11,42 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { FileUpload } from 'primereact/fileupload';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { getAgendas, createAgenda, updateAgenda, uploadAgendaFile, deleteAgenda } from '../../Services/adminAgendaService';
+import { getAdminMentions, getAdminNiveaux } from '../../Services/bibliothequeAdminService';
 
-const DEMO_IMAGES = {
-    maths: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    physique: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    conference: 'https://images.unsplash.com/photo-1579353977828-2a4eab540b9a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    chimie: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
-    informatique: 'https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80'
-};
-
-const DEMO_VIDEOS = {
-    cours: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
-    conference: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
-    examen: 'https://samplelib.com/lib/preview/mp4/sample-15s.mp4'
-};
-
-const mentionsOptions = [
-    { label: 'Communication', value: 'communication' },
-    { label: 'Informatique', value: 'informatique' },
-    { label: 'Économie', value: 'economie' }
-];
-
-const niveauxOptions = [
-    { label: 'L1', value: 'L1' },
-    { label: 'L2', value: 'L2' },
-    { label: 'L3', value: 'L3' },
-    { label: 'M1', value: 'M1' },
-    { label: 'M2', value: 'M2' }
-];
-
-const typeOptions = [
-    { label: 'Cours', value: 'cours' },
-    { label: 'Examen', value: 'examen' },
-    { label: 'Évènement', value: 'evenement' }
-];
+const BASE_URL = 'http://localhost:8000';
 
 const periodeOptions = [
     { label: 'Tout', value: 'Tout' },
@@ -56,189 +24,114 @@ const periodeOptions = [
     { label: 'Semestre', value: 'Semestre' },
 ];
 
-export default function AgendaAdmin() {
-    const generateTestDate = (daysFromNow) => {
-        const date = new Date();
-        date.setDate(date.getDate() + daysFromNow);
-        return date.toISOString().split('T')[0];
-    };
+const typeOptions = [
+    { label: 'Cours', value: 'COURS' },
+    { label: 'Évènement', value: 'EVENEMENT' },
+];
 
+export default function AgendaAdmin() {
     const [periodeFilter, setPeriodeFilter] = useState('Tout');
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentItemId, setCurrentItemId] = useState(null);
+    const [agendas, setAgendas] = useState([]);
+    const [mentions, setMentions] = useState([]);
+    const [niveaux, setNiveaux] = useState([]);
+    const [parcoursOptions, setParcoursOptions] = useState([]);
     const [agendaForm, setAgendaForm] = useState({
         titre: '',
         date: null,
+        dateExpiration: null,
         description: '',
         lien: '',
-        type: 'cours',
-        media: null,
+        type: 'COURS',
+        imageFile: null,
+        videoFile: null,
         mention: null,
-        niveau: null
+        niveau: null,
+        parcours: null,
     });
-
-    const [coursData, setCoursData] = useState([
-        {
-            id: 1,
-            titre: 'Cours de Mathématiques',
-            date: generateTestDate(1),
-            description: 'Introduction aux équations différentielles',
-            professeur: 'Prof. Dupont',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.maths,
-                name: 'maths.jpg'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Cours de Physique',
-            date: generateTestDate(3),
-            description: 'Mécanique quantique avancée',
-            professeur: 'Prof. Martin',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.cours,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'physique.mp4'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Cours de Chimie',
-            date: generateTestDate(10),
-            description: 'Chimie organique - Les alcènes',
-            professeur: 'Prof. Legrand',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.chimie,
-                name: 'chimie.jpg'
-            }
-        },
-        {
-            id: 4,
-            titre: 'Cours d\'Informatique',
-            date: generateTestDate(30),
-            description: 'Algorithmes avancés',
-            professeur: 'Prof. Dubois',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.informatique,
-                name: 'informatique.jpg'
-            }
-        },
-        {
-            id: 5,
-            titre: 'Cours de Biologie',
-            date: generateTestDate(90),
-            description: 'Génétique moléculaire',
-            professeur: 'Prof. Bernard',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.cours,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'biologie.mp4'
-            }
-        }
-    ]);
-
-    const [examensData, setExamensData] = useState([
-        {
-            id: 1,
-            titre: 'Examen de Mathématiques',
-            date: generateTestDate(5),
-            description: 'Examen final - Partie 1',
-            professeur: 'Prof. Dupont',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.maths,
-                name: 'examen_maths.jpg'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Examen de Physique',
-            date: generateTestDate(8),
-            description: 'Examen pratique',
-            professeur: 'Prof. Martin',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.examen,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'examen_physique.mp4'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Examen de Chimie',
-            date: generateTestDate(60),
-            description: 'Examen théorique',
-            professeur: 'Prof. Legrand',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.chimie,
-                name: 'examen_chimie.jpg'
-            }
-        }
-    ]);
-
-    const [evenementsData, setEvenementsData] = useState([
-        {
-            id: 1,
-            titre: 'Conférence sur l\'IA',
-            date: generateTestDate(2),
-            description: 'Conférence avec un expert en IA',
-            organisateur: 'Dr. Smith',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.conference,
-                thumbnail: DEMO_IMAGES.conference,
-                name: 'conference_ia.mp4'
-            }
-        },
-        {
-            id: 2,
-            titre: 'Journée portes ouvertes',
-            date: generateTestDate(15),
-            description: 'Découverte des laboratoires de recherche',
-            organisateur: 'Dr. Johnson',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.conference,
-                name: 'portes_ouvertes.jpg'
-            }
-        },
-        {
-            id: 3,
-            titre: 'Séminaire de recherche',
-            date: generateTestDate(45),
-            description: 'Avancées récentes en physique quantique',
-            organisateur: 'Prof. Einstein',
-            media: {
-                type: 'video',
-                url: DEMO_VIDEOS.conference,
-                thumbnail: DEMO_IMAGES.physique,
-                name: 'seminaire_physique.mp4'
-            }
-        },
-        {
-            id: 4,
-            titre: 'Remise des diplômes',
-            date: generateTestDate(120),
-            description: 'Cérémonie annuelle de remise des diplômes',
-            organisateur: 'Directeur Université',
-            media: {
-                type: 'image',
-                url: DEMO_IMAGES.conference,
-                name: 'remise_diplomes.jpg'
-            }
-        }
-    ]);
-
 
     const toast = useRef(null);
     const fileUploadRef = useRef(null);
+
+    useEffect(() => {
+        const fetchAgendas = async () => {
+            try {
+                const data = await getAgendas();
+                setAgendas(data || []); // Correctly set processed items
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message,
+                    life: 3000,
+                });
+            }
+        };
+        fetchAgendas();
+    }, []);
+
+    useEffect(() => {
+        const fetchMentions = async () => {
+            try {
+                const data = await getAdminMentions();
+                setMentions(data);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message,
+                    life: 3000,
+                });
+            }
+        };
+        fetchMentions();
+    }, []);
+
+    useEffect(() => {
+        if (agendaForm.mention && !isEditing) {
+            const fetchNiveaux = async () => {
+                try {
+                    const data = await getAdminNiveaux(agendaForm.mention);
+                    setNiveaux(data);
+                    setParcoursOptions([]);
+                    setAgendaForm(prev => ({ ...prev, niveau: null, parcours: null }));
+                } catch (error) {
+                    toast.current.show({
+                        severity: 'error',
+                        summary: 'Erreur',
+                        detail: error.message,
+                        life: 3000,
+                    });
+                }
+            };
+            fetchNiveaux();
+        } else if (!agendaForm.mention && !isEditing) {
+            setNiveaux([]);
+            setParcoursOptions([]);
+            setAgendaForm(prev => ({ ...prev, niveau: null, parcours: null }));
+        }
+    }, [agendaForm.mention, isEditing]);
+
+    useEffect(() => {
+        if (agendaForm.niveau) {
+            const selectedNiveau = niveaux.find(niveau => niveau.value === agendaForm.niveau);
+            if (selectedNiveau && selectedNiveau.parcours) {
+                setParcoursOptions(selectedNiveau.parcours);
+                // Only reset parcours if the current parcours is invalid or not set
+                if (agendaForm.parcours && !selectedNiveau.parcours.some(p => p.value === agendaForm.parcours)) {
+                    setAgendaForm(prev => ({ ...prev, parcours: null }));
+                }
+            } else {
+                setParcoursOptions([]);
+                setAgendaForm(prev => ({ ...prev, parcours: null }));
+            }
+        } else {
+            setParcoursOptions([]);
+            setAgendaForm(prev => ({ ...prev, parcours: null }));
+        }
+    }, [agendaForm.niveau, niveaux, agendaForm.parcours]);
 
     const filterData = (data) => {
         if (periodeFilter === 'Tout') return data;
@@ -262,35 +155,45 @@ export default function AgendaAdmin() {
     };
 
     const handleFormChange = (e) => {
-        if (e && e.target) {
-            const { name, value } = e.target;
-            setAgendaForm(prev => ({
-                ...prev,
-                [name]: value,
-                ...(name === 'mention' && { niveau: null })
-            }));
-        }
+        const { name, value } = e.target;
+        console.log('handleFormChange:', { name, value }); // Log pour déboguer
+        setAgendaForm(prev => ({
+            ...prev,
+            [name]: value,
+        }));
     };
 
-
     const handleDateChange = (e) => {
-        setAgendaForm(prev => ({ ...prev, date: e.value }));
+        setAgendaForm(prev => ({
+            ...prev,
+            date: e.value,
+        }));
+    };
+
+    const handleDateExpirationChange = (e) => {
+        setAgendaForm(prev => ({
+            ...prev,
+            dateExpiration: e.value,
+        }));
     };
 
     const handleFileUpload = (e) => {
         const file = e.files[0];
         if (file) {
             const fileUrl = URL.createObjectURL(file);
-            setAgendaForm(prev => ({
-                ...prev,
-                media: {
-                    file,
-                    url: fileUrl,
-                    name: file.name,
-                    type: file.type.startsWith('image') ? 'image' : 'video',
-                    ...(file.type.startsWith('video') && { thumbnail: DEMO_IMAGES.conference })
-                }
-            }));
+            if (file.type.startsWith('image')) {
+                setAgendaForm(prev => ({
+                    ...prev,
+                    imageFile: { file, url: fileUrl, name: file.name },
+                    videoFile: null,
+                }));
+            } else if (file.type.startsWith('video')) {
+                setAgendaForm(prev => ({
+                    ...prev,
+                    videoFile: { file, url: fileUrl, name: file.name },
+                    imageFile: null,
+                }));
+            }
             if (fileUploadRef.current) fileUploadRef.current.clear();
         }
     };
@@ -299,88 +202,192 @@ export default function AgendaAdmin() {
         setAgendaForm({
             titre: '',
             date: null,
+            dateExpiration: null,
             description: '',
             lien: '',
-            type: 'cours',
-            media: null,
+            type: 'COURS',
+            imageFile: null,
+            videoFile: null,
             mention: null,
-            niveau: null
+            niveau: null,
+            parcours: null,
         });
         setIsEditing(false);
         setCurrentItemId(null);
         if (fileUploadRef.current) fileUploadRef.current.clear();
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const newItem = {
-            id: isEditing ? currentItemId : Math.max(...[...coursData, ...examensData, ...evenementsData].map(i => i.id), 0) + 1,
-            titre: agendaForm.titre,
-            date: agendaForm.date.toISOString().split('T')[0],
-            description: agendaForm.description,
-            ...(agendaForm.lien && { lien: agendaForm.lien }),
-            media: agendaForm.media?.file ? {
-                type: agendaForm.media.type,
-                name: agendaForm.media.name,
-                url: agendaForm.media.url,
-                ...(agendaForm.media.type === 'video' && { thumbnail: agendaForm.media.thumbnail })
-            } : isEditing ? agendaForm.media : null,
-            ...(agendaForm.type === 'cours' && {
-                professeur: 'Professeur',
+        try {
+            console.log('Submitting agendaForm:', agendaForm);
+            const agendaData = {
+                titre: agendaForm.titre,
+                description: agendaForm.description,
+                date: agendaForm.date,
+                dateExpiration: agendaForm.dateExpiration || agendaForm.date,
+                type: agendaForm.type,
+                url: agendaForm.lien || null,
                 mention: agendaForm.mention,
-                niveau: agendaForm.niveau
-            }),
-            ...(agendaForm.type === 'examen' && {
-                professeur: 'Professeur',
-                mention: agendaForm.mention,
-                niveau: agendaForm.niveau
-            }),
-            ...(agendaForm.type === 'evenement' && { organisateur: 'Organisateur' })
-        };
+                niveau: agendaForm.niveau,
+                parcours: agendaForm.parcours,
+            };
 
-        if (isEditing) {
-            switch (agendaForm.type) {
-                case 'cours': setCoursData(coursData.map(item => item.id === currentItemId ? newItem : item)); break;
-                case 'examen': setExamensData(examensData.map(item => item.id === currentItemId ? newItem : item)); break;
-                case 'evenement': setEvenementsData(evenementsData.map(item => item.id === currentItemId ? newItem : item)); break;
+            console.log('Agenda data:', agendaData);
+            if (isEditing) {
+                console.log('Updating agenda with ID:', currentItemId);
+                await updateAgenda(currentItemId, agendaData);
+                if (agendaForm.imageFile || agendaForm.videoFile) {
+                    await uploadAgendaFile(
+                        currentItemId,
+                        agendaForm.imageFile?.file,
+                        agendaForm.videoFile?.file,
+                        (percent) => console.log(`Upload: ${percent}%`)
+                    );
+                }
+                toast.current.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Agenda modifié avec succès',
+                    life: 3000,
+                });
+            } else {
+                console.log('Creating new agenda');
+                await createAgenda(
+                    agendaData,
+                    agendaForm.imageFile?.file,
+                    agendaForm.videoFile?.file,
+                    (percent) => console.log(`Upload: ${percent}%`)
+                );
+                toast.current.show({
+                    severity: 'success',
+                    summary: 'Succès',
+                    detail: 'Agenda ajouté avec succès',
+                    life: 3000,
+                });
             }
-            toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément modifié avec succès', life: 3000 });
-        } else {
-            switch (agendaForm.type) {
-                case 'cours': setCoursData([...coursData, newItem]); break;
-                case 'examen': setExamensData([...examensData, newItem]); break;
-                case 'evenement': setEvenementsData([...evenementsData, newItem]); break;
-            }
-            toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément ajouté à l\'agenda', life: 3000 });
+
+            // Refetch agendas
+            const updatedAgendas = await getAgendas();
+            setAgendas(updatedAgendas || []);
+
+            setShowCreateDialog(false);
+            resetForm();
+        } catch (error) {
+            console.error('Error in handleSubmit:', error);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message || 'Une erreur est survenue',
+                life: 3000,
+            });
         }
-
-        setShowCreateDialog(false);
-        resetForm();
     };
 
-    const handleEdit = (type, id) => {
-        let itemToEdit;
-        switch (type) {
-            case 'cours': itemToEdit = coursData.find(item => item.id === id); break;
-            case 'examen': itemToEdit = examensData.find(item => item.id === id); break;
-            case 'evenement': itemToEdit = evenementsData.find(item => item.id === id); break;
+    const handleEdit = async (type, id) => {
+        console.log('handleEdit called with:', { type, id });
+        if (!id || id === 'undefined' || isNaN(parseInt(id))) {
+            console.error('Invalid ID:', id);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'ID invalide',
+                life: 3000,
+            });
+            return;
+        }
+        const itemToEdit = agendas.find(item => item.id === parseInt(id));
+        if (!itemToEdit) {
+            console.error('Item not found for ID:', id);
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Agenda non trouvé',
+                life: 3000,
+            });
+            return;
         }
 
-        if (itemToEdit) {
-            setAgendaForm({
-                titre: itemToEdit.titre,
-                date: new Date(itemToEdit.date),
-                description: itemToEdit.description,
-                lien: itemToEdit.lien || '',
-                type: type,
-                media: itemToEdit.media || null,
-                mention: itemToEdit.mention || null,
-                niveau: itemToEdit.niveau || null
-            });
-            setIsEditing(true);
-            setCurrentItemId(id);
-            setShowCreateDialog(true);
+        console.log('Item found:', itemToEdit);
+        console.log('Parcours data:', { parcoursId: itemToEdit.parcoursId, parcours: itemToEdit.parcours }); // Log pour déboguer
+        let niveauxData = [];
+        let parcoursData = [];
+        let parcoursName = null;
+
+        if (itemToEdit.mentionId) {
+            try {
+                console.log('Fetching niveaux for mentionId:', itemToEdit.mentionId);
+                niveauxData = await getAdminNiveaux(itemToEdit.mentionId);
+                console.log('Niveaux data:', niveauxData);
+                setNiveaux(niveauxData);
+                if (itemToEdit.niveauId) {
+                    const selectedNiveau = niveauxData.find(niveau => niveau.value === itemToEdit.niveauId);
+                    console.log('Selected niveau:', selectedNiveau);
+                    if (selectedNiveau && selectedNiveau.parcours) {
+                        parcoursData = selectedNiveau.parcours;
+                        setParcoursOptions(parcoursData);
+                        // Map parcoursId or parcours to parcours.name
+                        const parcoursMatch = selectedNiveau.parcours.find(p =>
+                            p.id === itemToEdit.parcoursId ||
+                            p.value === itemToEdit.parcours ||
+                            p.label === itemToEdit.parcours ||
+                            p.value === itemToEdit.parcoursId
+                        );
+                        console.log('Parcours match:', parcoursMatch);
+                        parcoursName = parcoursMatch ? parcoursMatch.value : null;
+                    } else {
+                        console.log('No parcours found for niveauId:', itemToEdit.niveauId);
+                        setParcoursOptions([]);
+                    }
+                } else {
+                    console.log('No niveauId provided');
+                    setParcoursOptions([]);
+                }
+            } catch (error) {
+                console.error('Error fetching niveaux:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.message || 'Erreur lors de la récupération des niveaux',
+                    life: 3000,
+                });
+                return;
+            }
+        } else {
+            console.log('No mentionId provided');
+            setNiveaux([]);
+            setParcoursOptions([]);
         }
+
+        setAgendaForm({
+            titre: itemToEdit.titre,
+            date: new Date(itemToEdit.date),
+            dateExpiration: new Date(itemToEdit.dateExpiration),
+            description: itemToEdit.description,
+            lien: itemToEdit.url || '',
+            type: itemToEdit.type,
+            imageFile: null,
+            videoFile: null,
+            mention: itemToEdit.mentionId || null,
+            niveau: itemToEdit.niveauId || null,
+            parcours: parcoursName,
+        });
+
+        console.log('Setting agendaForm:', {
+            titre: itemToEdit.titre,
+            date: new Date(itemToEdit.date),
+            dateExpiration: new Date(itemToEdit.dateExpiration),
+            description: itemToEdit.description,
+            lien: itemToEdit.url || '',
+            type: itemToEdit.type,
+            mention: itemToEdit.mentionId || null,
+            niveau: itemToEdit.niveauId || null,
+            parcours: parcoursName,
+        });
+
+        setIsEditing(true);
+        setCurrentItemId(id);
+        setShowCreateDialog(true);
     };
 
     const confirmDelete = (type, id, event) => {
@@ -393,17 +400,37 @@ export default function AgendaAdmin() {
             rejectLabel: 'Non',
             accept: () => deleteItem(type, id),
             acceptClassName: 'p-button-danger',
-            rejectClassName: 'p-button-secondary'
+            rejectClassName: 'p-button-secondary',
         });
     };
 
-    const deleteItem = (type, id) => {
-        switch (type) {
-            case 'cours': setCoursData(coursData.filter(item => item.id !== id)); break;
-            case 'examen': setExamensData(examensData.filter(item => item.id !== id)); break;
-            case 'evenement': setEvenementsData(evenementsData.filter(item => item.id !== id)); break;
+    const deleteItem = async (type, id) => {
+        if (!id || id === 'undefined' || isNaN(parseInt(id))) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'ID invalide',
+                life: 3000,
+            });
+            return;
         }
-        toast.current.show({ severity: 'success', summary: 'Succès', detail: 'Élément supprimé de l\'agenda', life: 3000 });
+        try {
+            await deleteAgenda(id);
+            setAgendas(prev => prev.filter(item => item.id !== parseInt(id)));
+            toast.current.show({
+                severity: 'success',
+                summary: 'Succès',
+                detail: 'Agenda supprimé avec succès',
+                life: 3000,
+            });
+        } catch (error) {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: error.message,
+                life: 3000,
+            });
+        }
     };
 
     const renderItem = (item, type) => (
@@ -414,71 +441,60 @@ export default function AgendaAdmin() {
                     {new Date(item.date).toLocaleString('default', { month: 'short' })}
                 </h2>
             </div>
-
             <Divider layout="vertical" className="hidden md:block h-auto" />
-
             <div className="flex flex-col p-4 flex-1 min-h-[180px]">
                 <div className="flex justify-between items-start mb-2">
                     <h1 className="text-xl font-semibold text-gray-800 truncate flex-1">{item.titre}</h1>
                     <div className="flex gap-2 ml-3">
-                        <button className="text-blue-500 hover:text-blue-700" onClick={() => handleEdit(type, item.id)}>
-                            <i className="pi pi-pencil"></i>
-                        </button>
-                        <button className="text-red-500 hover:text-red-700" onClick={(e) => confirmDelete(type, item.id, e)}>
-                            <i className="pi pi-trash"></i>
-                        </button>
+                        {item.type !== 'EXAMEN' && (
+                            <button className="text-blue-500 hover:text-blue-700" onClick={() => handleEdit(item.type.toLowerCase(), item.id)}>
+                                <i className="pi pi-pencil"></i>
+                            </button>
+                        )}
+                        {item.type !== 'EXAMEN' && (
+                            <button className="text-red-500 hover:text-red-700" onClick={(e) => confirmDelete(item.type.toLowerCase(), item.id, e)}>
+                                <i className="pi pi-trash"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
-
-                {(item.mention || item.niveau) && (
+                {(item.mentionName || item.niveauNom || item.parcours) && (
                     <div className="mb-2">
                         <span className="text-sm font-medium text-gray-600">
-                            {item.mention} {item.niveau && `- ${item.niveau}`}
+                            {item.mentionName} {item.niveauNom && `- ${item.niveauNom}`} {item.parcours && `- ${item.parcours}`}
                         </span>
                     </div>
                 )}
-
                 <div className="mb-3">
                     <p className="text-gray-600 whitespace-pre-wrap break-words">{item.description}</p>
                 </div>
-
-                {item.lien && (
+                {item.url && (
                     <div className="mb-3">
-                        <a href={item.lien} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-blue-600 hover:underline break-all">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-blue-600 hover:underline break-all">
                             <i className="pi pi-link mr-2"></i>Lien vers la ressource
                         </a>
                     </div>
                 )}
-
-                {item.media && (
+                {(item.image || item.video) && (
                     <div className="mt-auto">
-                        {item.media.type === 'image' ? (
+                        {item.image && (
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <img src={item.media.url} alt={item.media.name || 'Image'} className="w-full h-auto" />
-                                {item.media.name && <div className="p-2 bg-gray-50 text-sm text-gray-600 truncate">{item.media.name}</div>}
+                                <img src={`${BASE_URL}${item.image}`} alt="Image agenda" className="w-full h-auto" onError={(e) => e.target.src = '/fallback-image.jpg'} />
                             </div>
-                        ) : item.media.type === 'video' ? (
+                        )}
+                        {item.video && (
                             <div className="mt-3">
                                 <div className="relative pt-[56.25%] bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
-                                    <video controls className="absolute inset-0 w-full h-full" poster={item.media.thumbnail}>
-                                        <source src={item.media.url} type="video/mp4" />
+                                    <video controls className="absolute inset-0 w-full h-full">
+                                        <source src={`${BASE_URL}${item.video}`} type="video/mp4" />
                                     </video>
                                 </div>
-                                {item.media.name && <div className="mt-1 text-sm text-gray-600 truncate">{item.media.name}</div>}
-                            </div>
-                        ) : (
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center">
-                                <i className="pi pi-file text-gray-500 text-xl mr-3"></i>
-                                <span className="text-gray-700">{item.media.name || 'Fichier joint'}</span>
                             </div>
                         )}
                     </div>
                 )}
-
                 <div className="mt-3 pt-2 border-t border-gray-100">
-                    <p className="text-sm font-medium text-gray-700">
-                        {item.professeur || item.organisateur || 'Non spécifié'}
-                    </p>
+                    <p className="text-sm font-medium text-gray-700">{item.nomAuteur || 'Non spécifié'}</p>
                 </div>
             </div>
         </div>
@@ -512,32 +528,32 @@ export default function AgendaAdmin() {
             <Toast ref={toast} position="top-right" />
             <ConfirmDialog />
             <div className="card custom-scrollbar h-[90vh] overflow-y-auto">
-                <TabView className='custom-tabview'>
-                    <TabPanel header="Cours" className='flex flex-col items-center'>
+                <TabView className="custom-tabview">
+                    <TabPanel header="Cours" className="flex flex-col items-center">
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(coursData).length > 0 ? (
-                                filterData(coursData).map(item => renderItem(item, 'cours'))
+                            {filterData(agendas.filter(item => item.type === 'COURS')).length > 0 ? (
+                                filterData(agendas.filter(item => item.type === 'COURS')).map(item => renderItem(item, 'cours'))
                             ) : (
                                 <p className="text-gray-500">Aucun cours prévu pour cette période</p>
                             )}
                         </div>
                     </TabPanel>
-                    <TabPanel header="Examens" className='flex flex-col items-center'>
+                    <TabPanel header="Examens" className="flex flex-col items-center">
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(examensData).length > 0 ? (
-                                filterData(examensData).map(item => renderItem(item, 'examen'))
+                            {filterData(agendas.filter(item => item.type === 'EXAMEN')).length > 0 ? (
+                                filterData(agendas.filter(item => item.type === 'EXAMEN')).map(item => renderItem(item, 'examen'))
                             ) : (
                                 <p className="text-gray-500">Aucun examen prévu pour cette période</p>
                             )}
                         </div>
                     </TabPanel>
-                    <TabPanel header="Evènements" className='flex flex-col items-center'>
+                    <TabPanel header="Evènements" className="flex flex-col items-center">
                         {renderFilterSection()}
                         <div className="w-full flex flex-col items-center">
-                            {filterData(evenementsData).length > 0 ? (
-                                filterData(evenementsData).map(item => renderItem(item, 'evenement'))
+                            {filterData(agendas.filter(item => item.type === 'EVENEMENT')).length > 0 ? (
+                                filterData(agendas.filter(item => item.type === 'EVENEMENT')).map(item => renderItem(item, 'evenement'))
                             ) : (
                                 <p className="text-gray-500">Aucun évènement prévu pour cette période</p>
                             )}
@@ -582,7 +598,7 @@ export default function AgendaAdmin() {
 
                                 <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto h-[85vh] custom-scrollbar">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Type*</label>
                                             <Dropdown
                                                 name="type"
@@ -595,39 +611,55 @@ export default function AgendaAdmin() {
                                             />
                                         </div>
 
-                                        {(agendaForm.type === 'cours' || agendaForm.type === 'examen') && (
-                                            <div className='w-60'>
+                                        {agendaForm.type === 'COURS' && (
+                                            <div className="w-60">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mention*</label>
                                                 <Dropdown
                                                     name="mention"
                                                     value={agendaForm.mention}
                                                     onChange={handleFormChange}
-                                                    options={mentionsOptions}
+                                                    options={mentions}
                                                     optionLabel="label"
                                                     className="w-full"
                                                     placeholder="Sélectionnez une mention"
-                                                    required={agendaForm.type === 'cours' || agendaForm.type === 'examen'}
+                                                    required={agendaForm.type === 'COURS'}
                                                 />
                                             </div>
                                         )}
 
-                                        {(agendaForm.type === 'cours' || agendaForm.type === 'examen') && agendaForm.mention && (
-                                            <div className='w-60'>
+                                        {agendaForm.type === 'COURS' && agendaForm.mention && (
+                                            <div className="w-60">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Niveau*</label>
                                                 <Dropdown
                                                     name="niveau"
                                                     value={agendaForm.niveau}
                                                     onChange={handleFormChange}
-                                                    options={niveauxOptions}
+                                                    options={niveaux}
                                                     optionLabel="label"
                                                     className="w-full"
                                                     placeholder="Sélectionnez un niveau"
-                                                    required={agendaForm.type === 'cours' || agendaForm.type === 'examen'}
+                                                    required={agendaForm.type === 'COURS'}
                                                 />
                                             </div>
                                         )}
 
-                                        <div className='w-80'>
+                                        {agendaForm.type === 'COURS' && agendaForm.niveau && parcoursOptions.length > 0 && (
+                                            <div className="w-60">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Parcours*</label>
+                                                <Dropdown
+                                                    name="parcours"
+                                                    value={agendaForm.parcours}
+                                                    onChange={handleFormChange}
+                                                    options={parcoursOptions}
+                                                    optionLabel="label"
+                                                    className="w-full"
+                                                    placeholder="Sélectionnez un parcours"
+                                                    required={agendaForm.type === 'COURS'}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="w-80">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Titre*</label>
                                             <InputText
                                                 name="titre"
@@ -639,7 +671,7 @@ export default function AgendaAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Date*</label>
                                             <Calendar
                                                 value={agendaForm.date}
@@ -651,28 +683,32 @@ export default function AgendaAdmin() {
                                             />
                                         </div>
 
-                                        <div className="w-full md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
-                                            <ReactQuill
-                                                value={agendaForm.description}
-                                                onChange={handleFormChange}
-                                                modules={{
-                                                    toolbar: [
-                                                        ['bold', 'italic', 'underline', 'strike'],
-                                                        ['blockquote'],
-                                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                                        [{ 'indent': '-1' }, { 'indent': '+1' }],
-                                                        [{ 'header': [1, 2, 3, false] }],
-                                                        [{ 'color': [] }, { 'background': [] }],
-                                                        [{ 'align': [] }],
-                                                        ['clean']
-                                                    ]
-                                                }}
-                                                style={{ height: '250px', marginBottom: '50px' }}
+                                        <div className="w-60">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Date d'expiration*</label>
+                                            <Calendar
+                                                value={agendaForm.dateExpiration}
+                                                onChange={handleDateExpirationChange}
+                                                className="w-full"
+                                                dateFormat="dd/mm/yy"
+                                                showIcon
+                                                required
                                             />
                                         </div>
 
-                                        <div className='w-80'>
+                                        <div className="w-full md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
+                                            <InputTextarea
+                                                name="description"
+                                                value={agendaForm.description}
+                                                onChange={handleFormChange}
+                                                className="w-full"
+                                                rows={6}
+                                                placeholder="Entrez la description"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="w-80">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Lien (URL)</label>
                                             <InputText
                                                 name="lien"
@@ -687,21 +723,21 @@ export default function AgendaAdmin() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Fichier (Image/Video)</label>
                                             <FileUpload
                                                 ref={fileUploadRef}
-                                                name="media"
+                                                name="file"
                                                 mode="basic"
-                                                accept="image/*,video/*"
-                                                maxFileSize={10000000}
+                                                accept="image/*,video/mp4,video/webm,video/ogg"
+                                                maxFileSize={50000000}
                                                 chooseLabel="Choisir un fichier"
                                                 onSelect={handleFileUpload}
                                                 auto
                                                 className="w-full"
                                             />
-                                            {agendaForm.media && (
+                                            {(agendaForm.imageFile || agendaForm.videoFile) && (
                                                 <div className="mt-2 text-sm text-gray-500">
-                                                    Fichier sélectionné: {agendaForm.media.name}
-                                                    {agendaForm.media.url && agendaForm.media.type === 'image' && (
+                                                    Fichier sélectionné : {agendaForm.imageFile?.name || agendaForm.videoFile?.name}
+                                                    {agendaForm.imageFile?.url && (
                                                         <div className="mt-2">
-                                                            <img src={agendaForm.media.url} alt="Preview" className="max-h-40 border rounded" />
+                                                            <img src={agendaForm.imageFile.url} alt="Preview" className="max-h-40 border rounded" />
                                                         </div>
                                                     )}
                                                 </div>

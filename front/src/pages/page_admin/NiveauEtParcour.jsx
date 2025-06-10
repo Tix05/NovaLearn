@@ -58,16 +58,19 @@ const NiveauEtParcour = () => {
                         <div key={niveau.id} className='bg-white shadow-md rounded-lg p-5 w-[400px] border-[1px]'>
                             <h1 className='text-xl font-bold mb-2'>Niveau {niveau.nom}</h1>
                             <Divider />
-                            <p className='text-sm font-semibold text-gray-700 mb-6'>{niveau.parcours.join(', ')}</p>
+                            <p className='text-sm font-semibold text-gray-700 mb-6'>{niveau.parcours.map(p => p.name).join(', ')}</p>
                             <Divider />
                             <div className='flex justify-center'>
-                                <Link
-                                    to={`/admin/mentions/${mentionId}/niveaux/${niveau.id}/semestres/${niveau.premierSemestreId}/cours`}
-                                    className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'
-                                >
-                                    <FaRegEye />
-                                    <p>Voir les cours</p>
-                                </Link>
+                                {niveau.semestres.length > 0 ? (
+                                    <Link
+                                        to={`/admin/mentions/${mentionId}/niveaux/${niveau.id}/semestres/${niveau.semestres[0].id}/cours`}
+                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'>
+                                        <FaRegEye />
+                                        <p>Voir les cours</p>
+                                    </Link>
+                                ) : (
+                                    <p className="text-gray-500">Aucun semestre disponible</p>
+                                )}
                             </div>
                         </div>
                     ))}

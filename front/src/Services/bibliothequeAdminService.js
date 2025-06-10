@@ -1,6 +1,5 @@
-// bibliothequeAdminService.js
 import axios from './apiConfig';
-import { getAdminToken } from './adminAuthService'; // Assurez-vous d'avoir un service pour récupérer le token admin
+import { getAdminToken } from './adminAuthService';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -143,10 +142,11 @@ export const getAdminNiveaux = async (mentionId) => {
             label: niveau.nom,
             value: niveau.id,
             parcours: niveau.parcours.map(parcours => ({
-                label: parcours,
-                value: parcours,
+                label: parcours.name,
+                value: parcours.name,
+                id: parcours.id,
             })),
-            premierSemestreId: niveau.premierSemestreId,
+            semestres: niveau.semestres,
         }));
 
         return niveaux;
@@ -157,6 +157,11 @@ export const getAdminNiveaux = async (mentionId) => {
 };
 
 export const getAdminCours = async (mentionId, niveauId, semestreId) => {
+    if (!mentionId || !niveauId || !semestreId) {
+        console.warn('Paramètres manquants pour getAdminCours:', { mentionId, niveauId, semestreId });
+        return [];
+    }
+
     try {
         const response = await axios.get(`${API_URL}/admin/mentions/${mentionId}/niveaux/${niveauId}/semestres/${semestreId}/cours`, {
             headers: {
