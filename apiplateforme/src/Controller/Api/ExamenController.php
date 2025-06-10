@@ -1239,60 +1239,117 @@ class ExamenController extends AbstractController
     }
 
     /**
-     * @Route("/{id}", name="api_examen_delete", methods={"DELETE"})
-     */
-    public function deleteExamen(int $id): JsonResponse
-    {
-        $this->logger->info('Requête reçue pour /api/examen/{id}', ['id' => $id]);
+ * @Route("/{id}", name="api_examen_delete", methods={"DELETE"})
+ */
+public function deleteExamen(int $id, AgendaRepository $agendaRepository): JsonResponse
+{
+    $this->logger->info('Requête reçue pour /api/examen/{id}', ['id' => $id]);
 
-        $user = $this->security->getUser();
-        if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-            $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
-            return $this->json(['message' => 'Accès non autorisé'], 403);
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
+        $this->logger->error('Accès non autorisé', ['user' => $user ? $user->getEmail() : 'anonyme']);
+        return $this->json(['message' => 'Accès non autorisé'], 403);
+    }
+
+    $examen = $this->examenRepository->find($id);
+    if (!$examen) {
+        $this->logger->warning('Examen non trouvé', ['examen_id' => $id]);
+        return $this->json(['message' => 'Examen non trouvé'], 404);
+    }
+
+    try {
+        $this->entityManager->beginTransaction();
+
+        // Supprimer les réponses des étudiants associées à l'examen
+        $reponses = $this->entityManager->getRepository(ReponseEtudiant::class)->findBy(['examen' => $examen]);
+        foreach ($reponses as $reponse) {
+            $this->entityManager->remove($reponse);
+            $this->logger->debug('Réponse étudiant supprimée', ['reponse_id' => $reponse->getId()]);
         }
 
-        $examen = $this->examenRepository->find($id);
-        if (!$examen) {
-            $this->logger->warning('Examen non trouvé', ['examen_id' => $id]);
-            return $this->json(['message' => 'Examen non trouvé'], 404);
+        // Supprimer les statuts des étudiants associés à l'examen
+        $statuts = $this->entityManager->getRepository(EtudiantExamenStatut::class)->findBy(['examen' => $examen]);
+        foreach ($statuts as $statut) {
+            $this->entityManager->remove($statut);
+            $this->logger->debug('Statut étudiant supprimé', ['statut_id' => $statut->getId()]);
         }
 
-        try {
-            // Supprimer les fichiers associés
-            $uploadsDir = $this->getParameter('uploads_directory');
-            $examensDir = $uploadsDir . '/examens';
-            $tempDir = $uploadsDir . '/temp';
-
-            if ($examen->getFichier()) {
-                $filePath = $examensDir . '/' . $examen->getFichier();
+        // Supprimer les corrections associées
+        $corrections = $this->entityManager->getRepository(CorrectionExamen::class)->findBy(['examen' => $examen]);
+        foreach ($corrections as $correction) {
+            if ($correction->getFichierRapport()) {
+                $filePath = $this->getParameter('uploads_directory') . '/corrections/' . $correction->getFichierRapport();
                 if (file_exists($filePath)) {
                     if (!unlink($filePath)) {
-                        $this->logger->warning('Échec de la suppression du fichier final', ['file' => $filePath]);
+                        $this->logger->warning('Échec de la suppression du fichier de correction', ['file' => $filePath]);
                     } else {
-                        $this->logger->info('Fichier final supprimé', ['file' => $filePath]);
+                        $this->logger->info('Fichier de correction supprimé', ['file' => $filePath]);
                     }
                 }
             }
+            $this->entityManager->remove($correction);
+            $this->logger->debug('Correction supprimée', ['correction_id' => $correction->getId()]);
+        }
 
-            $tempFileName = 'temp_' . $examen->getFichier();
-            $tempFilePath = $tempDir . '/' . $tempFileName;
-            if (file_exists($tempFilePath)) {
-                if (!unlink($tempFilePath)) {
-                    $this->logger->warning('Échec de la suppression du fichier temporaire', ['file' => $tempFilePath]);
+        // Supprimer les questions et leurs options associées
+        foreach ($examen->getQuestions() as $question) {
+            foreach ($question->getOptions() as $option) {
+                $this->entityManager->remove($option);
+                $this->logger->debug('Option question supprimée', ['option_id' => $option->getId()]);
+            }
+            $this->entityManager->remove($question);
+            $this->logger->debug('Question supprimée', ['question_id' => $question->getId()]);
+        }
+
+        // Supprimer l'Agenda associé s'il existe
+        $agenda = $examen->getAgenda();
+        if ($agenda) {
+            $this->entityManager->remove($agenda);
+            $this->logger->info('Agenda associé supprimé', [
+                'examen_id' => $id,
+                'agenda_id' => $agenda->getId()
+            ]);
+        }
+
+        // Supprimer les fichiers associés
+        $uploadsDir = $this->getParameter('uploads_directory');
+        $examensDir = $uploadsDir . '/examens';
+        $tempDir = $uploadsDir . '/temp';
+
+        if ($examen->getFichier()) {
+            $filePath = $examensDir . '/' . $examen->getFichier();
+            if (file_exists($filePath)) {
+                if (!unlink($filePath)) {
+                    $this->logger->warning('Échec de la suppression du fichier final', ['file' => $filePath]);
                 } else {
-                    $this->logger->info('Fichier temporaire supprimé', ['file' => $tempFilePath]);
+                    $this->logger->info('Fichier final supprimé', ['file' => $filePath]);
                 }
             }
-
-            $this->entityManager->remove($examen);
-            $this->entityManager->flush();
-            $this->logger->info('Examen supprimé', ['examen_id' => $id]);
-            return $this->json(['message' => 'Examen supprimé avec succès'], 200);
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la suppression: ' . $e->getMessage(), ['exception' => $e]);
-            return $this->json(['message' => 'Erreur lors de la suppression: ' . $e->getMessage()], 500);
         }
+
+        $tempFileName = 'temp_' . $examen->getFichier();
+        $tempFilePath = $tempDir . '/' . $tempFileName;
+        if (file_exists($tempFilePath)) {
+            if (!unlink($tempFilePath)) {
+                $this->logger->warning('Échec de la suppression du fichier temporaire', ['file' => $tempFilePath]);
+            } else {
+                $this->logger->info('Fichier temporaire supprimé', ['file' => $tempFilePath]);
+            }
+        }
+
+        // Supprimer l'examen
+        $this->entityManager->remove($examen);
+        $this->entityManager->flush();
+        $this->entityManager->commit();
+
+        $this->logger->info('Examen supprimé', ['examen_id' => $id]);
+        return $this->json(['message' => 'Examen et agenda associé supprimés avec succès'], 200);
+    } catch (\Exception $e) {
+        $this->entityManager->rollback();
+        $this->logger->error('Erreur lors de la suppression: ' . $e->getMessage(), ['exception' => $e]);
+        return $this->json(['message' => 'Erreur lors de la suppression: ' . $e->getMessage()], 500);
     }
+}
 
     private function generateExamPdf(Examen $examen, array $questions): string
     {

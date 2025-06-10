@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
@@ -9,28 +9,30 @@ import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { motion, AnimatePresence } from 'framer-motion';
-import LayoutAdmin from '../../components/LayoutAdmin';
-import { X } from 'lucide-react';
-import { InputSwitch } from "primereact/inputswitch";
-import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+import { X } from 'lucide-react';
+import { InputSwitch } from 'primereact/inputswitch';
+import LayoutAdmin from '../../components/LayoutAdmin';
+import { getBibliothequeItems, createBibliothequeItem, updateBibliothequeItem, uploadBibliothequeFile, deleteBibliothequeItem, getAdminMentions, getAdminNiveaux, getAdminCours } from '../../Services/bibliothequeAdminService';
 
 export default function BibliothequeAdmin() {
-    const [data, setData] = useState([
-        { id: 1, titre: 'Livre 1', mention: 'Mathématiques', niveau: 'Licence 1', categorie: 'Science' },
-        { id: 2, titre: 'Livre 2', mention: 'Physique', niveau: 'Master 2', categorie: 'Science' },
-        { id: 3, titre: 'Livre 3', mention: 'Informatique', niveau: 'Licence 3', categorie: 'Technologie' },
-    ]);
-
+    const [data, setData] = useState([]);
     const [globalFilterValue, setGlobalFilterValue] = useState('');
     const [mentionFilter, setMentionFilter] = useState('Tous');
     const [niveauFilter, setNiveauFilter] = useState('Tous');
     const [categorieFilter, setCategorieFilter] = useState('Tous');
+    const [ecFilter, setEcFilter] = useState('Tous');
     const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [availableSemestres, setAvailableSemestres] = useState([]);
-    const [checked, setChecked] = useState(false);
-    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [showEditDialog, setShowEditDialog] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
+    const [mentions, setMentions] = useState([]);
+    const [niveaux, setNiveaux] = useState([]);
+    const [parcours, setParcours] = useState([]);
+    const [semestres, setSemestres] = useState([]);
+    const [ues, setUes] = useState([]);
+    const [ecs, setEcs] = useState([]);
+    const [checked, setChecked] = useState(false);
     const toast = useRef(null);
 
     // Form data state
@@ -39,198 +41,470 @@ export default function BibliothequeAdmin() {
         niveau: '',
         semestre: '',
         parcours: '',
+        ue: '',
         ec: '',
         type: '',
         titre: '',
         description: '',
-        file: null
+        file: null,
+        existingFile: null,
     });
 
-    const getAvailableSemestres = (niveau) => {
-        switch (niveau) {
-            case 'l1':
-                return [
-                    { label: 'Semestre 1', value: 's1' },
-                    { label: 'Semestre 2', value: 's2' }
-                ];
-            case 'l2':
-                return [
-                    { label: 'Semestre 3', value: 's3' },
-                    { label: 'Semestre 4', value: 's4' }
-                ];
-            case 'l3':
-                return [
-                    { label: 'Semestre 5', value: 's5' },
-                    { label: 'Semestre 6', value: 's6' }
-                ];
-            case 'm1':
-                return [
-                    { label: 'Semestre 7', value: 's7' },
-                    { label: 'Semestre 8', value: 's8' }
-                ];
-            case 'm2':
-                return [
-                    { label: 'Semestre 9', value: 's9' },
-                    { label: 'Semestre 10', value: 's10' }
-                ];
-            default:
-                return [];
-        }
-    };
-
-    const mentions = [{ label: 'Mention', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.mention))).map(m => ({ label: m, value: m }))];
-    const niveaux = [{ label: 'Niveau', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.niveau))).map(n => ({ label: n, value: n }))];
-    const categories = [{ label: 'Catégorie', value: 'Tous' }, ...Array.from(new Set(data.map(item => item.categorie))).map(c => ({ label: c, value: c }))];
-
-    // Options for form dropdowns
-    const formMentions = [
-        { label: 'Veuillez choisir la mention', value: '' },
-        { label: 'Informatique', value: 'informatique' },
-        { label: 'Mathématiques', value: 'mathematiques' },
-        { label: 'Physique', value: 'physique' }
-    ];
-
-    const formNiveaux = [
-        { label: 'Veuillez choisir le niveau', value: '' },
-        { label: 'L1', value: 'l1' },
-        { label: 'L2', value: 'l2' },
-        { label: 'L3', value: 'l3' },
-        { label: 'Master 1', value: 'm1' },
-        { label: 'Master 2', value: 'm2' }
-    ];
-
-    const parcours = [
-        { label: 'Veuillez choisir le parcours', value: '' },
-        { label: 'Génie Logiciel', value: 'gl' },
-        { label: 'ASI', value: 'asi' }
-    ];
-
-    const ecs = [
-        { label: 'Veuillez choisir l\'EC', value: '' },
-        { label: 'Anglais', value: 'anglais' },
-        { label: 'Français', value: 'francais' },
-        { label: 'Algorithmique', value: 'algorithmique' },
-        { label: 'Base de données', value: 'bdd' }
-    ];
-
+    // Types statiques
     const types = [
         { label: 'Veuillez choisir le type', value: '' },
         { label: 'Administration', value: 'administration' },
-        { label: 'Cours', value: 'cours' },
-        { label: 'TD', value: 'td' },
-        { label: 'TP', value: 'tp' }
+        { label: 'Sujet avec corrigé', value: 'sujet avec corrigé' },
+        { label: 'Exercice', value: 'exercice' },
     ];
 
-    const onGlobalFilterChange = (e) => {
-        setGlobalFilterValue(e.target.value);
+    // Options pour les filtres
+    const mentionsFilterOptions = [
+        { label: 'Mention', value: 'Tous' },
+        ...Array.from(new Set(data.map(item => item.mentionName))).map(m => ({ label: m, value: m })),
+    ];
+    const niveauxFilterOptions = [
+        { label: 'Niveau', value: 'Tous' },
+        ...Array.from(new Set(data.map(item => item.niveauNom))).map(n => ({ label: n, value: n })),
+    ];
+    const categoriesFilterOptions = [
+        { label: 'Catégorie', value: 'Tous' },
+        ...Array.from(new Set(data.map(item => item.type))).map(c => ({ label: c, value: c })),
+    ];
+    const ecFilterOptions = [
+        { label: 'EC', value: 'Tous' },
+        ...Array.from(new Set(data.map(item => item.ecName))).map(e => ({ label: e, value: e })),
+    ];
+
+    // Charger les données initiales
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const items = await getBibliothequeItems();
+                setData(items);
+
+                const adminMentions = await getAdminMentions();
+                setMentions([
+                    { label: 'Veuillez choisir la mention', value: '' },
+                    ...adminMentions,
+                ]);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors du chargement des données',
+                    life: 3000
+                });
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleMentionChange = async (e) => {
+        const mentionId = e.value;
+        setFormData((prev) => ({
+            ...prev,
+            mention: mentionId,
+            niveau: '',
+            semestre: '',
+            parcours: '',
+            ue: '',
+            ec: '',
+        }));
+
+        if (mentionId) {
+            try {
+                const niveauxData = await getAdminNiveaux(mentionId);
+                setNiveaux([
+                    { label: 'Veuillez choisir le niveau', value: '' },
+                    ...niveauxData,
+                ]);
+                setSemestres([{ label: 'Veuillez choisir le semestre', value: '' }]);
+                setParcours([{ label: 'Veuillez choisir le parcours', value: '' }]);
+                setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
+                setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors de la récupération des niveaux',
+                    life: 3000
+                });
+            }
+        } else {
+            setNiveaux([{ label: 'Veuillez choisir le niveau', value: '' }]);
+            setSemestres([{ label: 'Veuillez choisir le semestre', value: '' }]);
+            setParcours([{ label: 'Veuillez choisir le parcours', value: '' }]);
+            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
+            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+        }
+    };
+
+    const handleNiveauChange = async (e) => {
+        const niveauId = e.value;
+        setFormData((prev) => ({
+            ...prev,
+            niveau: niveauId,
+            semestre: '',
+            parcours: '',
+            ue: '',
+            ec: '',
+        }));
+
+        const selectedNiveau = niveaux.find((n) => n.value === niveauId);
+        if (selectedNiveau) {
+            setParcours([
+                { label: 'Veuillez choisir le parcours', value: '' },
+                ...selectedNiveau.parcours,
+            ]);
+            setSemestres([
+                { label: 'Veuillez choisir le semestre', value: '' },
+                { label: 'Semestre', value: selectedNiveau.premierSemestreId },
+            ]);
+            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
+            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+        } else {
+            setParcours([{ label: 'Veuillez choisir le parcours', value: '' }]);
+            setSemestres([{ label: 'Veuillez choisir le semestre', value: '' }]);
+            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
+            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+        }
+    };
+
+    const handleSemestreChange = async (e) => {
+        const semestreId = e.value;
+        setFormData((prev) => ({
+            ...prev,
+            semestre: semestreId,
+            ue: '',
+            ec: '',
+        }));
+
+        if (semestreId && formData.mention && formData.niveau) {
+            try {
+                const uesData = await getAdminCours(formData.mention, formData.niveau, semestreId);
+                setUes([
+                    { label: 'Veuillez choisir l\'UE', value: '' },
+                    ...uesData,
+                ]);
+                setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Erreur lors de la récupération des cours',
+                    life: 3000
+                });
+            }
+        } else {
+            setUes([{ label: 'Veuillez choisir l\'UE', value: '' }]);
+            setEcs([{ label: 'Veuillez choisir l\'EC', value: '' }]);
+        }
+    };
+
+    const handleUeChange = (e) => {
+        const ueId = e.value;
+        setFormData((prev) => ({
+            ...prev,
+            ue: ueId,
+            ec: '',
+        }));
+
+        const selectedUe = ues.find((u) => u.value === ueId);
+        setEcs(
+            selectedUe && selectedUe.ecs
+                ? [
+                    { label: 'Veuillez choisir l\'EC', value: '' },
+                    ...selectedUe.ecs,
+                ]
+                : [{ label: 'Veuillez choisir l\'EC', value: '' }]
+        );
+    };
+
+    const handleParcoursChange = (e) => {
+        const parcoursName = e.value;
+        setFormData((prev) => ({
+            ...prev,
+            parcours: parcoursName,
+        }));
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
-    };
-
-    const handleNiveauChange = (e) => {
-        const niveau = e.value;
-        setFormData(prev => ({
-            ...prev,
-            niveau,
-            semestre: '' // Réinitialise le semestre quand on change de niveau
-        }));
-
-        // Met à jour les semestres disponibles
-        setAvailableSemestres(getAvailableSemestres(niveau));
     };
 
     const handleFileChange = (e) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            file: e.files[0]
+            file: e.files[0],
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Création d'un nouvel élément
-        const newItem = {
-            id: data.length > 0 ? Math.max(...data.map(item => item.id)) + 1 : 1,
-            titre: formData.titre,
-            mention: formData.mention,
-            niveau: formData.niveau,
-            categorie: 'Nouvelle catégorie' // Vous pouvez adapter ceci
+        // Validation des champs requis
+        if (!formData.mention || !formData.niveau || !formData.semestre || !formData.parcours || !formData.ue || !formData.ec || !formData.type || !formData.titre || (checked && !formData.description)) {
+            toast.current.show({
+                severity: 'warn',
+                summary: 'Attention',
+                detail: 'Veuillez remplir tous les champs requis' + (checked ? ', y compris la description' : ''),
+                life: 3000
+            });
+            return;
+        }
+
+        const submitAction = async () => {
+            try {
+                if (showEditDialog) {
+                    const textData = {
+                        titre: formData.titre,
+                        type: formData.type,
+                        ec: String(formData.ec),
+                        parcours: formData.parcours,
+                        description: formData.description,
+                        status: checked,
+                    };
+
+                    await updateBibliothequeItem(selectedItem.id, textData);
+
+                    if (formData.file) {
+                        await uploadBibliothequeFile(selectedItem.id, formData.file);
+                    }
+
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément modifié avec succès',
+                        life: 3000
+                    });
+                } else {
+                    if (!formData.file) {
+                        toast.current.show({
+                            severity: 'warn',
+                            summary: 'Attention',
+                            detail: 'Un fichier est requis pour la création',
+                            life: 3000
+                        });
+                        return;
+                    }
+
+                    const formDataToSend = new FormData();
+                    formDataToSend.append('titre', formData.titre);
+                    formDataToSend.append('type', formData.type);
+                    formDataToSend.append('ec', String(formData.ec));
+                    formDataToSend.append('parcours', formData.parcours);
+                    formDataToSend.append('description', formData.description);
+                    formDataToSend.append('file', formData.file);
+                    formDataToSend.append('status', checked ? '1' : '0');
+
+                    await createBibliothequeItem(formDataToSend);
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément créé avec succès',
+                        life: 3000
+                    });
+                }
+
+                const updatedItems = await getBibliothequeItems();
+                setData(updatedItems);
+                setShowCreateDialog(false);
+                setShowEditDialog(false);
+                setFormData({
+                    mention: '',
+                    niveau: '',
+                    semestre: '',
+                    parcours: '',
+                    ue: '',
+                    ec: '',
+                    type: '',
+                    titre: '',
+                    description: '',
+                    file: null,
+                    existingFile: null,
+                });
+                setChecked(false);
+            } catch (error) {
+                console.error('Erreur lors de la soumission:', error);
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: error.response?.data?.message || 'Une erreur est survenue',
+                    life: 3000
+                });
+            }
         };
 
-        // Ajout à la liste
-        setData([...data, newItem]);
-
-        // Réinitialisation du formulaire
-        setFormData({
-            mention: '',
-            niveau: '',
-            semestre: '',
-            parcours: '',
-            ec: '',
-            type: '',
-            titre: '',
-            description: '',
-            file: null
-        });
-
-        // Fermeture du dialogue
-        setShowCreateDialog(false);
-
-        // Affichage du toast
-        toast.current.show({
-            severity: 'success',
-            summary: 'Succès',
-            detail: 'Le document a été ajouté avec succès',
-            life: 3000
-        });
+        if (showEditDialog) {
+            confirmDialog({
+                message: 'Êtes-vous sûr de vouloir modifier cet élément ?',
+                header: 'Confirmation de modification',
+                icon: 'pi pi-exclamation-triangle',
+                acceptLabel: 'Oui',
+                rejectLabel: 'Non',
+                accept: submitAction,
+                reject: () => toast.current.show({
+                    severity: 'info',
+                    summary: 'Annulé',
+                    detail: 'Modification annulée',
+                    life: 3000
+                }),
+            });
+        } else {
+            submitAction();
+        }
     };
 
-    const confirmDelete = (item) => {
-        setSelectedItem(item);
-        setDeleteDialogVisible(true);
+    const handleEdit = (rowData) => {
+        if (rowData.source !== 'bibliotheque') return;
+        setSelectedItem(rowData);
+
+        const selectedMention = mentions.find((m) => m.label === rowData.mentionName);
+        const mentionId = selectedMention ? selectedMention.value : '';
+
+        const fetchNiveauxAndSetForm = async () => {
+            try {
+                const niveauxData = await getAdminNiveaux(mentionId);
+                setNiveaux([
+                    { label: 'Veuillez choisir le niveau', value: '' },
+                    ...niveauxData,
+                ]);
+
+                const selectedNiveau = niveauxData.find((n) => n.label === rowData.niveauNom);
+                const niveauId = selectedNiveau ? selectedNiveau.value : '';
+                const selectedParcours = selectedNiveau?.parcours.find((p) => p.label === rowData.parcoursName);
+                const parcoursName = selectedParcours ? selectedParcours.value : '';
+                const semestreId = selectedNiveau ? selectedNiveau.premierSemestreId : '';
+
+                setParcours([
+                    { label: 'Veuillez choisir le parcours', value: '' },
+                    ...(selectedNiveau?.parcours || []),
+                ]);
+
+                setSemestres([
+                    { label: 'Veuillez choisir le semestre', value: '' },
+                    { label: 'Semestre', value: semestreId },
+                ]);
+
+                const uesData = await getAdminCours(mentionId, niveauId, semestreId);
+                setUes([
+                    { label: 'Veuillez choisir l\'UE', value: '' },
+                    ...uesData,
+                ]);
+
+                const selectedUe = uesData.find((u) => u.ecs.some((ec) => ec.label === rowData.ecName));
+                const ueId = selectedUe ? selectedUe.value : '';
+
+                setEcs([
+                    { label: 'Veuillez choisir l\'EC', value: '' },
+                    ...(selectedUe?.ecs || []),
+                ]);
+
+                const selectedEc = selectedUe?.ecs.find((ec) => ec.label === rowData.ecName);
+                const ecId = selectedEc ? selectedEc.value : '';
+
+                setFormData({
+                    mention: mentionId,
+                    niveau: niveauId,
+                    semestre: semestreId,
+                    parcours: parcoursName,
+                    ue: ueId,
+                    ec: ecId,
+                    type: rowData.type,
+                    titre: rowData.titre,
+                    description: rowData.description || '',
+                    file: null,
+                    existingFile: rowData.fichier,
+                });
+
+                setChecked(rowData.isPublished);
+                setShowEditDialog(true);
+            } catch (error) {
+                toast.current.show({
+                    severity: 'error',
+                    summary: 'Erreur',
+                    detail: 'Impossible de charger les données pour la modification',
+                    life: 5000,
+                });
+            }
+        };
+
+        if (mentionId) {
+            fetchNiveauxAndSetForm();
+        } else {
+            toast.current.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: 'Impossible de charger les données pour la modification. Vérifiez les données de l\'élément.',
+                life: 5000,
+            });
+        }
     };
 
-    const deleteItem = () => {
-        setData(data.filter(item => item.id !== selectedItem.id));
-        setDeleteDialogVisible(false);
+    const handleDelete = (id, source) => {
+        if (source !== 'bibliotheque') return;
 
-        toast.current.show({
-            severity: 'success',
-            summary: 'Succès',
-            detail: 'Le document a été supprimé avec succès',
-            life: 3000
+        confirmDialog({
+            message: 'Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.',
+            header: 'Confirmation de suppression',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Oui',
+            rejectLabel: 'Non',
+            accept: async () => {
+                try {
+                    await deleteBibliothequeItem(id);
+                    const updatedItems = await getBibliothequeItems();
+                    setData(updatedItems);
+                    toast.current.show({
+                        severity: 'success',
+                        summary: 'Succès',
+                        detail: 'Élément supprimé avec succès',
+                        life: 3000
+                    });
+                } catch (error) {
+                    console.error('Erreur lors de la suppression:', error);
+                    toast.current.show({
+                        severity: 'error',
+                        summary: 'Erreur',
+                        detail: 'Une erreur est survenue lors de la suppression',
+                        life: 3000
+                    });
+                }
+            },
+            reject: () => toast.current.show({
+                severity: 'info',
+                summary: 'Annulé',
+                detail: 'Suppression annulée',
+                life: 3000
+            }),
         });
     };
 
     const handleDownload = (filename) => {
         const link = document.createElement('a');
-        link.href = `/path/to/supports/${filename}`;
-        link.download = filename;
+        link.href = filename;
+        link.download = filename.split('/').pop();
         link.click();
-
-        toast.current.show({
-            severity: 'info',
-            summary: 'Téléchargement',
-            detail: 'Le téléchargement a commencé',
-            life: 3000
-        });
     };
 
-    const filteredData = data.filter(item =>
-        (mentionFilter === 'Tous' || item.mention === mentionFilter) &&
-        (niveauFilter === 'Tous' || item.niveau === niveauFilter) &&
-        (categorieFilter === 'Tous' || item.categorie === categorieFilter) &&
-        (item.titre.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.mention.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.niveau.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
-            item.categorie.toLowerCase().includes(globalFilterValue.toLowerCase())));
+    const filteredData = data.filter(
+        (item) =>
+            (mentionFilter === 'Tous' || item.mentionName === mentionFilter) &&
+            (niveauFilter === 'Tous' || item.niveauNom === niveauFilter) &&
+            (categorieFilter === 'Tous' || item.type === categorieFilter) &&
+            (ecFilter === 'Tous' || item.ecName === ecFilter) &&
+            (item.titre.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+                item.mentionName.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+                item.niveauNom.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+                item.ecName.toLowerCase().includes(globalFilterValue.toLowerCase()) ||
+                item.type.toLowerCase().includes(globalFilterValue.toLowerCase()))
+    );
 
     const dropdownTemplate = (option, props) => {
         if (option) {
@@ -240,16 +514,40 @@ export default function BibliothequeAdmin() {
                 </div>
             );
         }
-
         return <span>{props.placeholder}</span>;
     };
 
     const actionBodyTemplate = (rowData) => {
         return (
-            <div className='flex items-center gap-x-2'>
-                <Button icon="pi pi-download" rounded severity="secondary" onClick={() => handleDownload(rowData.titre)} />
-                <Button icon="pi pi-eye" rounded severity="success" onClick={() => handleDownload(rowData.titre)} />
-                <Button icon="pi pi-trash" rounded severity="danger" onClick={() => confirmDelete(rowData)} />
+            <div className="flex items-center gap-x-2">
+                <Button
+                    icon="pi pi-download"
+                    rounded
+                    severity="secondary"
+                    onClick={() => handleDownload(rowData.fichier)}
+                />
+                <Button
+                    icon="pi pi-eye"
+                    rounded
+                    severity="success"
+                    onClick={() => handleDownload(rowData.fichier)}
+                />
+                {rowData.source === 'bibliotheque' && (
+                    <>
+                        <Button
+                            icon="pi pi-pencil"
+                            rounded
+                            severity="info"
+                            onClick={() => handleEdit(rowData)}
+                        />
+                        <Button
+                            icon="pi pi-trash"
+                            rounded
+                            severity="danger"
+                            onClick={() => handleDelete(rowData.id, rowData.source)}
+                        />
+                    </>
+                )}
             </div>
         );
     };
@@ -257,31 +555,63 @@ export default function BibliothequeAdmin() {
     const renderHeader = () => {
         return (
             <div className="flex flex-col space-y-4">
-                <h1 className='text-3xl p-5 font-semibold'>Bibliothèque</h1>
-                <div className='grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center'>
+                <h1 className="text-3xl p-5 font-semibold">Bibliothèque</h1>
+                <div className="grid md:grid-cols-2 grid-cols-1 justify-center gap-3 items-center">
                     <IconField iconPosition="left">
                         <InputIcon className="pi pi-search" />
-                        <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Rechercher..." className='custom-input' />
+                        <InputText
+                            value={globalFilterValue}
+                            onChange={(e) => setGlobalFilterValue(e.target.value)}
+                            placeholder="Rechercher..."
+                            className="custom-input"
+                        />
                     </IconField>
-
                     <div className="flex flex-wrap items-center justify-center gap-3 bibliotheque-dropdown">
-                        <Dropdown value={mentionFilter} onChange={(e) => setMentionFilter(e.value)} options={mentions}
-                            optionLabel="label" placeholder="Mention"
-                            filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
+                        <Dropdown
+                            value={mentionFilter}
+                            onChange={(e) => setMentionFilter(e.value)}
+                            options={mentionsFilterOptions}
+                            optionLabel="label"
+                            placeholder="Mention"
+                            filter
+                            valueTemplate={dropdownTemplate}
+                            itemTemplate={dropdownTemplate}
                             panelClassName="font-poppins text-sm"
                             className="rounded font-poppins text-sm bg-white"
                         />
-
-                        <Dropdown value={niveauFilter} onChange={(e) => setNiveauFilter(e.value)} options={niveaux}
-                            optionLabel="label" placeholder="Niveau"
-                            filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
+                        <Dropdown
+                            value={niveauFilter}
+                            onChange={(e) => setNiveauFilter(e.value)}
+                            options={niveauxFilterOptions}
+                            optionLabel="label"
+                            placeholder="Niveau"
+                            filter
+                            valueTemplate={dropdownTemplate}
+                            itemTemplate={dropdownTemplate}
                             panelClassName="font-poppins text-sm"
                             className="rounded font-poppins text-sm bg-white"
                         />
-
-                        <Dropdown value={categorieFilter} onChange={(e) => setCategorieFilter(e.value)} options={categories}
-                            optionLabel="label" placeholder="Catégorie"
-                            filter valueTemplate={dropdownTemplate} itemTemplate={dropdownTemplate}
+                        <Dropdown
+                            value={categorieFilter}
+                            onChange={(e) => setCategorieFilter(e.value)}
+                            options={categoriesFilterOptions}
+                            optionLabel="label"
+                            placeholder="Catégorie"
+                            filter
+                            valueTemplate={dropdownTemplate}
+                            itemTemplate={dropdownTemplate}
+                            panelClassName="font-poppins text-sm"
+                            className="rounded font-poppins text-sm bg-white"
+                        />
+                        <Dropdown
+                            value={ecFilter}
+                            onChange={(e) => setEcFilter(e.value)}
+                            options={ecFilterOptions}
+                            optionLabel="label"
+                            placeholder="EC"
+                            filter
+                            valueTemplate={dropdownTemplate}
+                            itemTemplate={dropdownTemplate}
                             panelClassName="font-poppins text-sm"
                             className="rounded font-poppins text-sm bg-white"
                         />
@@ -289,7 +619,7 @@ export default function BibliothequeAdmin() {
                     <Button
                         label="Créer"
                         icon="pi pi-file-plus"
-                        severity='success'
+                        severity="success"
                         onClick={() => setShowCreateDialog(true)}
                     />
                 </div>
@@ -297,17 +627,11 @@ export default function BibliothequeAdmin() {
         );
     };
 
-    const deleteDialogFooter = (
-        <>
-            <Button label="Non" icon="pi pi-times" onClick={() => setDeleteDialogVisible(false)} className="p-button-text" />
-            <Button label="Oui" icon="pi pi-check" onClick={deleteItem} severity="danger" />
-        </>
-    );
-
     return (
         <LayoutAdmin>
             <Toast ref={toast} />
-            <div className="relative">
+            <ConfirmDialog />
+            <div className="relative custom-scrollbar" style={{ height: 'calc(100vh - 3.5rem)', overflowY: 'auto' }}>
                 <DataTable
                     value={filteredData}
                     paginator
@@ -319,37 +643,21 @@ export default function BibliothequeAdmin() {
                     emptyMessage="Aucune donnée trouvée."
                 >
                     <Column field="titre" header="Titre" sortable style={{ minWidth: '10rem' }} />
-                    <Column field="mention" header="Mention" sortable style={{ minWidth: '10rem' }} />
-                    <Column field="niveau" header="Niveau" sortable style={{ minWidth: '10rem' }} />
-                    <Column field="categorie" header="Catégorie" sortable style={{ minWidth: '10rem' }} />
+                    <Column field="mentionName" header="Mention" sortable style={{ minWidth: '10rem' }} />
+                    <Column field="niveauNom" header="Niveau" sortable style={{ minWidth: '10rem' }} />
+                    <Column field="ecName" header="EC" sortable style={{ minWidth: '10rem' }} />
+                    <Column field="type" header="Catégorie" sortable style={{ minWidth: '10rem' }} />
                     <Column body={actionBodyTemplate} header="Action" sortable style={{ minWidth: '10rem' }} />
                 </DataTable>
 
-                {/* Dialog de suppression */}
-                <Dialog
-                    visible={deleteDialogVisible}
-                    style={{ width: '450px' }}
-                    header="Confirmation"
-                    modal
-                    footer={deleteDialogFooter}
-                    onHide={() => setDeleteDialogVisible(false)}
-                >
-                    <div className="flex align-items-center justify-content-center">
-                        <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem', color: '#f8bb86' }} />
-                        {selectedItem && (
-                            <span>
-                                Êtes-vous sûr de vouloir supprimer <b>{selectedItem.titre}</b> ?
-                            </span>
-                        )}
-                    </div>
-                </Dialog>
-
-                {/* Modal de création avec animation Framer Motion */}
                 <AnimatePresence>
-                    {showCreateDialog && (
+                    {(showCreateDialog || showEditDialog) && (
                         <div
                             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-                            onClick={() => setShowCreateDialog(false)}
+                            onClick={() => {
+                                setShowCreateDialog(false);
+                                setShowEditDialog(false);
+                            }}
                         >
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
@@ -360,10 +668,15 @@ export default function BibliothequeAdmin() {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <div className="bg-teal-500 text-white px-6 py-4 rounded-t-md flex justify-between items-center sticky top-0 z-10">
-                                    <h1 className="text-xl font-semibold">Créer Bibliothèque</h1>
+                                    <h1 className="text-xl font-semibold">
+                                        {showEditDialog ? 'Modifier Bibliothèque' : 'Créer Bibliothèque'}
+                                    </h1>
                                     <button
                                         className="text-white hover:bg-teal-600 rounded-full p-1"
-                                        onClick={() => setShowCreateDialog(false)}
+                                        onClick={() => {
+                                            setShowCreateDialog(false);
+                                            setShowEditDialog(false);
+                                        }}
                                     >
                                         <X size={24} />
                                     </button>
@@ -371,15 +684,15 @@ export default function BibliothequeAdmin() {
 
                                 <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto h-[80vh] custom-scrollbar">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-5">
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Mention*
                                             </label>
                                             <Dropdown
                                                 name="mention"
                                                 value={formData.mention}
-                                                onChange={handleChange}
-                                                options={formMentions}
+                                                onChange={handleMentionChange}
+                                                options={mentions}
                                                 optionLabel="label"
                                                 placeholder="Veuillez choisir la mention"
                                                 className="w-full"
@@ -390,7 +703,7 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Niveau*
                                             </label>
@@ -398,10 +711,11 @@ export default function BibliothequeAdmin() {
                                                 name="niveau"
                                                 value={formData.niveau}
                                                 onChange={handleNiveauChange}
-                                                options={formNiveaux}
+                                                options={niveaux}
                                                 optionLabel="label"
                                                 placeholder="Veuillez choisir le niveau"
                                                 className="w-full"
+                                                disabled={!formData.mention}
                                                 filter
                                                 showFilterClear
                                                 filterPlaceholder="Rechercher..."
@@ -409,18 +723,15 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-68'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Semestre*
                                             </label>
                                             <Dropdown
                                                 name="semestre"
                                                 value={formData.semestre}
-                                                onChange={handleChange}
-                                                options={[
-                                                    { label: 'Veuillez choisir le semestre', value: '' },
-                                                    ...availableSemestres
-                                                ]}
+                                                onChange={handleSemestreChange}
+                                                options={semestres}
                                                 optionLabel="label"
                                                 placeholder="Veuillez choisir le semestre"
                                                 className="w-full"
@@ -432,18 +743,19 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Parcours*
                                             </label>
                                             <Dropdown
                                                 name="parcours"
                                                 value={formData.parcours}
-                                                onChange={handleChange}
+                                                onChange={handleParcoursChange}
                                                 options={parcours}
                                                 optionLabel="label"
                                                 placeholder="Veuillez choisir le parcours"
                                                 className="w-full"
+                                                disabled={!formData.niveau}
                                                 filter
                                                 showFilterClear
                                                 filterPlaceholder="Rechercher..."
@@ -451,7 +763,27 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-60'>
+                                        <div className="w-60">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                UE*
+                                            </label>
+                                            <Dropdown
+                                                name="ue"
+                                                value={formData.ue}
+                                                onChange={handleUeChange}
+                                                options={ues}
+                                                optionLabel="label"
+                                                placeholder="Veuillez choisir l'UE"
+                                                className="w-full"
+                                                disabled={!formData.semestre}
+                                                filter
+                                                showFilterClear
+                                                filterPlaceholder="Rechercher..."
+                                                panelClassName="font-poppins text-sm"
+                                            />
+                                        </div>
+
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 EC*
                                             </label>
@@ -463,6 +795,7 @@ export default function BibliothequeAdmin() {
                                                 optionLabel="label"
                                                 placeholder="Veuillez choisir l'EC"
                                                 className="w-full"
+                                                disabled={!formData.ue}
                                                 filter
                                                 showFilterClear
                                                 filterPlaceholder="Rechercher..."
@@ -470,7 +803,7 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className='w-60'>
+                                        <div className="w-60">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Type*
                                             </label>
@@ -502,34 +835,33 @@ export default function BibliothequeAdmin() {
                                             />
                                         </div>
 
-                                        <div className="w-full">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Description du document*
-                                            </label>
-                                            <InputTextarea
-                                                name="description"
-                                                value={formData.description}
-                                                onChange={handleChange}
-                                                rows={6}
-                                                className="w-full"
-                                                placeholder="Entrez la description"
-                                                style={{ width: '100%' }}
-                                            />
-                                        </div>
-
-                                        <div className='flex justify-between w-full'>
-                                            <div>
+                                        <div className="flex justify-between w-full md:col-span-3">
+                                            <div className="flex flex-col w-full">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Fichier*
+                                                    Fichier* {showEditDialog && formData.existingFile ? '(Fichier existant)' : ''}
                                                 </label>
+                                                {showEditDialog && formData.existingFile && (
+                                                    <div className="mb-2">
+                                                        <p className="text-sm text-gray-600">
+                                                            Fichier actuel :{' '}
+                                                            <a
+                                                                href={formData.existingFile}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:underline"
+                                                            >
+                                                                {formData.existingFile.split('/').pop()}
+                                                            </a>
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 <FileUpload
                                                     mode="basic"
                                                     name="file"
-                                                    url="/api/upload"
-                                                    accept=".pdf,.doc,.docx,.ppt,.pptx"
+                                                    accept=".pdf,.doc,.docx"
                                                     maxFileSize={10000000}
-                                                    onUpload={handleFileChange}
-                                                    chooseLabel="Choisir un fichier"
+                                                    onSelect={handleFileChange}
+                                                    chooseLabel={showEditDialog && formData.existingFile ? 'Remplacer le fichier' : 'Choisir un fichier'}
                                                     className="w-full"
                                                 />
                                             </div>
@@ -540,6 +872,22 @@ export default function BibliothequeAdmin() {
                                                 <InputSwitch checked={checked} onChange={(e) => setChecked(e.value)} />
                                             </div>
                                         </div>
+
+                                        {checked && (
+                                            <div className="w-full md:col-span-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Description*
+                                                </label>
+                                                <InputTextarea
+                                                    name="description"
+                                                    value={formData.description}
+                                                    onChange={handleChange}
+                                                    className="w-full"
+                                                    placeholder="Entrez une description"
+                                                    rows={4}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-end pt-4">
@@ -547,14 +895,13 @@ export default function BibliothequeAdmin() {
                                             type="button"
                                             label="Annuler"
                                             severity="secondary"
-                                            onClick={() => setShowCreateDialog(false)}
+                                            onClick={() => {
+                                                setShowCreateDialog(false);
+                                                setShowEditDialog(false);
+                                            }}
                                             className="mr-2"
                                         />
-                                        <Button
-                                            type="submit"
-                                            label="Enregistrer"
-                                            severity="success"
-                                        />
+                                        <Button type="submit" label="Enregistrer" severity="success" />
                                     </div>
                                 </form>
                             </motion.div>

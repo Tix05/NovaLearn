@@ -65,9 +65,21 @@ class BibliothequeController extends AbstractController
      */
     public function getBibliothequeItems(): Response
     {
+        $user = $this->security->getUser();
+        if (!$user) {
+            $this->logger->error('Aucun utilisateur authentifié');
+            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Vérifier si l'utilisateur est admin ou professeur
+        if (!in_array('ROLE_ADMIN', $user->getRoles()) && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
+            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
+        }
+
         $baseUrl = $this->getParameter('app.base_url');
 
-        // Récupérer tous les fichiers de l'entité Bibliotheque, sans filtrer par status
+        // Récupérer tous les fichiers de l'entité Bibliotheque
         $bibliothequeItems = $this->bibliothequeRepository->findAll();
 
         // Récupérer les fichiers de type "document" de FichierSupport
@@ -96,7 +108,7 @@ class BibliothequeController extends AbstractController
                 'parcoursName' => $item->getParcoursName(),
                 'status' => $item->isStatus(),
                 'description' => $description,
-                'isPublished' => $item->isStatus(), // Ajout pour compatibilité avec le frontend
+                'isPublished' => $item->isStatus(),
             ];
         }
 
@@ -169,9 +181,10 @@ class BibliothequeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+        // Vérifier si l'utilisateur est professeur (et non admin)
+        if (!in_array('ROLE_ADMIN', $user->getRoles()) && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
+            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
         }
 
         $validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
@@ -262,200 +275,50 @@ class BibliothequeController extends AbstractController
     }
 
     /**
- * @Route("/bibliotheques/{id}", name="api_update_bibliotheque", methods={"PATCH"})
- */
-public function updateBibliothequeItem(int $id, Request $request, EcRepository $ecRepository, ParcoursRepository $parcoursRepository): Response
-{
-    $user = $this->security->getUser();
-    if (!$user) {
-        $this->logger->error('Aucun utilisateur authentifié');
-        return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
-    }
-
-    if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-        $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
-        return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
-    }
-
-    $bibliotheque = $this->bibliothequeRepository->find($id);
-    if (!$bibliotheque) {
-        $this->logger->warning('Élément non trouvé', ['id' => $id]);
-        return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
-    }
-
-    $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
-    if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
-        $this->logger->warning('Non autorisé à modifier cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
-        return $this->json(['message' => 'Non autorisé à modifier cet élément'], Response::HTTP_FORBIDDEN);
-    }
-
-    // Décoder le JSON de la requête
-    $data = json_decode($request->getContent(), true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        $this->logger->warning('Erreur de décodage JSON', ['error' => json_last_error_msg()]);
-        return $this->json(['message' => 'Erreur de format JSON'], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Log des données reçues
-    $this->logger->info('Données JSON reçues', ['data' => $data]);
-
-    // Stocker l'état initial de l'entité
-    $initialState = [
-        'titre' => $bibliotheque->getTitre(),
-        'type' => $bibliotheque->getType(),
-        'ec' => $bibliotheque->getEc() ? $bibliotheque->getEc()->getId() : null,
-        'parcours' => $bibliotheque->getParcours() ? $bibliotheque->getParcours()->getName() : null,
-        'status' => $bibliotheque->isStatus(),
-        'fichier' => $bibliotheque->getFichier(),
-        'description' => $bibliotheque->getDescription(),
-    ];
-    $this->logger->info('État initial de l\'entité', $initialState);
-
-    // Mettre à jour les champs uniquement si présents
-    if (isset($data['titre'])) {
-        $this->logger->info('Mise à jour du titre', ['titre' => $data['titre']]);
-        $bibliotheque->setTitre($data['titre']);
-    }
-
-    if (isset($data['type'])) {
-        $validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
-        if (!in_array($data['type'], $validTypes)) {
-            $this->logger->warning('Type invalide', ['type' => $data['type']]);
-            return $this->json(['message' => 'Type invalide. Les types autorisés sont : administration, sujet avec corrigé, exercice'], Response::HTTP_BAD_REQUEST);
+     * @Route("/bibliotheques/{id}", name="api_update_bibliotheque", methods={"PATCH"})
+     */
+    public function updateBibliothequeItem(int $id, Request $request, EcRepository $ecRepository, ParcoursRepository $parcoursRepository): Response
+    {
+        $user = $this->security->getUser();
+        if (!$user) {
+            $this->logger->error('Aucun utilisateur authentifié');
+            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
         }
-        $this->logger->info('Mise à jour du type', ['type' => $data['type']]);
-        $bibliotheque->setType($data['type']);
-    }
 
-    if (isset($data['ec'])) {
-        $ec = $ecRepository->find($data['ec']);
-        if (!$ec) {
-            $this->logger->warning('EC non trouvé', ['ec_id' => $data['ec']]);
-            return $this->json(['message' => 'EC non trouvé'], Response::HTTP_BAD_REQUEST);
+        // Vérifier si l'utilisateur est admin ou professeur
+        $isAdmin = in_array('ROLE_ADMIN', $user->getRoles());
+        if (!$isAdmin && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
+            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
         }
-        if ($ec->getProf()->getId() !== $prof->getId()) {
-            $this->logger->warning('Non autorisé à modifier avec cet EC', ['ec_id' => $data['ec'], 'prof_id' => $prof->getId()]);
-            return $this->json(['message' => 'Non autorisé à modifier avec cet EC'], Response::HTTP_FORBIDDEN);
+
+        $bibliotheque = $this->bibliothequeRepository->find($id);
+        if (!$bibliotheque) {
+            $this->logger->warning('Élément non trouvé', ['id' => $id]);
+            return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
         }
-        $this->logger->info('Mise à jour de l\'EC', ['ec_id' => $data['ec']]);
-        $bibliotheque->setEc($ec);
-    }
 
-    if (isset($data['parcours'])) {
-        $parcours = $parcoursRepository->findOneBy(['name' => $data['parcours']]);
-        if (!$parcours) {
-            $this->logger->warning('Parcours non trouvé', ['parcours_name' => $data['parcours']]);
-            return $this->json(['message' => 'Parcours non trouvé'], Response::HTTP_BAD_REQUEST);
-        }
-        $this->logger->info('Mise à jour du parcours', ['parcours' => $data['parcours']]);
-        $bibliotheque->setParcours($parcours);
-        $bibliotheque->setMention($parcours->getMention());
-    }
-
-    if (isset($data['description'])) {
-        $this->logger->info('Mise à jour de la description', ['description' => $data['description']]);
-        $bibliotheque->setDescription($data['description']);
-    }
-
-    $agenda = $bibliotheque->getAgenda();
-    if (isset($data['status'])) {
-        $status = filter_var($data['status'], FILTER_VALIDATE_BOOLEAN);
-        $this->logger->info('Mise à jour du status', ['status' => $status]);
-        $bibliotheque->setStatus($status);
-
-        if ($status) {
-            if (!$agenda) {
-                $agenda = new Agenda();
-                $agenda->setTitre($bibliotheque->getTitre());
-                $agenda->setType(Agenda::TYPE_COURS);
-                $agenda->setDate(new \DateTimeImmutable());
-                $agenda->setDateExpiration((new \DateTimeImmutable())->modify('+2 days'));
-                $agenda->setNomAuteur($user->getName() ?: $user->getEmail());
-                $agenda->setMention($bibliotheque->getMention());
-                $agenda->setParcours($bibliotheque->getParcours());
-                $agenda->setNiveau($bibliotheque->getParcours()->getNiveau());
-                $agenda->setBibliotheque($bibliotheque);
-
-                // Générer une image si le fichier est un PDF
-                if ($bibliotheque->getFichier() && pathinfo($bibliotheque->getFichier(), PATHINFO_EXTENSION) === 'pdf') {
-                    try {
-                        $filePath = $this->getParameter('kernel.project_dir') . '/public/uploads/bibliotheque/' . $bibliotheque->getFichier();
-                        if (file_exists($filePath)) {
-                            $pdf = new Pdf($filePath);
-                            $imageName = uniqid() . '.jpg';
-                            $imagePath = $this->getParameter('kernel.project_dir') . '/public/uploads/agenda/images/' . $imageName;
-                            $pdf->setPage(1)->saveImage($imagePath);
-                            $agenda->setImage($imageName);
-                            $this->logger->info('Image générée pour l\'agenda', ['image' => $imageName]);
-                        } else {
-                            $this->logger->warning('Fichier PDF non trouvé pour générer l\'image', ['file' => $filePath]);
-                        }
-                    } catch (\Exception $e) {
-                        $this->logger->error('Erreur lors de la génération de l\'image pour l\'agenda', ['error' => $e->getMessage()]);
-                    }
-                }
-
-                $this->entityManager->persist($agenda);
-            }
-            $agenda->setDescription($bibliotheque->getDescription() ?? '');
-            $this->entityManager->persist($agenda);
-        } else {
-            if ($agenda) {
-                try {
-                    // Supprimer l'image de l'agenda
-                    if ($agenda->getImage()) {
-                        $imagePath = $this->getParameter('kernel.project_dir') . '/public/uploads/agenda/images/' . $agenda->getImage();
-                        if (file_exists($imagePath)) {
-                            if (unlink($imagePath)) {
-                                $this->logger->info('Image de l\'agenda supprimée', ['image' => $agenda->getImage()]);
-                            } else {
-                                $this->logger->warning('Échec de la suppression de l\'image de l\'agenda', ['image' => $agenda->getImage()]);
-                            }
-                        }
-                    }
-                    // Marquer l'agenda pour suppression
-                    $agendaId = $agenda->getId();
-                    $this->entityManager->remove($agenda);
-                    // Réinitialiser la référence dans Bibliotheque
-                    $bibliotheque->setAgenda(null);
-                    // Appliquer immédiatement la suppression de l'agenda
-                    $this->entityManager->flush();
-                    $this->logger->info('Agenda supprimé lors de la dépublication', ['agenda_id' => $agendaId]);
-
-                    // Vérifier que l'agenda a bien été supprimé
-                    $agendaCheck = $this->entityManager->getRepository(Agenda::class)->find($agendaId);
-                    if ($agendaCheck) {
-                        $this->logger->error('L\'agenda n\'a pas été supprimé de la base de données', ['agenda_id' => $agendaId]);
-                    }
-                } catch (\Exception $e) {
-                    $this->logger->error('Erreur lors de la suppression de l\'agenda', ['error' => $e->getMessage(), 'agenda_id' => $agenda->getId()]);
-                    return $this->json(['message' => 'Erreur lors de la suppression de l\'agenda : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-                }
+        // Vérifier si l'utilisateur est un professeur associé à l'EC (sauf pour les admins)
+        if (!$isAdmin) {
+            $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
+            if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
+                $this->logger->warning('Non autorisé à modifier cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
+                return $this->json(['message' => 'Non autorisé à modifier cet élément'], Response::HTTP_FORBIDDEN);
             }
         }
-    } else if ($agenda && isset($data['description']) && $bibliotheque->isStatus()) {
-        // Mettre à jour la description de l'agenda si le status reste vrai
-        $agenda->setDescription($bibliotheque->getDescription() ?? '');
-        $this->entityManager->persist($agenda);
-    }
 
-    // Vérifier les changements détectés par Doctrine
-    $unitOfWork = $this->entityManager->getUnitOfWork();
-    $unitOfWork->computeChangeSets();
-    $changes = $unitOfWork->getEntityChangeSet($bibliotheque);
-    $this->logger->info('Changements détectés par Doctrine', ['data' => $changes]);
-
-    try {
-        $this->entityManager->persist($bibliotheque);
-        $this->entityManager->flush();
-
-        // Vérifier si un nouvel agenda a été créé après le flush
-        $newAgenda = $this->entityManager->getRepository(Agenda::class)->findOneBy(['bibliotheque' => $bibliotheque]);
-        if ($newAgenda && !$status) {
-            $this->logger->error('Un nouvel agenda a été créé après la dépublication', ['agenda_id' => $newAgenda->getId()]);
+        // Décoder le JSON de la requête
+        $data = json_decode($request->getContent(), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->logger->warning('Erreur de décodage JSON', ['error' => json_last_error_msg()]);
+            return $this->json(['message' => 'Erreur de format JSON'], Response::HTTP_BAD_REQUEST);
         }
 
-        $this->logger->info('État final de l\'entité après flush', [
+        // Log des données reçues
+        $this->logger->info('Données JSON reçues', ['data' => $data]);
+
+        // Stocker l'état initial de l'entité
+        $initialState = [
             'titre' => $bibliotheque->getTitre(),
             'type' => $bibliotheque->getType(),
             'ec' => $bibliotheque->getEc() ? $bibliotheque->getEc()->getId() : null,
@@ -463,30 +326,189 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             'status' => $bibliotheque->isStatus(),
             'fichier' => $bibliotheque->getFichier(),
             'description' => $bibliotheque->getDescription(),
-        ]);
+        ];
+        $this->logger->info('État initial de l\'entité', $initialState);
+
+        // Mettre à jour les champs uniquement si présents
+        if (isset($data['titre'])) {
+            $this->logger->info('Mise à jour du titre', ['titre' => $data['titre']]);
+            $bibliotheque->setTitre($data['titre']);
+        }
+
+        if (isset($data['type'])) {
+            $validTypes = ['administration', 'sujet avec corrigé', 'exercice'];
+            if (!in_array($data['type'], $validTypes)) {
+                $this->logger->warning('Type invalide', ['type' => $data['type']]);
+                return $this->json(['message' => 'Type invalide. Les types autorisés sont : administration, sujet avec corrigé, exercice'], Response::HTTP_BAD_REQUEST);
+            }
+            $this->logger->info('Mise à jour du type', ['type' => $data['type']]);
+            $bibliotheque->setType($data['type']);
+        }
+
+        if (isset($data['ec'])) {
+            $ec = $ecRepository->find($data['ec']);
+            if (!$ec) {
+                $this->logger->warning('EC non trouvé', ['ec_id' => $data['ec']]);
+                return $this->json(['message' => 'EC non trouvé'], Response::HTTP_BAD_REQUEST);
+            }
+            // Vérifier si l'utilisateur est un professeur associé à l'EC (sauf pour les admins)
+            if (!$isAdmin) {
+                $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
+                if ($ec->getProf()->getId() !== $prof->getId()) {
+                    $this->logger->warning('Non autorisé à modifier avec cet EC', ['ec_id' => $data['ec'], 'prof_id' => $prof->getId()]);
+                    return $this->json(['message' => 'Non autorisé à modifier avec cet EC'], Response::HTTP_FORBIDDEN);
+                }
+            }
+            $this->logger->info('Mise à jour de l\'EC', ['ec_id' => $data['ec']]);
+            $bibliotheque->setEc($ec);
+        }
+
+        if (isset($data['parcours'])) {
+            $parcours = $parcoursRepository->findOneBy(['name' => $data['parcours']]);
+            if (!$parcours) {
+                $this->logger->warning('Parcours non trouvé', ['parcours_name' => $data['parcours']]);
+                return $this->json(['message' => 'Parcours non trouvé'], Response::HTTP_BAD_REQUEST);
+            }
+            $this->logger->info('Mise à jour du parcours', ['parcours' => $data['parcours']]);
+            $bibliotheque->setParcours($parcours);
+            $bibliotheque->setMention($parcours->getMention());
+        }
+
+        if (isset($data['description'])) {
+            $this->logger->info('Mise à jour de la description', ['description' => $data['description']]);
+            $bibliotheque->setDescription($data['description']);
+        }
 
         $agenda = $bibliotheque->getAgenda();
-        $description = $bibliotheque->isStatus() && $agenda ? $agenda->getDescription() : $bibliotheque->getDescription();
+        if (isset($data['status'])) {
+            $status = filter_var($data['status'], FILTER_VALIDATE_BOOLEAN);
+            $this->logger->info('Mise à jour du status', ['status' => $status]);
+            $bibliotheque->setStatus($status);
 
-        return $this->json([
-            'message' => 'Attributs textuels modifiés avec succès',
-            '@id' => '/api/bc/' . $bibliotheque->getId(),
-            'titre' => $bibliotheque->getTitre(),
-            'type' => $bibliotheque->getType(),
-            'fichier' => $bibliotheque->getFichier() ? ($this->getParameter('app.base_url') . '/Uploads/bibliotheque/' . $bibliotheque->getFichier()) : null,
-            'mentionName' => $bibliotheque->getMentionName(),
-            'niveauNom' => $bibliotheque->getNiveauNom(),
-            'ecName' => $bibliotheque->getEcName(),
-            'parcoursName' => $bibliotheque->getParcoursName(),
-            'status' => $bibliotheque->isStatus(),
-            'description' => $description,
-            'isPublished' => $bibliotheque->isStatus(),
-        ], Response::HTTP_OK, [], ['groups' => ['bibliotheque:read']]);
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur lors de la mise à jour de l\'élément', ['error' => $e->getMessage()]);
-        return $this->json(['message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            if ($status) {
+                if (!$agenda) {
+                    $agenda = new Agenda();
+                    $agenda->setTitre($bibliotheque->getTitre());
+                    $agenda->setType(Agenda::TYPE_COURS);
+                    $agenda->setDate(new \DateTimeImmutable());
+                    $agenda->setDateExpiration((new \DateTimeImmutable())->modify('+2 days'));
+                    $agenda->setNomAuteur($user->getName() ?: $user->getEmail());
+                    $agenda->setMention($bibliotheque->getMention());
+                    $agenda->setParcours($bibliotheque->getParcours());
+                    $agenda->setNiveau($bibliotheque->getParcours()->getNiveau());
+                    $agenda->setBibliotheque($bibliotheque);
+
+                    // Générer une image si le fichier est un PDF
+                    if ($bibliotheque->getFichier() && pathinfo($bibliotheque->getFichier(), PATHINFO_EXTENSION) === 'pdf') {
+                        try {
+                            $filePath = $this->getParameter('kernel.project_dir') . '/public/uploads/bibliotheque/' . $bibliotheque->getFichier();
+                            if (file_exists($filePath)) {
+                                $pdf = new Pdf($filePath);
+                                $imageName = uniqid() . '.jpg';
+                                $imagePath = $this->getParameter('kernel.project_dir') . '/public/uploads/agenda/images/' . $imageName;
+                                $pdf->setPage(1)->saveImage($imagePath);
+                                $agenda->setImage($imageName);
+                                $this->logger->info('Image générée pour l\'agenda', ['image' => $imageName]);
+                            } else {
+                                $this->logger->warning('Fichier PDF non trouvé pour générer l\'image', ['file' => $filePath]);
+                            }
+                        } catch (\Exception $e) {
+                            $this->logger->error('Erreur lors de la génération de l\'image pour l\'agenda', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    $this->entityManager->persist($agenda);
+                }
+                $agenda->setDescription($bibliotheque->getDescription() ?? '');
+                $this->entityManager->persist($agenda);
+            } else {
+                if ($agenda) {
+                    try {
+                        // Supprimer l'image de l'agenda
+                        if ($agenda->getImage()) {
+                            $imagePath = $this->getParameter('kernel.project_dir') . '/public/uploads/agenda/images/' . $agenda->getImage();
+                            if (file_exists($imagePath)) {
+                                if (unlink($imagePath)) {
+                                    $this->logger->info('Image de l\'agenda supprimée', ['image' => $agenda->getImage()]);
+                                } else {
+                                    $this->logger->warning('Échec de la suppression de l\'image de l\'agenda', ['image' => $agenda->getImage()]);
+                                }
+                            }
+                        }
+                        // Marquer l'agenda pour suppression
+                        $agendaId = $agenda->getId();
+                        $this->entityManager->remove($agenda);
+                        // Réinitialiser la référence dans Bibliotheque
+                        $bibliotheque->setAgenda(null);
+                        // Appliquer immédiatement la suppression de l'agenda
+                        $this->entityManager->flush();
+                        $this->logger->info('Agenda supprimé lors de la dépublication', ['agenda_id' => $agendaId]);
+
+                        // Vérifier que l'agenda a bien été supprimé
+                        $agendaCheck = $this->entityManager->getRepository(Agenda::class)->find($agendaId);
+                        if ($agendaCheck) {
+                            $this->logger->error('L\'agenda n\'a pas été supprimé de la base de données', ['agenda_id' => $agendaId]);
+                        }
+                    } catch (\Exception $e) {
+                        $this->logger->error('Erreur lors de la suppression de l\'agenda', ['error' => $e->getMessage(), 'agenda_id' => $agenda->getId()]);
+                        return $this->json(['message' => 'Erreur lors de la suppression de l\'agenda : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+                    }
+                }
+            }
+        } else if ($agenda && isset($data['description']) && $bibliotheque->isStatus()) {
+            // Mettre à jour la description de l'agenda si le status reste vrai
+            $agenda->setDescription($bibliotheque->getDescription() ?? '');
+            $this->entityManager->persist($agenda);
+        }
+
+        // Vérifier les changements détectés par Doctrine
+        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork->computeChangeSets();
+        $changes = $unitOfWork->getEntityChangeSet($bibliotheque);
+        $this->logger->info('Changements détectés par Doctrine', ['data' => $changes]);
+
+        try {
+            $this->entityManager->persist($bibliotheque);
+            $this->entityManager->flush();
+
+            // Vérifier si un nouvel agenda a été créé après le flush
+            $newAgenda = $this->entityManager->getRepository(Agenda::class)->findOneBy(['bibliotheque' => $bibliotheque]);
+            if ($newAgenda && !$status) {
+                $this->logger->error('Un nouvel agenda a été créé après la dépublication', ['agenda_id' => $newAgenda->getId()]);
+            }
+
+            $this->logger->info('État final de l\'entité après flush', [
+                'titre' => $bibliotheque->getTitre(),
+                'type' => $bibliotheque->getType(),
+                'ec' => $bibliotheque->getEc() ? $bibliotheque->getEc()->getId() : null,
+                'parcours' => $bibliotheque->getParcours() ? $bibliotheque->getParcours()->getName() : null,
+                'status' => $bibliotheque->isStatus(),
+                'fichier' => $bibliotheque->getFichier(),
+                'description' => $bibliotheque->getDescription(),
+            ]);
+
+            $agenda = $bibliotheque->getAgenda();
+            $description = $bibliotheque->isStatus() && $agenda ? $agenda->getDescription() : $bibliotheque->getDescription();
+
+            return $this->json([
+                'message' => 'Attributs textuels modifiés avec succès',
+                '@id' => '/api/bc/' . $bibliotheque->getId(),
+                'titre' => $bibliotheque->getTitre(),
+                'type' => $bibliotheque->getType(),
+                'fichier' => $bibliotheque->getFichier() ? ($this->getParameter('app.base_url') . '/Uploads/bibliotheque/' . $bibliotheque->getFichier()) : null,
+                'mentionName' => $bibliotheque->getMentionName(),
+                'niveauNom' => $bibliotheque->getNiveauNom(),
+                'ecName' => $bibliotheque->getEcName(),
+                'parcoursName' => $bibliotheque->getParcoursName(),
+                'status' => $bibliotheque->isStatus(),
+                'description' => $description,
+                'isPublished' => $bibliotheque->isStatus(),
+            ], Response::HTTP_OK, [], ['groups' => ['bibliotheque:read']]);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la mise à jour de l\'élément', ['error' => $e->getMessage()]);
+            return $this->json(['message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
-}
 
     /**
      * @Route("/bibliotheques/{id}/upload", name="api_upload_bibliotheque_file", methods={"POST"})
@@ -499,9 +521,11 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non enseignant', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non enseignant'], Response::HTTP_FORBIDDEN);
+        // Vérifier si l'utilisateur est admin ou professeur
+        $isAdmin = in_array('ROLE_ADMIN', $user->getRoles());
+        if (!$isAdmin && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
+            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
         }
 
         $bibliotheque = $this->bibliothequeRepository->find($id);
@@ -510,10 +534,13 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
         }
 
-        $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
-        if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
-            $this->logger->warning('Non autorisé à modifier cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
-            return $this->json(['message' => 'Non autorisé à modifier cet élément'], Response::HTTP_FORBIDDEN);
+        // Vérifier si l'utilisateur est un professeur associé à l'EC (sauf pour les admins)
+        if (!$isAdmin) {
+            $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
+            if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
+                $this->logger->warning('Non autorisé à modifier cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
+                return $this->json(['message' => 'Non autorisé à modifier cet élément'], Response::HTTP_FORBIDDEN);
+            }
         }
 
         $file = $request->files->get('file');
@@ -585,7 +612,7 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             return $this->json([
                 'message' => 'Fichier modifié avec succès',
                 '@id' => '/api/bibliotheques/' . $bibliotheque->getId(),
-                'fichier' => $this->getParameter('app.base_url') . '/uploads/bibliotheque/' . $bibliotheque->getFichier(),
+                'fichier' => $this->getParameter('app.base_url') . '/Uploads/bibliotheque/' . $bibliotheque->getFichier(),
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors du traitement du fichier', ['error' => $e->getMessage()]);
@@ -604,9 +631,11 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non supporté', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non supporté'], Response::HTTP_FORBIDDEN);
+        // Vérifier si l'utilisateur est admin ou professeur
+        $isAdmin = in_array('ROLE_ADMIN', $user->getRoles());
+        if (!$isAdmin && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
+            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
+            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
         }
 
         $bibliotheque = $this->bibliothequeRepository->find($id);
@@ -615,10 +644,13 @@ public function updateBibliothequeItem(int $id, Request $request, EcRepository $
             return $this->json(['message' => 'Élément non trouvé'], Response::HTTP_NOT_FOUND);
         }
 
-        $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
-        if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
-            $this->logger->warning('Non autorisé à supprimer cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
-            return $this->json(['message' => 'Non autorisé à supprimer cet élément'], Response::HTTP_FORBIDDEN);
+        // Vérifier si l'utilisateur est un professeur associé à l'EC (sauf pour les admins)
+        if (!$isAdmin) {
+            $prof = $this->entityManager->getRepository(\App\Entity\Prof::class)->findOneBy(['user' => $user]);
+            if (!$prof || $bibliotheque->getEc()->getProf()->getId() !== $prof->getId()) {
+                $this->logger->warning('Non autorisé à supprimer cet élément', ['id' => $id, 'prof_id' => $prof ? $prof->getId() : null]);
+                return $this->json(['message' => 'Non autorisé à supprimer cet élément'], Response::HTTP_FORBIDDEN);
+            }
         }
 
         // Supprimer le fichier associé avec VichUploader
