@@ -16,7 +16,8 @@ export const login = async (email, password) => {
         if (response.data.token) {
             const roles = Array.isArray(response.data.roles) ? response.data.roles : ['ROLE_USER'];
 
-            localStorage.setItem('user', JSON.stringify({
+            // Utiliser sessionStorage au lieu de localStorage
+            sessionStorage.setItem('user', JSON.stringify({
                 ...response.data,
                 roles
             }));
@@ -48,7 +49,7 @@ export const login = async (email, password) => {
 };
 
 export const getCurrentUser = () => {
-    const user = localStorage.getItem('user');
+    const user = sessionStorage.getItem('user');
     return user ? JSON.parse(user) : null;
 };
 
@@ -88,8 +89,8 @@ export const logout = async () => {
         }
     }
 
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    // Supprimer de sessionStorage
+    sessionStorage.removeItem('user');
 
     window.location.href = '/etudiant/login-etudiant';
 
@@ -102,8 +103,7 @@ export const isAuthenticated = () => {
 };
 
 export const forceLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     window.location.href = '/etudiant/login-etudiant';
 };
 

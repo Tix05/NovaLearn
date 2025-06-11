@@ -71,7 +71,7 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam, setExamStarted,
             setTimeLeft(serverTime);
             lastSyncRef.current = Date.now();
 
-            localStorage.setItem(`examTime_${examId}`, JSON.stringify({
+            sessionStorage.setItem(`examTime_${examId}`, JSON.stringify({
                 time: serverTime,
                 lastSync: Date.now(),
                 serverTime
@@ -84,7 +84,7 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam, setExamStarted,
                 detail: 'Échec de la synchronisation avec le serveur. Utilisation du cache local.',
                 life: 3000
             });
-            const cached = localStorage.getItem(`examTime_${examId}`);
+            const cached = sessionStorage.getItem(`examTime_${examId}`);
             if (cached) {
                 const { time, lastSync } = JSON.parse(cached);
                 const elapsed = Math.floor((Date.now() - lastSync) / 1000);
@@ -159,8 +159,8 @@ const useExamTimer = (examId, initialDuration, handleSubmitExam, setExamStarted,
             try {
                 console.debug('Sauvegarde automatique', { examId, timeLeft });
                 await saveExamProgress(examId, examAnswers, timeLeft);
-                localStorage.setItem(`examTimeLeft_${examId}`, timeLeft);
-                localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
+                sessionStorage.setItem(`examTimeLeft_${examId}`, timeLeft);
+                sessionStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
             } catch (error) {
                 console.error('Échec sauvegarde automatique:', error);
                 toast.current?.show({
@@ -206,8 +206,8 @@ const Agenda = () => {
         debounce(async (examId, answers, tempsRestant) => {
             try {
                 await saveExamProgress(examId, answers, tempsRestant);
-                localStorage.setItem(`examTimeLeft_${examId}`, tempsRestant);
-                localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
+                sessionStorage.setItem(`examTimeLeft_${examId}`, tempsRestant);
+                sessionStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
             } catch (error) {
                 console.error('Erreur sauvegarde progression:', error);
                 toast.current?.show({
@@ -277,10 +277,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
 
                 toast.current?.show({
                     severity: 'success',
@@ -312,10 +312,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
                 navigate('/etudiant/agenda');
                 return;
             }
@@ -332,10 +332,10 @@ const Agenda = () => {
                 ...prev,
                 examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
             }));
-            localStorage.removeItem('ongoingExamId');
-            localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-            localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-            localStorage.removeItem(`examTime_${selectedExam.id}`);
+            sessionStorage.removeItem('ongoingExamId');
+            sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+            sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+            sessionStorage.removeItem(`examTime_${selectedExam.id}`);
 
             toast.current?.show({
                 severity: 'success',
@@ -359,10 +359,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
 
                 toast.current?.show({
                     severity: 'success',
@@ -394,10 +394,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
                 navigate('/etudiant/agenda');
             }
         }
@@ -462,7 +462,7 @@ const Agenda = () => {
                     evenements: data.evenements || []
                 });
 
-                const ongoingExamId = localStorage.getItem('ongoingExamId');
+                const ongoingExamId = sessionStorage.getItem('ongoingExamId');
                 if (ongoingExamId) {
                     try {
                         const examData = await getExamStatus(ongoingExamId);
@@ -486,17 +486,17 @@ const Agenda = () => {
                                 throw new Error('Examen en cours non trouvé dans la liste');
                             }
                         } else {
-                            localStorage.removeItem('ongoingExamId');
-                            localStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
-                            localStorage.removeItem(`examLastSave_${ongoingExamId}`);
-                            localStorage.removeItem(`examTime_${ongoingExamId}`);
+                            sessionStorage.removeItem('ongoingExamId');
+                            sessionStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
+                            sessionStorage.removeItem(`examLastSave_${ongoingExamId}`);
+                            sessionStorage.removeItem(`examTime_${ongoingExamId}`);
                         }
                     } catch (error) {
                         console.error('Erreur restauration examen:', error);
-                        localStorage.removeItem('ongoingExamId');
-                        localStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
-                        localStorage.removeItem(`examLastSave_${ongoingExamId}`);
-                        localStorage.removeItem(`examTime_${ongoingExamId}`);
+                        sessionStorage.removeItem('ongoingExamId');
+                        sessionStorage.removeItem(`examTimeLeft_${ongoingExamId}`);
+                        sessionStorage.removeItem(`examLastSave_${ongoingExamId}`);
+                        sessionStorage.removeItem(`examTime_${ongoingExamId}`);
                     }
                 }
                 setLoading(false);
@@ -570,8 +570,8 @@ const Agenda = () => {
                 setTimeLeft(examData.temps_restant);
                 setExamStarted(true);
                 setShowInstructions(false);
-                localStorage.setItem('ongoingExamId', exam.examenId);
-                localStorage.setItem(`examTimeLeft_${exam.examenId}`, examData.temps_restant);
+                sessionStorage.setItem('ongoingExamId', exam.examenId);
+                sessionStorage.setItem(`examTimeLeft_${exam.examenId}`, examData.temps_restant);
             } else if (examData.statut === 'SOUMIS' || examData.statut === 'ABANDONNE') {
                 toast.current?.show({
                     severity: 'warn',
@@ -617,9 +617,9 @@ const Agenda = () => {
             setTimeLeft(response.temps_restant || selectedExam.duration);
             setExamAnswers(response.reponses || {});
             setExamStarted(true);
-            localStorage.setItem('ongoingExamId', selectedExam.id);
-            localStorage.setItem(`examTimeLeft_${selectedExam.id}`, response.temps_restant || selectedExam.duration);
-            localStorage.setItem(`examLastSave_${selectedExam.id}`, new Date().toISOString());
+            sessionStorage.setItem('ongoingExamId', selectedExam.id);
+            sessionStorage.setItem(`examTimeLeft_${selectedExam.id}`, response.temps_restant || selectedExam.duration);
+            sessionStorage.setItem(`examLastSave_${selectedExam.id}`, new Date().toISOString());
             toast.current?.show({
                 severity: 'success',
                 summary: 'Succès',
@@ -706,10 +706,10 @@ const Agenda = () => {
                         ...prev,
                         examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                     }));
-                    localStorage.removeItem('ongoingExamId');
-                    localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                    localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                    localStorage.removeItem(`examTime_${selectedExam.id}`);
+                    sessionStorage.removeItem('ongoingExamId');
+                    sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                    sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                    sessionStorage.removeItem(`examTime_${selectedExam.id}`);
                     navigate('/etudiant/agenda');
                     return;
                 }
@@ -726,10 +726,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
 
                 toast.current?.show({
                     severity: 'success',
@@ -761,10 +761,10 @@ const Agenda = () => {
                         ...prev,
                         examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                     }));
-                    localStorage.removeItem('ongoingExamId');
-                    localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                    localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                    localStorage.removeItem(`examTime_${selectedExam.id}`);
+                    sessionStorage.removeItem('ongoingExamId');
+                    sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                    sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                    sessionStorage.removeItem(`examTime_${selectedExam.id}`);
                     navigate('/etudiant/agenda');
                 }
             }
@@ -777,10 +777,10 @@ const Agenda = () => {
                     ...prev,
                     examens: prev.examens.filter(e => e.examenId !== selectedExam.id)
                 }));
-                localStorage.removeItem('ongoingExamId');
-                localStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
-                localStorage.removeItem(`examLastSave_${selectedExam.id}`);
-                localStorage.removeItem(`examTime_${selectedExam.id}`);
+                sessionStorage.removeItem('ongoingExamId');
+                sessionStorage.removeItem(`examTimeLeft_${selectedExam.id}`);
+                sessionStorage.removeItem(`examLastSave_${selectedExam.id}`);
+                sessionStorage.removeItem(`examTime_${selectedExam.id}`);
                 toast.current?.show({
                     severity: 'warn',
                     summary: 'Abandon',
@@ -833,10 +833,10 @@ const Agenda = () => {
         setExamSubmitted(false);
         setTimeLeft(0);
         setExamStarted(false);
-        localStorage.removeItem('ongoingExamId');
-        localStorage.removeItem(`examTimeLeft_${selectedExam?.id}`);
-        localStorage.removeItem(`examLastSave_${selectedExam?.id}`);
-        localStorage.removeItem(`examTime_${selectedExam?.id}`);
+        sessionStorage.removeItem('ongoingExamId');
+        sessionStorage.removeItem(`examTimeLeft_${selectedExam?.id}`);
+        sessionStorage.removeItem(`examLastSave_${selectedExam?.id}`);
+        sessionStorage.removeItem(`examTime_${selectedExam?.id}`);
     };
 
     const formatTime = (seconds) => {

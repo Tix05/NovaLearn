@@ -63,7 +63,7 @@ export const fetchExamQuestions = async (examId) => {
                     : response.data.temps_restant || response.data.duree || 3600;
             } catch (error) {
                 console.error('Error fetching exam time:', error);
-                const cached = localStorage.getItem(`examTime_${examId}`);
+                const cached = sessionStorage.getItem(`examTime_${examId}`);
                 if (cached) {
                     const { time, lastSync } = JSON.parse(cached);
                     const elapsed = Math.floor((Date.now() - lastSync) / 1000);
@@ -232,8 +232,8 @@ export const saveExamProgress = async (examId, answers, tempsRestant) => {
         );
 
         if (response.data.temps_restant !== undefined) {
-            localStorage.setItem(`examTimeLeft_${examId}`, response.data.temps_restant);
-            localStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
+            sessionStorage.setItem(`examTimeLeft_${examId}`, response.data.temps_restant);
+            sessionStorage.setItem(`examLastSave_${examId}`, new Date().toISOString());
         }
 
         return response.data;

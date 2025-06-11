@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 const getCurrentUserData = () => {
-    const admin = localStorage.getItem('admin');
+    const admin = sessionStorage.getItem('admin');
     if (admin) return { type: 'admin', data: JSON.parse(admin), storageKey: 'admin' };
 
-    const user = localStorage.getItem('user');
+    const user = sessionStorage.getItem('user');
     if (user) return { type: 'user', data: JSON.parse(user), storageKey: 'user' };
 
-    const teacher = localStorage.getItem('teacher');
+    const teacher = sessionStorage.getItem('teacher');
     if (teacher) return { type: 'teacher', data: JSON.parse(teacher), storageKey: 'teacher' };
 
     return null;
@@ -51,8 +51,8 @@ axios.interceptors.response.use(
                     console.error('Erreur lors de la déconnexion côté serveur:', logoutError.response?.data || logoutError.message);
                 }
 
-                // Supprimer les données du localStorage
-                localStorage.removeItem(userData.storageKey);
+                // Supprimer les données du sessionStorage
+                sessionStorage.removeItem(userData.storageKey);
 
                 // Redirection selon le type
                 let redirectPath = '/';
@@ -105,8 +105,8 @@ export const logout = async () => {
             console.error('Erreur lors de la déconnexion côté serveur:', error.response?.data || error.message);
         }
 
-        // Supprimer les données du localStorage
-        localStorage.removeItem(userData.storageKey);
+        // Supprimer les données du sessionStorage
+        sessionStorage.removeItem(userData.storageKey);
 
         // Rediriger en fonction du type d'utilisateur
         let redirectPath = '/';

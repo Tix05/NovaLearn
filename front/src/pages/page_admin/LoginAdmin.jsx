@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FloatLabel } from "primereact/floatlabel";
 import { InputText } from 'primereact/inputtext';
 import { Password } from "primereact/password";
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { adminLogin, getCurrentAdmin } from '../../Services/adminAuthService';
+import { adminLogin, getCurrentAdmin, adminLogout } from '../../Services/adminAuthService';
 import Loading from '../Loading';
 import { MdErrorOutline } from "react-icons/md";
 
@@ -15,13 +15,6 @@ const LoginAdmin = () => {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const [authSuccess, setAuthSuccess] = useState(false);
-
-    useEffect(() => {
-        const admin = getCurrentAdmin();
-        if (admin && admin.roles && admin.roles.includes('ROLE_ADMIN')) {
-            navigate('/admin/dashboard');
-        }
-    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -38,6 +31,7 @@ const LoginAdmin = () => {
                     navigate('/admin/dashboard');
                 }, 2000);
             } else {
+                adminLogout();
                 setError("Vous n'avez pas accès à l'espace admin");
             }
         } catch (err) {
@@ -46,6 +40,13 @@ const LoginAdmin = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleForceLogout = () => {
+        adminLogout();
+        setEmail('');
+        setMdp('');
+        setError(null);
     };
 
     if (authSuccess) {
@@ -100,6 +101,15 @@ const LoginAdmin = () => {
                             <label htmlFor="mdp">Mot de passe</label>
                         </FloatLabel>
                     </div>
+                    {getCurrentAdmin() && (
+                        <button
+                            type="button"
+                            onClick={handleForceLogout}
+                            className="bg-red-500 text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-red-600 duration-500"
+                        >
+                            Déconnexion de l'utilisateur actuel
+                        </button>
+                    )}
                     <button
                         type="submit"
                         className={`bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-[#cb7c7c] duration-500 disabled:opacity-50 ${!loading && 'hover:scale-105 cursor-pointer'}`}

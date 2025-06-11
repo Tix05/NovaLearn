@@ -10,17 +10,30 @@ export const adminLogin = async (email, password) => {
         });
 
         if (response.data.token) {
-            localStorage.setItem('admin', JSON.stringify(response.data));
+            // Utiliser sessionStorage au lieu de localStorage
+            sessionStorage.setItem('admin', JSON.stringify(response.data));
         }
 
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.message || 'Erreur lors de la connexion');
+        let errorMessage = 'Erreur lors de la connexion';
+        if (error.response) {
+            if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response.status === 401) {
+                errorMessage = 'Email ou mot de passe incorrect';
+            } else if (error.response.status === 403) {
+                errorMessage = "Vous n'avez pas accès à l'espace admin";
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
     }
 };
 
 export const getCurrentAdmin = () => {
-    const admin = localStorage.getItem('admin');
+    const admin = sessionStorage.getItem('admin');
     return admin ? JSON.parse(admin) : null;
 };
 
@@ -46,8 +59,8 @@ export const adminLogout = async () => {
         }
     }
 
-    localStorage.removeItem('admin');
-    localStorage.removeItem('token');
+    // Supprimer de sessionStorage
+    sessionStorage.removeItem('admin');
 
     window.location.href = '/admin/login';
 
@@ -55,13 +68,12 @@ export const adminLogout = async () => {
 };
 
 export const isAuthenticated = () => {
-    const token = getAdminToken(); // Correction: Utiliser getAdminToken au lieu de getToken
+    const token = getAdminToken();
     return !!token;
 };
 
 export const forceLogout = () => {
-    localStorage.removeItem('admin');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('admin');
     window.location.href = '/admin/login';
 };
 
@@ -80,11 +92,20 @@ export const getDashboardData = async () => {
         });
         return response.data;
     } catch (error) {
-        throw new Error(error.response?.data?.error || 'Erreur lors de la récupération des données');
+        let errorMessage = 'Erreur lors de la récupération des données';
+        if (error.response) {
+            if (error.response.status === 401) {
+                errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
+            } else if (error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        } else if (error.request) {
+            errorMessage = 'Le serveur ne répond pas';
+        }
+        throw new Error(errorMessage);
     }
 };
-
-// Nouvelles fonctions ajoutées
 
 export const getAdminMentions = async () => {
     const token = getAdminToken();
@@ -104,6 +125,7 @@ export const getAdminMentions = async () => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -132,6 +154,7 @@ export const getAdminNiveaux = async (mentionId) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -160,6 +183,7 @@ export const getAdminCours = async (mentionId, niveauId, semestreId) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -188,6 +212,7 @@ export const getAdminCoursDetails = async (mentionId, niveauId, semestreId, cour
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -272,6 +297,7 @@ export const deleteAdminSupport = async (supportId) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -305,6 +331,7 @@ export const updateEcDescription = async (ecId, description) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -333,6 +360,7 @@ export const deleteAdminCommentaire = async (commentaireId) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }

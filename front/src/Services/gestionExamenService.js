@@ -3,7 +3,7 @@ import axios from './apiConfig';
 const API_URL = 'http://localhost:8000/api/examen';
 
 const getAuthHeaders = () => {
-    const admin = JSON.parse(localStorage.getItem('admin') || '{}');
+    const admin = JSON.parse(sessionStorage.getItem('admin') || '{}');
     const token = admin?.token;
     if (!token) {
         throw new Error('Utilisateur non authentifié');

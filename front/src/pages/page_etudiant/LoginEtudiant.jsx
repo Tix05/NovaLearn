@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FloatLabel } from "primereact/floatlabel";
 import { InputText } from 'primereact/inputtext';
 import { Password } from "primereact/password";
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { login, getCurrentUser } from '../../Services/authService';
+import { login, getCurrentUser, logout } from '../../Services/authService';
 import Loading from '../Loading';
 import { MdErrorOutline } from "react-icons/md";
 
@@ -15,13 +15,6 @@ const LoginEtudiant = () => {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
     const [authSuccess, setAuthSuccess] = useState(false);
-
-    useEffect(() => {
-        const user = getCurrentUser();
-        if (user && user.roles && user.roles.includes('ROLE_ETUDIANT')) {
-            navigate('/etudiant/dashboard');
-        }
-    }, [navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -48,15 +41,25 @@ const LoginEtudiant = () => {
             setLoading(false);
         }
     };
+
+    const handleForceLogout = () => {
+        logout();
+        setEmail('');
+        setMdp('');
+        setError(null);
+    };
+
     if (authSuccess) {
         return <Loading />;
     }
+
     return (
         <motion.div
             className='w-full min-h-screen flex'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1 }}>
+            transition={{ duration: 1 }}
+        >
             <div className='w-1/2 flex flex-col items-center justify-center bg-black image-login'>
             </div>
             <div className='w-1/2 flex flex-col justify-center bg-white'>
@@ -98,10 +101,18 @@ const LoginEtudiant = () => {
                             <label htmlFor="mdp">Mot de passe</label>
                         </FloatLabel>
                     </div>
+                    {getCurrentUser() && (
+                        <button
+                            type="button"
+                            onClick={handleForceLogout}
+                            className="bg-red-500 text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-red-600 duration-500"
+                        >
+                            Déconnexion de l'utilisateur actuel
+                        </button>
+                    )}
                     <button
                         type="submit"
-                        className={`bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-[#cb7c7c] duration-500 disabled:opacity-50 ${!loading && 'hover:scale-105 cursor-pointer'
-                            }`}
+                        className={`bg-[#DD646E] text-white py-2 w-[350px] font-semibold rounded-sm hover:bg-[#cb7c7c] duration-500 disabled:opacity-50 ${!loading && 'hover:scale-105 cursor-pointer'}`}
                         disabled={loading}
                     >
                         {loading ? (
@@ -111,13 +122,11 @@ const LoginEtudiant = () => {
                             </>
                         ) : 'Se connecter'}
                     </button>
-
                 </form>
                 {error && (
                     <div className="flex justify-center items-center mt-2 text-red-500 font-semibold space-x-1">
                         <MdErrorOutline size={20} />
-                        <p >{error}</p>
-
+                        <p>{error}</p>
                     </div>
                 )}
                 <div className='flex flex-col items-center mt-3 space-y-3'>
@@ -127,12 +136,6 @@ const LoginEtudiant = () => {
                     >
                         Mot de passe oublié ?
                     </Link>
-                    {/* <Link
-                        to="/etudiant/inscription-etape-1"
-                        className='bg-[#64883E] text-center text-white shadow-2xl py-2 w-[350px] font-semibold rounded-sm cursor-pointer hover:bg-[#3e8842] hover:scale-105 duration-500'
-                    >
-                        S'inscrire
-                    </Link> */}
                 </div>
             </div>
         </motion.div>

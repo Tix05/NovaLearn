@@ -41,14 +41,13 @@ export default function Sidebar({ isMobile, isSidebarVisible, toggleSidebar }) {
     const location = useLocation();
 
     useEffect(() => {
-        // Récupérer les informations de l'utilisateur depuis le localStorage
-        const userData = JSON.parse(localStorage.getItem('user'));
+        const userData = JSON.parse(sessionStorage.getItem('user'));
 
         const defaultUser = {
             name: 'Utilisateur',
             email: 'utilisateur@example.com',
             avatar: null,
-            ...userData // Cela écrasera les valeurs par défaut avec celles de userData si elles existent
+            ...userData
         };
 
         setUser(defaultUser);

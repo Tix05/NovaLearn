@@ -16,7 +16,8 @@ export const teacherLogin = async (email, password) => {
         if (response.data.token) {
             const roles = Array.isArray(response.data.roles) ? response.data.roles : ['ROLE_USER'];
 
-            localStorage.setItem('teacher', JSON.stringify({
+            // Utiliser sessionStorage au lieu de localStorage
+            sessionStorage.setItem('teacher', JSON.stringify({
                 ...response.data,
                 roles
             }));
@@ -62,8 +63,8 @@ export const teacherLogout = async () => {
         }
     }
 
-    localStorage.removeItem('teacher');
-    localStorage.removeItem('token');
+    // Supprimer de sessionStorage
+    sessionStorage.removeItem('teacher');
 
     window.location.href = '/enseignant/login-enseignant';
 
@@ -76,13 +77,12 @@ export const isAuthenticated = () => {
 };
 
 export const forceLogout = () => {
-    localStorage.removeItem('teacher');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('teacher');
     window.location.href = '/enseignant/login-enseignant';
 };
 
 export const getCurrentTeacher = () => {
-    const teacher = localStorage.getItem('teacher');
+    const teacher = sessionStorage.getItem('teacher');
     return teacher ? JSON.parse(teacher) : null;
 };
 
@@ -109,6 +109,7 @@ export const getTeacherDashboardStats = async () => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -137,6 +138,7 @@ export const getTeacherStudents = async () => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -165,6 +167,7 @@ export const getTeacherMentions = async () => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -249,6 +252,7 @@ export const deleteTeacherSupport = async (supportId) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
@@ -282,6 +286,7 @@ export const updateEcDescription = async (ecId, description) => {
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Session expirée ou non autorisée';
+                forceLogout();
             } else if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
             }
