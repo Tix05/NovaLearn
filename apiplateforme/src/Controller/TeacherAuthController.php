@@ -91,6 +91,7 @@ class TeacherAuthController extends AbstractController
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
+            'avatar' => $user->getAvatar(),
             'roles' => $user->getRoles(),
             'onlineStatus' => $user->getOnlineStatus(),
             'teacher' => $user->getProfs()->first() ? [

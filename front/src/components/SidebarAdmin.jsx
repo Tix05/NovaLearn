@@ -64,9 +64,25 @@ const menuItems = [
 
 export default function SidebarAdmin({ isMobile, isSidebarVisible, toggleSidebar }) {
     const [open, setOpen] = useState(true);
+    const [user, setUser] = useState(null);
     const location = useLocation();
 
     useEffect(() => {
+
+        const userData = JSON.parse(sessionStorage.getItem('admin'));
+
+        const defaultUser = {
+            name: 'Utilisateur',
+            email: 'utilisateur@example.com',
+            avatar: null,
+            ...userData
+        };
+
+        setUser(defaultUser);
+
+        if (userData) {
+            setUser(userData);
+        }
         if (isMobile) {
             setOpen(true);
         }
@@ -122,18 +138,21 @@ export default function SidebarAdmin({ isMobile, isSidebarVisible, toggleSidebar
                 }
             </ul>
 
-            <div className={`flex items-center py-2 transition-all duration-500 ${!open ? 'space-x-0 px-0' : 'space-x-5 px-2'}`}>
-                <Avatar
-                    icon="pi pi-user"
-                    size="large"
-                    shape="circle"
-                    className={`transition-all duration-500 ${!open ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
-                />
-                <div className={`leading-5 ${!open && 'w-0 translate-x-24'} duration-500 overflow-hidden`}>
-                    <p>Tiavina</p>
-                    <span className='text-xs'>Tiavina@gmail.com</span>
+            {user && (
+                <div className={`flex items-center py-2 transition-all duration-500 ${!open ? 'space-x-0 px-0' : 'space-x-5 px-2'}`}>
+                    <Avatar
+                        image={user.avatar ? `/uploads/avatars/${user.avatar}` : null}
+                        icon={!user.avatar ? "pi pi-user" : null}
+                        size="large"
+                        shape="circle"
+                        className={`transition-all duration-500 ${!open ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
+                    />
+                    <div className={`leading-5 ${!open && 'w-0 translate-x-24'} duration-500 overflow-hidden`}>
+                        <p>{user.name}</p>
+                        <span className='text-xs'>{user.email}</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
         </nav>
     );
