@@ -42,6 +42,7 @@ class Conversation
 
     /**
      * @ORM\ManyToOne(targetEntity=Parcours::class)
+     * @ORM\JoinColumn(name="parcours_id", referencedColumnName="id", onDelete="CASCADE")
      */
     private $parcours;
 

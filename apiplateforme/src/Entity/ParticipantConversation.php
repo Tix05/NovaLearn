@@ -28,8 +28,8 @@ class ParticipantConversation
 
     /**
      * @ORM\ManyToOne(targetEntity=Conversation::class, inversedBy="participants")
-     * @ORM\JoinColumn(nullable=false)
-     * @Groups({"participant:details"}) // Utilisez un groupe spécifique
+     * @ORM\JoinColumn(name="conversation_id", referencedColumnName="id", onDelete="CASCADE")
+     * @Groups({"participant:details"})
      */
     private $conversation;
     /**

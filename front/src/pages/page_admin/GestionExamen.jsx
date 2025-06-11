@@ -518,7 +518,7 @@ export default function GestionExamen() {
                         </TabPanel>
                         <TabPanel header="Sujets des professeurs">
                             {isLoading ? (
-                                <div className="flex justify-center items-center h-[70vh] w-full">
+                                <div className="flex justify-center items-center h-full w-full">
                                     <ProgressSpinner />
                                 </div>
                             ) : (

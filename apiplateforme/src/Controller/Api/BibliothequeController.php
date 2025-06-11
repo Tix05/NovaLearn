@@ -71,27 +71,17 @@ class BibliothequeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Vérifier si l'utilisateur est admin ou professeur
-        if (!in_array('ROLE_ADMIN', $user->getRoles()) && !in_array('ROLE_PROFESSEUR', $user->getRoles())) {
-            $this->logger->error('Utilisateur non autorisé', ['user' => $user->getEmail()]);
-            return $this->json(['message' => 'Utilisateur non autorisé'], Response::HTTP_FORBIDDEN);
-        }
-
         $baseUrl = $this->getParameter('app.base_url');
 
-        // Récupérer tous les fichiers de l'entité Bibliotheque
         $bibliothequeItems = $this->bibliothequeRepository->findAll();
 
-        // Récupérer les fichiers de type "document" de FichierSupport
         $fichierSupports = $this->fichierSupportRepository->findBy([
             'type' => FichierSupport::TYPE_FICHIER,
             'est_publique' => true,
         ]);
 
-        // Fusionner les données
         $items = [];
 
-        // Ajouter les éléments de Bibliotheque
         foreach ($bibliothequeItems as $item) {
             $type = ($item->getType() === 'document') ? 'leçon' : $item->getType();
             $agenda = $item->getAgenda();
@@ -115,7 +105,7 @@ class BibliothequeController extends AbstractController
         // Ajouter les éléments de FichierSupport
         foreach ($fichierSupports as $support) {
             $fileUrl = $support->getFichier()
-                ? $baseUrl . '/Uploads/supports/' . $support->getFichier()
+                ? $baseUrl . '/uploads/supports/' . $support->getFichier()
                 : $support->getUrl();
 
             $items[] = [
@@ -495,7 +485,7 @@ class BibliothequeController extends AbstractController
                 '@id' => '/api/bc/' . $bibliotheque->getId(),
                 'titre' => $bibliotheque->getTitre(),
                 'type' => $bibliotheque->getType(),
-                'fichier' => $bibliotheque->getFichier() ? ($this->getParameter('app.base_url') . '/Uploads/bibliotheque/' . $bibliotheque->getFichier()) : null,
+                'fichier' => $bibliotheque->getFichier() ? ($this->getParameter('app.base_url') . '/uploads/bibliotheque/' . $bibliotheque->getFichier()) : null,
                 'mentionName' => $bibliotheque->getMentionName(),
                 'niveauNom' => $bibliotheque->getNiveauNom(),
                 'ecName' => $bibliotheque->getEcName(),
@@ -612,7 +602,7 @@ class BibliothequeController extends AbstractController
             return $this->json([
                 'message' => 'Fichier modifié avec succès',
                 '@id' => '/api/bibliotheques/' . $bibliotheque->getId(),
-                'fichier' => $this->getParameter('app.base_url') . '/Uploads/bibliotheque/' . $bibliotheque->getFichier(),
+                'fichier' => $this->getParameter('app.base_url') . '/uploads/bibliotheque/' . $bibliotheque->getFichier(),
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors du traitement du fichier', ['error' => $e->getMessage()]);

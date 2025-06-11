@@ -478,8 +478,8 @@ export default function AgendaAdmin() {
                 {(item.image || item.video) && (
                     <div className="mt-auto">
                         {item.image && (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <img src={`${BASE_URL}${item.image}`} alt="Image agenda" className="w-full h-auto" onError={(e) => e.target.src = '/fallback-image.jpg'} />
+                            <div className="border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+                                <img src={`${BASE_URL}${item.image}`} alt="Image agenda" className="w-[500px]" onError={(e) => e.target.src = '/fallback-image.jpg'} />
                             </div>
                         )}
                         {item.video && (

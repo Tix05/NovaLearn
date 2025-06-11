@@ -885,11 +885,11 @@ const Agenda = () => {
                 </div>
 
                 {!isExam && item.image && (
-                    <div className="mt-3">
+                    <div className="mt-3 flex itemsc-center justify-center">
                         <img
                             src={item.image}
                             alt={item.titre}
-                            className="w-full h-auto rounded-lg border border-gray-200"
+                            className="w-[500px] rounded-lg border border-gray-200"
                             onError={(e) => {
                                 e.target.style.display = 'none';
                             }}
@@ -986,7 +986,6 @@ const Agenda = () => {
             <p className="mb-3"><strong>Instructions :</strong></p>
             <ul className="list-disc ml-5 mb-4 flex-1">
                 <li>Lisez attentivement chaque question avant de répondre.</li>
-                <li>Pour les questions à choix multiples, sélectionnez entre 0 et n-1 réponses (où n est le nombre d'options).</li>
                 <li>Pour les questions ouvertes, fournissez une réponse détaillée.</li>
                 <li>Vous ne pouvez pas quitter l'examen sans soumettre ou abandonner.</li>
                 <li>Le temps commencera lorsque vous cliquez sur "Participer".</li>

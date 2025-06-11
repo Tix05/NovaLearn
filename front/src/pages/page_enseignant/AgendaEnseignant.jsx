@@ -845,13 +845,13 @@ export default function AgendaEnseignant() {
                 </div>
 
                 {(item.image || item.video) && (
-                    <div className="mt-auto">
+                    <div className="mt-auto flex items-center justify-center">
                         {item.image ? (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="flex items-center justify-center border border-gray-200 rounded-lg overflow-hidden w-[500px]">
                                 <img
                                     src={item.image}
                                     alt={item.titre}
-                                    className="w-full h-auto"
+                                    className=""
                                 />
                             </div>
                         ) : item.video ? (

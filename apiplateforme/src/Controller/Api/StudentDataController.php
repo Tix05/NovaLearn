@@ -127,7 +127,7 @@ class StudentDataController extends AbstractController
             }
 
             $fileUrl = $support->getFichier() 
-                ? $baseUrl . '/Uploads/supports/' . $support->getFichier() 
+                ? $baseUrl . '/uploads/supports/' . $support->getFichier() 
                 : $support->getUrl();
 
             $formatted[] = [
@@ -201,7 +201,7 @@ class StudentDataController extends AbstractController
             });
 
             $avatar = $commentaire->getUser()->getAvatar();
-            $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+            $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
             $authorName = $commentaire->getUser()->getId() === $user->getId() ? 'Moi' : $commentaire->getUser()->getName();
 
             return [
@@ -213,7 +213,7 @@ class StudentDataController extends AbstractController
                 'isOwner' => $commentaire->getUser()->getId() === $user->getId(),
                 'replies' => array_map(function ($reply) use ($user) {
                     $replyAvatar = $reply->getUser()->getAvatar();
-                    $replyAvatarUrl = $replyAvatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $replyAvatar : null;
+                    $replyAvatarUrl = $replyAvatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $replyAvatar : null;
                     $replyAuthorName = $reply->getUser()->getId() === $user->getId() ? 'Moi' : $reply->getUser()->getName();
                     return [
                         'id' => $reply->getId(),
@@ -296,7 +296,7 @@ class StudentDataController extends AbstractController
         $this->entityManager->flush();
 
         $avatar = $user->getAvatar();
-        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
 
         return $this->json([
             'id' => $commentaire->getId(),
@@ -358,7 +358,7 @@ class StudentDataController extends AbstractController
         $this->entityManager->flush();
 
         $avatar = $user->getAvatar();
-        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
 
         return $this->json([
             'id' => $commentaire->getId(),

@@ -65,7 +65,7 @@ class AdminDataController extends AbstractController
             return [
                 'id' => $mention->getId(),
                 'nom' => $mention->getName(),
-                'icon' => $mention->getIcon() ? $baseUrl . '/Uploads/icons/' . $mention->getIcon() : null,
+                'icon' => $mention->getIcon() ? $baseUrl . '/uploads/icons/' . $mention->getIcon() : null,
             ];
         }, $mentions);
 

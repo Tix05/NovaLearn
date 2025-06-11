@@ -11,6 +11,7 @@ import { Chart } from 'primereact/chart';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
 import { MdErrorOutline } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
 
 export default function Enseignant() {
     const [data, setData] = useState([]);
@@ -19,6 +20,7 @@ export default function Enseignant() {
     const [chartOptionsStudent, setChartOptionsStudent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -188,7 +190,7 @@ export default function Enseignant() {
     const actionBodyTemplate = (rowData) => {
         return (
             <Button icon="pi pi-send" rounded severity="success" tooltip="Envoyer message"
-                tooltipOptions={{ position: 'top' }} />
+                tooltipOptions={{ position: 'top' }} onClick={() => navigate(`/etudiant/message`)} />
         );
     };
 

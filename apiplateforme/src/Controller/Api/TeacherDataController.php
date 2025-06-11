@@ -122,7 +122,7 @@ class TeacherDataController extends AbstractController
             }
         }
 
-        $iconUrl = $mention->getIcon() ? $baseUrl . '/Uploads/icons/' . $mention->getIcon() : null;
+        $iconUrl = $mention->getIcon() ? $baseUrl . '/uploads/icons/' . $mention->getIcon() : null;
         $parcours = $mention->getParcours()->map(fn($p) => $p->getName())->toArray();
 
         return [
@@ -490,7 +490,7 @@ class TeacherDataController extends AbstractController
             });
 
             $avatar = $commentaire->getUser()->getAvatar();
-            $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+            $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
             $authorName = $commentaire->getUser()->getId() === $user->getId() ? 'Moi' : $commentaire->getUser()->getName();
 
             return [
@@ -502,7 +502,7 @@ class TeacherDataController extends AbstractController
                 'isOwner' => $commentaire->getUser()->getId() === $user->getId(),
                 'replies' => array_map(function ($reply) use ($user) {
                     $replyAvatar = $reply->getUser()->getAvatar();
-                    $replyAvatarUrl = $replyAvatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $replyAvatar : null;
+                    $replyAvatarUrl = $replyAvatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $replyAvatar : null;
                     $replyAuthorName = $reply->getUser()->getId() === $user->getId() ? 'Moi' : $reply->getUser()->getName();
                     return [
                         'id' => $reply->getId(),
@@ -594,7 +594,7 @@ class TeacherDataController extends AbstractController
         $this->logger->info('Commentaire ajouté avec succès', ['commentaire_id' => $commentaire->getId(), 'user_id' => $user->getId()]);
 
         $avatar = $user->getAvatar();
-        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
 
         return $this->json([
             'id' => $commentaire->getId(),
@@ -666,7 +666,7 @@ class TeacherDataController extends AbstractController
         $this->logger->info('Commentaire mis à jour avec succès', ['commentaire_id' => $id, 'user_id' => $user->getId()]);
 
         $avatar = $user->getAvatar();
-        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/Uploads/avatars/' . $avatar : null;
+        $avatarUrl = $avatar ? $this->getParameter('app.base_url') . '/uploads/avatars/' . $avatar : null;
 
         return $this->json([
             'id' => $commentaire->getId(),
