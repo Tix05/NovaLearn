@@ -431,33 +431,47 @@ public function getNiveaux(int $mentionId): JsonResponse
     }
 
     /**
-     * Supprime un commentaire
-     * @Route("/commentaires/{id}", name="api_admin_delete_commentaire", methods={"DELETE"})
-     */
-    public function deleteCommentaire(int $id, CommentaireRepository $commentaireRepository, EntityManagerInterface $entityManager): Response
-    {
-        $user = $this->security->getUser();
-        if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
-            $this->logger->error('Utilisateur non authentifié ou non administrateur', [
-                'user' => $user ? $user->getEmail() : null,
-                'roles' => $user ? $user->getRoles() : null
-            ]);
-            return $this->json(['message' => 'Utilisateur non authentifié ou non autorisé'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $commentaire = $commentaireRepository->find($id);
-        if (!$commentaire) {
-            $this->logger->warning('Commentaire non trouvé', ['commentaire_id' => $id]);
-            return $this->json(['message' => 'Commentaire non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-        $entityManager->remove($commentaire);
-        $entityManager->flush();
-
-        $this->logger->info('Commentaire supprimé avec succès', ['commentaire_id' => $id]);
-
-        return $this->json(['message' => 'Commentaire supprimé avec succès'], Response::HTTP_OK);
+ * @Route("/commentaires/{id}", name="api_admin_delete_commentaire", methods={"DELETE"})
+ */
+public function deleteCommentaire(int $id, CommentaireRepository $commentaireRepository, EntityManagerInterface $entityManager): Response
+{
+    $user = $this->security->getUser();
+    if (!$user || !in_array('ROLE_ADMIN', $user->getRoles())) {
+        $this->logger->error('Utilisateur non authentifié ou non administrateur', [
+            'user' => $user ? $user->getEmail() : null,
+            'roles' => $user ? $user->getRoles() : null
+        ]);
+        return $this->json(['message' => 'Utilisateur non authentifié ou non autorisé'], Response::HTTP_UNAUTHORIZED);
     }
+
+    $commentaire = $commentaireRepository->find($id);
+    if (!$commentaire) {
+        $this->logger->warning('Commentaire non trouvé', ['commentaire_id' => $id]);
+        return $this->json(['message' => 'Commentaire non trouvé'], Response::HTTP_NOT_FOUND);
+    }
+
+    $this->deleteChildren($commentaire, $commentaireRepository);
+
+    $entityManager->remove($commentaire);
+    $entityManager->flush();
+
+    $this->logger->info('Commentaire supprimé avec succès', ['commentaire_id' => $id]);
+
+    return $this->json(['message' => 'Commentaire supprimé avec succès'], Response::HTTP_OK);
+}
+
+private function deleteChildren(Commentaire $commentaire, CommentaireRepository $commentaireRepository): void
+{
+    $children = $commentaire->getChildren();
+    foreach ($children as $child) {
+        $this->deleteChildren($child, $commentaireRepository);
+        $this->entityManager->remove($child);
+        $this->logger->info('Commentaire enfant supprimé', [
+            'commentaire_id' => $child->getId(),
+            'parent_id' => $commentaire->getId()
+        ]);
+    }
+}
 
     private function getFormattedSupports($supports)
     {

@@ -427,6 +427,7 @@ Vous êtes un correcteur d'examen académique strict mais équitable. Votre tâc
 2. Feedback :
 - Fournissez un commentaire constructif pour chaque réponse.
 - Pour les réponses vides, indiquez "Aucune réponse fournie" comme feedback.
+- Pour les réponse fausse, indiquez "Réponse incorrecte" comme feedback
 - Indiquez ce qui manque ou est incorrect dans les réponses partielles.
 - Proposez des pistes d'amélioration spécifiques.
 

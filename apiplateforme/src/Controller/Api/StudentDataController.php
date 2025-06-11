@@ -371,40 +371,50 @@ class StudentDataController extends AbstractController
     }
 
     /**
-     * Supprime un commentaire
-     * @Route("/commentaires/{id}", name="api_student_delete_commentaire", methods={"DELETE"})
-     */
-    public function deleteCommentaire(int $id, CommentaireRepository $commentaireRepository): JsonResponse
-    {
-        $user = $this->security->getUser();
-        if (!$user) {
-            $this->logger->error('Utilisateur non authentifié', ['user' => $user ? $user->getEmail() : null]);
-            return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $commentaire = $commentaireRepository->find($id);
-        if (!$commentaire) {
-            $this->logger->warning('Commentaire non trouvé', ['commentaire_id' => $id]);
-            return $this->json(['message' => 'Commentaire non trouvé'], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($commentaire->getUser()->getId() !== $user->getId()) {
-            $this->logger->warning('Tentative de suppression non autorisée', [
-                'commentaire_id' => $id,
-                'user_id' => $user->getId()
-            ]);
-            return $this->json(['message' => 'Vous n\'êtes pas autorisé à supprimer ce commentaire'], Response::HTTP_FORBIDDEN);
-        }
-
-        $this->entityManager->remove($commentaire);
-        $this->entityManager->flush();
-
-        $this->logger->info('Commentaire supprimé avec succès', ['commentaire_id' => $id, 'user_id' => $user->getId()]);
-
-        return $this->json(['message' => 'Commentaire supprimé avec succès']);
+ * Supprime un commentaire
+ * @Route("/commentaires/{id}", name="api_student_delete_commentaire", methods={"DELETE"})
+ */
+public function deleteCommentaire(int $id, CommentaireRepository $commentaireRepository): JsonResponse
+{
+    $user = $this->security->getUser();
+    if (!$user) {
+        $this->logger->error('Utilisateur non authentifié', ['user' => $user ? $user->getEmail() : null]);
+        return $this->json(['message' => 'Utilisateur non authentifié'], Response::HTTP_UNAUTHORIZED);
     }
 
-    // Méthodes existantes pour getStudentMentions, getFormattedSupports, mapSupportType, getInitials
+    $commentaire = $commentaireRepository->find($id);
+    if (!$commentaire) {
+        $this->logger->warning('Commentaire non trouvé', ['commentaire_id' => $id]);
+        return $this->json(['message' => 'Commentaire non trouvé'], Response::HTTP_NOT_FOUND);
+    }
+
+    if ($commentaire->getUser()->getId() !== $user->getId()) {
+        $this->logger->warning('Tentative de suppression non autorisée', [
+            'commentaire_id' => $id,
+            'user_id' => $user->getId()
+        ]);
+        return $this->json(['message' => 'Vous n\'êtes pas autorisé à supprimer ce commentaire'], Response::HTTP_FORBIDDEN);
+    }
+
+    $this->deleteChildren($commentaire, $commentaireRepository);
+
+    $this->entityManager->remove($commentaire);
+    $this->entityManager->flush();
+
+    $this->logger->info('Commentaire supprimé avec succès', ['commentaire_id' => $id, 'user_id' => $user->getId()]);
+
+    return $this->json(['message' => 'Commentaire supprimé avec succès']);
+}
+
+private function deleteChildren(Commentaire $commentaire, CommentaireRepository $commentaireRepository): void
+{
+    $children = $commentaire->getChildren();
+    foreach ($children as $child) {
+        $this->deleteChildren($child, $commentaireRepository);
+        $this->entityManager->remove($child);
+    }
+}
+
     private function getInitials(string $name): string
     {
         $words = explode(' ', trim($name));

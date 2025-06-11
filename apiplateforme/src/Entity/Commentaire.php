@@ -108,7 +108,7 @@ class Commentaire
 
     /**
      * @ORM\ManyToOne(targetEntity=Commentaire::class, inversedBy="children")
-     * @ORM\JoinColumn(name="parent_id", referencedColumnName="id", nullable=true)
+     * @ORM\JoinColumn(name="parent_id", referencedColumnName="id", nullable=true, onDelete="CASCADE")
      * @Groups({"commentaire:read", "commentaire:write"})
      */
     private $parent;
