@@ -4,76 +4,129 @@ import EmojiPicker from 'emoji-picker-react';
 import { format } from 'date-fns';
 import Avatar from 'react-avatar';
 import LayoutAdmin from '../../components/LayoutAdmin';
-import { LuSendHorizontal } from "react-icons/lu";
+import { LuSendHorizontal } from 'react-icons/lu';
 import { motion } from 'framer-motion';
-
-const mockUsers = [
-    { id: "user1", name: "Alice", status: "online", avatar: "https://i.pravatar.cc/150?img=1" },
-    { id: "user2", name: "Bob", status: "online", avatar: "https://i.pravatar.cc/150?img=2" },
-    { id: "user3", name: "Charlie", status: "offline", avatar: "https://i.pravatar.cc/150?img=3" },
-    { id: "user4", name: "David", status: "online", avatar: "https://i.pravatar.cc/150?img=4" },
-    { id: "user5", name: "Eve", status: "offline", avatar: "https://i.pravatar.cc/150?img=5" },
-];
-
-const mockMessages = [
-    { id: "1", text: "Salut, tu as vu le dernier épisode de la série ?", timestamp: new Date(), userId: "user2", toId: "user1", userName: "Bob" },
-    { id: "2", text: "Oui, incroyable le twist final !", timestamp: new Date(), userId: "user1", toId: "user2", userName: "Alice" },
-    { id: "3", text: "As-tu des recommandations pour un bon livre ?", timestamp: new Date(), userId: "user3", toId: "user1", userName: "Charlie" },
-    { id: "4", text: "Je te recommande 'Sapiens' de Yuval Noah Harari.", timestamp: new Date(), userId: "user1", toId: "user3", userName: "Alice" },
-    { id: "5", text: "Tu viens à la fête ce week-end ?", timestamp: new Date(), userId: "user4", toId: "user1", userName: "David" },
-    { id: "6", text: "Oui, je vais passer avec des amis.", timestamp: new Date(), userId: "user1", toId: "user4", userName: "Alice" }
-];
-
-const initialGroupMessages = [
-    { id: "g1", text: "Bienvenue dans le groupe !", timestamp: new Date(), userId: "user1", userName: "Alice" },
-    { id: "g2", text: "Merci !", timestamp: new Date(), userId: "user2", userName: "Bob" },
-    { id: "g3", text: "Qui veut organiser une sortie ce week-end ?", timestamp: new Date(), userId: "user3", userName: "Charlie" },
-    { id: "g4", text: "Je suis partant !", timestamp: new Date(), userId: "user4", userName: "David" },
-    { id: "g5", text: "Moi aussi !", timestamp: new Date(), userId: "user5", userName: "Eve" }
-];
+import { getConversations, getMessages, sendMessage, markMessageAsRead } from '../../Services/messagingAdminService';
+import { getCurrentAdmin } from '../../Services/adminAuthService';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 function MessageAdmin() {
-    const [messages, setMessages] = useState(mockMessages);
-    const [groupMessages, setGroupMessages] = useState(initialGroupMessages);
+    const [conversations, setConversations] = useState([]);
+    const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [messageSearchTerm, setMessageSearchTerm] = useState('');
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [isGroupSelected, setIsGroupSelected] = useState(false);
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
-    const currentUserId = "user1";
+    const currentUser = getCurrentAdmin();
+
+    useEffect(() => {
+        return () => {
+            setConversations([]);
+            setMessages([]);
+            setSelectedConversation(null);
+            setError(null);
+            setLoading(true);
+        };
+    }, []);
+
+    useEffect(() => {
+        const fetchConversations = async () => {
+            if (!currentUser) {
+                setError('Utilisateur non authentifié');
+                setLoading(false);
+                return;
+            }
+            try {
+                const data = await getConversations();
+                const sortedConversations = data.sort((a, b) => {
+                    const dateA = a.lastMessage?.date ? new Date(a.lastMessage.date) : new Date(0);
+                    const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
+                    return dateB - dateA;
+                });
+                setConversations(sortedConversations);
+                if (sortedConversations.length > 0 && !selectedConversation) {
+                    setSelectedConversation(sortedConversations[0]);
+                }
+                setLoading(false);
+            } catch (error) {
+                setError('Échec du chargement des conversations');
+                setLoading(false);
+                console.error('Error fetching conversations:', error);
+            }
+        };
+
+        fetchConversations();
+
+        const interval = setInterval(fetchConversations, 60000);
+        return () => clearInterval(interval);
+    }, [currentUser?.id]);
+
+    useEffect(() => {
+        if (!selectedConversation || !selectedConversation.id || !currentUser) {
+            setMessages([]);
+            return;
+        }
+
+        const fetchMessages = async () => {
+            try {
+                const data = await getMessages(selectedConversation.id);
+                setMessages(data);
+                for (const message of data) {
+                    if (!message.lu && message.expediteur.id !== currentUser.id) {
+                        await markMessageAsRead(message.id);
+                    }
+                }
+            } catch (error) {
+                setError('Échec du chargement des messages');
+                console.error('Error fetching messages:', error);
+            }
+        };
+
+        fetchMessages();
+
+        const interval = setInterval(fetchMessages, 20000);
+        return () => clearInterval(interval);
+    }, [selectedConversation?.id, currentUser?.id]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, groupMessages]);
+    }, [messages]);
 
-    const handleSendMessage = (e) => {
+    const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
-
-        if (isGroupSelected) {
-            const newGroupMsg = {
-                id: String(Date.now()),
-                text: newMessage,
-                timestamp: new Date(),
-                userId: currentUserId,
-                userName: "Alice"
-            };
-            setGroupMessages([...groupMessages, newGroupMsg]);
-        } else if (selectedUser) {
-            const newMsg = {
-                id: String(Date.now()),
-                text: newMessage,
-                timestamp: new Date(),
-                userId: currentUserId,
-                toId: selectedUser.id,
-                userName: "Alice"
-            };
-            setMessages([...messages, newMsg]);
+        if (!newMessage.trim() || !selectedConversation || !currentUser) {
+            setError('Veuillez sélectionner une conversation et écrire un message');
+            return;
         }
 
-        setNewMessage('');
+        try {
+            const message = await sendMessage(
+                selectedConversation.id,
+                selectedConversation.type === 'PRIVEE' && !selectedConversation.id ? selectedConversation.participants[0].id : null,
+                selectedConversation.type !== 'PRIVEE' && !selectedConversation.id ? selectedConversation.parcoursId || selectedConversation.participants[0].id : null,
+                newMessage,
+                selectedConversation.type
+            );
+            setMessages([...messages, message]);
+            setNewMessage('');
+            if (!selectedConversation.id && message.conversationId) {
+                setSelectedConversation({ ...selectedConversation, id: message.conversationId });
+            }
+            const updatedConversations = await getConversations({ t: Date.now() });
+            const sortedConversations = updatedConversations.sort((a, b) => {
+                const dateA = a.lastMessage?.date ? new Date(a.lastMessage.date) : new Date(0);
+                const dateB = b.lastMessage?.date ? new Date(b.lastMessage.date) : new Date(0);
+                return dateB - dateA;
+            });
+            setConversations(sortedConversations);
+            setError(null);
+        } catch (error) {
+            setError('Échec de l\'envoi du message');
+        }
     };
 
     const onEmojiClick = (emojiObject) => {
@@ -81,20 +134,32 @@ function MessageAdmin() {
         setShowEmojiPicker(false);
     };
 
-    const filteredUsers = mockUsers.filter(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        user.id !== currentUserId
+    const filteredConversations = conversations.filter(conv =>
+        conv.sujet?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        conv.participants.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const filteredMessages = isGroupSelected
-        ? groupMessages.filter(msg => msg.text.toLowerCase().includes(messageSearchTerm.toLowerCase()))
-        : messages.filter(
-            msg =>
-                selectedUser &&
-                ((msg.userId === currentUserId && msg.toId === selectedUser.id) ||
-                    (msg.userId === selectedUser.id && msg.toId === currentUserId)) &&
-                msg.text.toLowerCase().includes(messageSearchTerm.toLowerCase())
+    const filteredMessages = messages.filter(msg =>
+        msg.contenu.toLowerCase().includes(messageSearchTerm.toLowerCase())
+    );
+
+    const getConversationTitle = (conv) => {
+        // Afficher toutes les conversations sans distinction explicite des types de groupe
+        const otherParticipants = conv.participants.filter(p => currentUser && p.id !== currentUser.id);
+        return otherParticipants.length > 0
+            ? otherParticipants.map(p => p.name).join(', ') || conv.sujet || 'Conversation'
+            : conv.sujet || 'Conversation';
+    };
+
+    if (loading) {
+        return (
+            <LayoutAdmin>
+                <div className="flex justify-center items-center h-full">
+                    <ProgressSpinner />
+                </div>
+            </LayoutAdmin>
         );
+    }
 
     return (
         <LayoutAdmin>
@@ -109,22 +174,37 @@ function MessageAdmin() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <div className="space-y-2">
-                        <button
-                            onClick={() => { setSelectedUser(null); setIsGroupSelected(true); }}
-                            className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${isGroupSelected ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-300'}`}
-                        >
-                            <Avatar name="Groupe" size="40" round={true} />
-                            <span>Communication</span>
-                        </button>
-                        {filteredUsers.map(user => (
+                        {filteredConversations.map(conv => (
                             <button
-                                key={user.id}
-                                onClick={() => { setSelectedUser(user); setIsGroupSelected(false); }}
-                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${selectedUser?.id === user.id ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-300'}`}
+                                key={`${conv.type}-${conv.participants[0].id}`}
+                                onClick={() => setSelectedConversation(conv)}
+                                className={`w-full flex items-center space-x-3 p-2 rounded-md transition-colors ${selectedConversation?.participants[0].id === conv.participants[0].id &&
+                                    selectedConversation?.type === conv.type
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-800 hover:bg-gray-300'
+                                    }`}
                             >
-                                <Avatar src={user.avatar} size="40" round={true} />
-                                <span>{user.name}</span>
-                                <Circle className={`h-3 w-3 ${user.status === 'online' ? 'text-green-500' : 'text-gray-500'}`} fill="currentColor" />
+                                <Avatar
+                                    name={getConversationTitle(conv)}
+                                    src={conv.participants.find(p => currentUser && p.id !== currentUser.id)?.avatar}
+                                    size="40"
+                                    round={true}
+                                />
+                                <div className="flex-1 text-left">
+                                    <span>{getConversationTitle(conv)}</span>
+                                    <div className="text-xs text-gray-500">
+                                        {conv.lastMessage ? conv.lastMessage.contenu.substring(0, 20) + '...' : ''}
+                                    </div>
+                                </div>
+                                {conv.unreadCount > 0 && (
+                                    <span className="absolute right-2 top-2 h-3 w-3 bg-red-500 rounded-full"></span>
+                                )}
+                                {conv.type === 'PRIVEE' && (
+                                    <Circle
+                                        className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-green-500' : 'text-gray-500'}`}
+                                        fill="currentColor"
+                                    />
+                                )}
                             </button>
                         ))}
                     </div>
@@ -132,8 +212,10 @@ function MessageAdmin() {
 
                 <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
                     <div className="flex items-center justify-between bg-[#4CAF50] p-4 font-semibold space-x-2">
-                        <span className='text-white text-xl'>{isGroupSelected ? 'Groupe' : selectedUser ? `Message avec ${selectedUser.name}` : 'Sélectionnez un utilisateur'}</span>
-                        {(selectedUser || isGroupSelected) && (
+                        <span className='text-white text-xl'>
+                            {selectedConversation ? getConversationTitle(selectedConversation) : 'Sélectionnez une conversation'}
+                        </span>
+                        {selectedConversation && (
                             <input
                                 type="text"
                                 placeholder="Rechercher des messages..."
@@ -145,9 +227,10 @@ function MessageAdmin() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" style={{ height: 'calc(100vh - 11rem)' }}>
+                        {error && <div className="text-red-500 text-center">{error}</div>}
                         {filteredMessages.length === 0 ? (
                             <div className="text-center text-gray-500 italic text-xl mt-40">
-                                Aucun discussion
+                                Aucun message
                             </div>
                         ) : (
                             filteredMessages.map((message) => (
@@ -156,19 +239,23 @@ function MessageAdmin() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.3 }}
-                                    className={`flex ${message.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex ${message.expediteur.id === currentUser.id ? 'justify-end' : 'justify-start'}`}
                                 >
-                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 ${message.userId === currentUserId ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}>
-                                        <div className="font-semibold text-sm mb-1">{message.userId === currentUserId ? "Moi" : message.userName}</div>
-                                        <div>{message.text}</div>
-                                        <div className="text-xs opacity-70 mt-1">{format(message.timestamp, 'HH:mm')}</div>
+                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 ${message.expediteur.id === currentUser.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'}`}>
+                                        <div className="font-semibold text-sm mb-1">
+                                            {message.expediteur.id === currentUser.id ? 'Moi' : message.expediteur.name}
+                                        </div>
+                                        <div>{message.contenu}</div>
+                                        <div className="text-xs opacity-70 mt-1">
+                                            {format(new Date(message.date), 'HH:mm')}
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))
                         )}
                         <div ref={messagesEndRef} />
                     </div>
-                    <form onSubmit={handleSendMessage} className="p-4 bg-[#BF3037]">
+                    <form onSubmit={handleSendMessage} className="p-4">
                         <div className="flex items-center space-x-2">
                             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="text-gray-400 hover:text-gray-300">
                                 <Smile className="h-8 w-8" />
@@ -179,10 +266,14 @@ function MessageAdmin() {
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder="Tapez un message..."
-                                className="flex-1 bg-white text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 font-semibold"
-                                disabled={!selectedUser && !isGroupSelected}
+                                className="flex-1 bg-white text-gray-800 rounded-full px-4 py-2 focus:outline-none focus:border-gray-500 focus:ring-[1px] focus:ring-gray-500 font-semibold border-2"
+                                disabled={!selectedConversation}
                             />
-                            <button type="submit" className={`px-2 py-1 items-center justify-center flex text-white rounded-lg ${newMessage.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'}`} disabled={!newMessage.trim() || (!selectedUser && !isGroupSelected)}>
+                            <button
+                                type="submit"
+                                className={`px-2 py-1 items-center justify-center flex text-white rounded-lg ${newMessage.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'}`}
+                                disabled={!newMessage.trim() || !selectedConversation}
+                            >
                                 <LuSendHorizontal className="h-7 w-7" />
                             </button>
                         </div>

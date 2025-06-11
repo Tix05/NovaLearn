@@ -148,10 +148,6 @@ class UserManagementController extends AbstractController
         }
 
         foreach ($admins as $admin) {
-        // Exclure l'administrateur connecté
-        if ($admin->getId() === $currentUserId) {
-            continue; // Passer à l'itération suivante si l'admin est l'utilisateur connecté
-        }
         $nameParts = $admin->getName() ? explode(' ', $admin->getName()) : ['N/A', ''];
         $items[] = [
             '@id' => '/api/users/' . $admin->getId(),

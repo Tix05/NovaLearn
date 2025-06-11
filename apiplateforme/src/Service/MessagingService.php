@@ -194,21 +194,8 @@ class MessagingService
                 }
             }
         }
-        // Pour les administrateurs
-        elseif ($userRole === 'ADMIN') {
-            $groups = $this->entityManager->getRepository(Parcours::class)->findAll();
-            foreach ($groups as $group) {
-                $result[] = [
-                    'type' => 'GROUP',
-                    'id' => $group->getId(),
-                    'name' => $group->getName() ?? 'Groupe inconnu',
-                    'avatar' => null,
-                    'role' => 'GROUPE_FILIERE',
-                    'isOnline' => false,
-                    'conversationId' => $this->getExistingGroupConversationId($user, $group, Conversation::TYPE_GROUPE_FILIERE),
-                ];
-            }
 
+        elseif ($userRole === 'ADMIN') {
             $users = $this->userRepository->findAllExcept($user->getId());
             foreach ($users as $partner) {
                 $result[] = [
