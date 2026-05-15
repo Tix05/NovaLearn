@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\MessageRepository")
@@ -23,7 +25,7 @@ class Message
     private $conversation;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="messages")
      * @ORM\JoinColumn(nullable=false)
      */
     private $expediteur;
@@ -42,6 +44,16 @@ class Message
      * @ORM\Column(type="boolean")
      */
     private $lu;
+
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="message")
+     */
+    private $notifications;
+
+    public function __construct()
+    {
+        $this->notifications = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -100,6 +112,35 @@ class Message
     public function setLu(bool $lu): self
     {
         $this->lu = $lu;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): self
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications[] = $notification;
+            $notification->setMessage($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): self
+    {
+        if ($this->notifications->removeElement($notification)) {
+            if ($notification->getMessage() === $this) {
+                $notification->setMessage(null);
+            }
+        }
+
         return $this;
     }
 }

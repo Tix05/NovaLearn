@@ -256,7 +256,7 @@ class Agenda
         $this->date_expiration = $date_expiration;
         return $this;
     }
-    
+
     public function getDescription(): ?string
     {
         return $this->description;

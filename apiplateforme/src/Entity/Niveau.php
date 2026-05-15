@@ -69,11 +69,10 @@ class Niveau
     private $nom;
 
     /**
-     * @ORM\Column(type="string", length=2)
+     * @ORM\Column(type="string", length=20)
      * @Groups({"niveau:read", "niveau:write"})
      * @Assert\NotBlank
-     * @Assert\Length(min=1, max=2)
-     * @Assert\Choice({"L", "M", "D"}) // Licence, Master, Doctorat
+     * @Assert\Choice({"Licence", "Master", "Doctorat"}) // Licence, Master, Doctorat
      */
     private $cycle;
 
@@ -329,31 +328,31 @@ class Niveau
     }
 
     /**
- * @return Collection<int, Semestre>
- */
-public function getSemestres(): Collection
-{
-    return $this->semestres;
-}
-
-public function addSemestre(Semestre $semestre): self
-{
-    if (!$this->semestres->contains($semestre)) {
-        $this->semestres->add($semestre);
-        $semestre->setNiveau($this);
+     * @return Collection<int, Semestre>
+     */
+    public function getSemestres(): Collection
+    {
+        return $this->semestres;
     }
-    return $this;
-}
 
-public function removeSemestre(Semestre $semestre): self
-{
-    if ($this->semestres->removeElement($semestre)) {
-        if ($semestre->getNiveau() === $this) {
-            $semestre->setNiveau(null);
+    public function addSemestre(Semestre $semestre): self
+    {
+        if (!$this->semestres->contains($semestre)) {
+            $this->semestres->add($semestre);
+            $semestre->setNiveau($this);
         }
+        return $this;
     }
-    return $this;
-}
+
+    public function removeSemestre(Semestre $semestre): self
+    {
+        if ($this->semestres->removeElement($semestre)) {
+            if ($semestre->getNiveau() === $this) {
+                $semestre->setNiveau(null);
+            }
+        }
+        return $this;
+    }
 
 
     /**

@@ -73,7 +73,7 @@ class Question
     private ?string $reponseCorrecte = null;
 
     /**
-     * @ORM\Column(type="decimal", precision=5, scale=2)
+     * @ORM\Column(type="float")
      * @Groups({"question:read", "question:write"})
      * @Assert\PositiveOrZero
      */

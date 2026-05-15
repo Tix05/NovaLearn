@@ -136,7 +136,7 @@ const DashboardAdmin = () => {
             rounded
             severity="success"
             tooltip="Envoyer message"
-            tooltipOptions={{ position: 'label' }}
+            tooltipOptions={{ position: 'top' }}
         />
     );
 

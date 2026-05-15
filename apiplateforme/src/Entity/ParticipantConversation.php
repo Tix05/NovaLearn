@@ -21,7 +21,7 @@ class ParticipantConversation
     private $id;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="conversationParticipants")
      * @ORM\JoinColumn(nullable=false)
      */
     private $user;

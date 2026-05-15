@@ -304,9 +304,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return null;
     }
 
-    public function eraseCredentials()
-    {
-    }
+    public function eraseCredentials() {}
 
     public function getName(): ?string
     {
@@ -330,7 +328,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-   public function getAvatar(): ?string
+    public function getAvatar(): ?string
     {
         return $this->avatar;
     }
@@ -769,4 +767,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->updated_at = new \DateTimeImmutable();
     }
+
+    /**
+     * @ORM\OneToMany(targetEntity=Bibliotheque::class, mappedBy="user")
+     */
+    private $bibliotheques;
 }

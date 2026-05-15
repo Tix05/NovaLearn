@@ -77,7 +77,7 @@ class ReponseEtudiant
     private ?\DateTimeInterface $updatedAt = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Question::class)
+     * @ORM\ManyToOne(targetEntity=Question::class, inversedBy="reponsesEtudiants")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"reponse:read", "reponse:write"})
      * @Assert\NotNull
@@ -85,7 +85,7 @@ class ReponseEtudiant
     private ?Question $question = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Etudiant::class)
+     * @ORM\ManyToOne(targetEntity=Etudiant::class, inversedBy="reponsesExamens")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"reponse:read"})
      * @Assert\NotNull
@@ -93,7 +93,7 @@ class ReponseEtudiant
     private ?Etudiant $etudiant = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Examen::class)
+     * @ORM\ManyToOne(targetEntity=Examen::class, inversedBy="reponsesEtudiants")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"reponse:read", "reponse:write"})
      * @Assert\NotNull

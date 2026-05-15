@@ -11,6 +11,8 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\BooleanFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 /**
  * @ApiResource(
@@ -120,9 +122,15 @@ class Document
      */
     private $user;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="document")
+     */
+    private $notifications;
+
     public function __construct()
     {
         $this->created_at = new \DateTimeImmutable();
+        $this->notifications = new ArrayCollection();
     }
 
     // Getters et Setters

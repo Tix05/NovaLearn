@@ -54,7 +54,7 @@ class UeParcours
     private $ue;
 
     /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\Parcours")
+     * @ORM\ManyToOne(targetEntity="App\Entity\Parcours", inversedBy="ueParcours")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"ue_parcours:read", "ue_parcours:write", "ue:read"}) // Ajoutez "ue:read"
      * @Assert\NotNull

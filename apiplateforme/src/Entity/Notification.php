@@ -141,7 +141,7 @@ class Notification
     private ?Conversation $conversation = null;
 
     /**
-     * @ORM\ManyToOne(inversedBy="notifications")
+     * @ORM\ManyToOne(targetEntity=Message::class, inversedBy="notifications")
      * @Groups({"notification:read", "notification:write"})
      */
     private ?Message $message = null;

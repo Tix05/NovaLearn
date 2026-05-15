@@ -79,7 +79,7 @@ class CorrectionExamen
     private ?\DateTimeInterface $updatedAt = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Examen::class)
+     * @ORM\ManyToOne(targetEntity=Examen::class, inversedBy="corrections")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"correction:read"})
      * @Assert\NotNull
@@ -87,7 +87,7 @@ class CorrectionExamen
     private ?Examen $examen = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Etudiant::class)
+     * @ORM\ManyToOne(targetEntity=Etudiant::class, inversedBy="correctionsExamens")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"correction:read"})
      * @Assert\NotNull
@@ -214,7 +214,7 @@ class CorrectionExamen
         return $this;
     }
 
-     public function setRapportFile(?File $rapportFile = null): void
+    public function setRapportFile(?File $rapportFile = null): void
     {
         $this->rapportFile = $rapportFile;
 

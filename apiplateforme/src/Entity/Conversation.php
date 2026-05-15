@@ -35,13 +35,13 @@ class Conversation
     private $type;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="conversations")
      * @ORM\JoinColumn(nullable=false)
      */
     private $createdBy;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Parcours::class)
+     * @ORM\ManyToOne(targetEntity=Parcours::class, inversedBy="conversations")
      * @ORM\JoinColumn(name="parcours_id", referencedColumnName="id", onDelete="CASCADE")
      */
     private $parcours;
@@ -57,10 +57,16 @@ class Conversation
      */
     private $messages;
 
+    /**
+     * @ORM\OneToMany(targetEntity=Notification::class, mappedBy="conversation")
+     */
+    private $notifications;
+
     public function __construct()
     {
         $this->participants = new ArrayCollection();
         $this->messages = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -165,4 +171,9 @@ class Conversation
         }
         return $this;
     }
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="conversations")
+     */
+    private $ec;
 }

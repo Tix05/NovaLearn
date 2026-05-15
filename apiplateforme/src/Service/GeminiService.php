@@ -22,16 +22,16 @@ class GeminiService
     }
 
     public function generateExamQuestions(string $pdfContent, string $instructions): array
-{
-    $this->logger->info('Génération des questions d\'examen avec Gemini', [
-        'instructions' => $instructions,
-        'pdf_content_length' => strlen($pdfContent)
-    ]);
+    {
+        $this->logger->info('Génération des questions d\'examen avec Gemini', [
+            'instructions' => $instructions,
+            'pdf_content_length' => strlen($pdfContent)
+        ]);
 
-    $fixedInstructions = "À chaque question, précisez les réponses correctes (une ou plusieurs pour les questions de type radio, une réponse détaillée pour les questions ouvertes). Attribuez des points à chaque question en utilisant des valeurs décimales (par exemple, 0.25, 0.5). Le total des points doit EXACTEMENT égaler 20, même s'il y a un grand nombre de questions (jusqu'à 40).";
-    $fullInstructions = $fixedInstructions . "\n" . $instructions;
+        $fixedInstructions = "À chaque question, précisez les réponses correctes (une ou plusieurs pour les questions de type radio, une réponse détaillée pour les questions ouvertes). Attribuez des points à chaque question en utilisant des valeurs décimales (par exemple, 0.25, 0.5). Le total des points doit EXACTEMENT égaler 20, même s'il y a un grand nombre de questions (jusqu'à 40).";
+        $fullInstructions = $fixedInstructions . "\n" . $instructions;
 
-    $prompt = <<<EOD
+        $prompt = <<<EOD
 Vous êtes un assistant spécialisé dans la création d'examens académiques. Votre tâche est de générer des questions d'examen basées sur le contenu suivant et de suivre strictement les instructions fournies.
 
 **Contenu du document** :
@@ -90,146 +90,146 @@ Vous êtes un assistant spécialisé dans la création d'examens académiques. V
 Générez maintenant l'examen en respectant strictement ces consignes.
 EOD;
 
-    $maxRetries = 2;
-    $attempt = 0;
-    $questions = [];
+        $maxRetries = 2;
+        $attempt = 0;
+        $questions = [];
 
-    while ($attempt < $maxRetries) {
-        try {
-            $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' . $this->geminiApiKey, [
-                'json' => [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt]
+        while ($attempt < $maxRetries) {
+            try {
+                $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $this->geminiApiKey, [
+                    'json' => [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $prompt]
+                                ]
                             ]
                         ]
                     ]
-                ]
-            ]);
+                ]);
 
-            $data = $response->toArray();
-            $this->logger->info('Réponse reçue de Gemini', ['response' => $data]);
+                $data = $response->toArray();
+                $this->logger->info('Réponse reçue de Gemini', ['response' => $data]);
 
-            $generatedContent = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            if (empty($generatedContent)) {
-                $this->logger->error('Aucun contenu généré par Gemini');
-                throw new \Exception('Aucune question générée par Gemini');
-            }
+                $generatedContent = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                if (empty($generatedContent)) {
+                    $this->logger->error('Aucun contenu généré par Gemini');
+                    throw new \Exception('Aucune question générée par Gemini');
+                }
 
-            $generatedContent = trim($generatedContent);
-            $generatedContent = preg_replace('/^```json\n|\n```$/', '', $generatedContent);
-            $questions = json_decode($generatedContent, true);
+                $generatedContent = trim($generatedContent);
+                $generatedContent = preg_replace('/^```json\n|\n```$/', '', $generatedContent);
+                $questions = json_decode($generatedContent, true);
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->logger->error('Erreur de parsing JSON', ['error' => json_last_error_msg(), 'content' => $generatedContent]);
-                throw new \Exception('Erreur lors du parsing des questions générées : ' . json_last_error_msg());
-            }
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $this->logger->error('Erreur de parsing JSON', ['error' => json_last_error_msg(), 'content' => $generatedContent]);
+                    throw new \Exception('Erreur lors du parsing des questions générées : ' . json_last_error_msg());
+                }
 
-            if (!is_array($questions)) {
-                $this->logger->error('Réponse invalide, tableau attendu', ['questions' => $questions]);
-                throw new \Exception('Réponse invalide de Gemini : tableau de questions attendu');
-            }
+                if (!is_array($questions)) {
+                    $this->logger->error('Réponse invalide, tableau attendu', ['questions' => $questions]);
+                    throw new \Exception('Réponse invalide de Gemini : tableau de questions attendu');
+                }
 
-            foreach ($questions as $index => &$question) {
-                if (!isset($question['text']) || !isset($question['type']) || !isset($question['points'])) {
-                    $this->logger->warning('Question invalide', ['index' => $index, 'question' => $question]);
-                    unset($questions[$index]);
+                foreach ($questions as $index => &$question) {
+                    if (!isset($question['text']) || !isset($question['type']) || !isset($question['points'])) {
+                        $this->logger->warning('Question invalide', ['index' => $index, 'question' => $question]);
+                        unset($questions[$index]);
+                        continue;
+                    }
+
+                    $question['points'] = (float) $question['points'];
+
+                    if ($question['type'] === 'radio') {
+                        if (!isset($question['options']) || count($question['options']) < 3 || count($question['options']) > 6 || !isset($question['correctAnswers'])) {
+                            $this->logger->warning('Question à choix multiples invalide', ['index' => $index, 'question' => $question]);
+                            unset($questions[$index]);
+                            continue;
+                        }
+                        $numOptions = count($question['options']);
+                        $correctAnswers = $question['correctAnswers'];
+                        if (!is_array($correctAnswers) || count($correctAnswers) < 1 || count($correctAnswers) >= $numOptions) {
+                            $this->logger->warning('Nombre de réponses correctes invalide', ['index' => $index, 'correctAnswers' => $correctAnswers]);
+                            unset($questions[$index]);
+                            continue;
+                        }
+                        $uniqueCorrectAnswers = array_unique($correctAnswers);
+                        if (count($uniqueCorrectAnswers) !== count($correctAnswers)) {
+                            $this->logger->warning('Doublons dans les réponses correctes', ['index' => $index, 'correctAnswers' => $correctAnswers]);
+                            unset($questions[$index]);
+                            continue;
+                        }
+                        $optionValues = array_column($question['options'], 'value');
+                        foreach ($correctAnswers as $correct) {
+                            if (!in_array($correct, $optionValues)) {
+                                $this->logger->warning('Réponse correcte invalide', ['index' => $index, 'correctAnswer' => $correct]);
+                                unset($questions[$index]);
+                                continue 2;
+                            }
+                        }
+                    } elseif ($question['type'] === 'essay' && !isset($question['correctAnswer'])) {
+                        $this->logger->warning('Question ouverte sans réponse correcte', ['index' => $index, 'question' => $question]);
+                        unset($questions[$index]);
+                        continue;
+                    }
+                }
+
+                $questions = array_values($questions);
+
+                $totalPoints = array_sum(array_column($questions, 'points'));
+                if (abs($totalPoints - 20.0) > 0.01) {
+                    $this->logger->warning('Total des points incorrect', [
+                        'total' => $totalPoints,
+                        'attendu' => 20.0,
+                        'tentative' => $attempt + 1
+                    ]);
+                    $questions = $this->adjustPoints($questions);
+                }
+
+                $expectedCount = $this->extractExpectedQuestionCount($instructions);
+                if ($expectedCount && count($questions) !== $expectedCount) {
+                    $this->logger->warning('Nombre de questions incorrect', [
+                        'attendu' => $expectedCount,
+                        'reçu' => count($questions),
+                        'tentative' => $attempt + 1
+                    ]);
+                    $attempt++;
                     continue;
                 }
 
-                $question['points'] = (float) $question['points'];
-
-                if ($question['type'] === 'radio') {
-                    if (!isset($question['options']) || count($question['options']) < 3 || count($question['options']) > 6 || !isset($question['correctAnswers'])) {
-                        $this->logger->warning('Question à choix multiples invalide', ['index' => $index, 'question' => $question]);
-                        unset($questions[$index]);
-                        continue;
-                    }
-                    $numOptions = count($question['options']);
-                    $correctAnswers = $question['correctAnswers'];
-                    if (!is_array($correctAnswers) || count($correctAnswers) < 1 || count($correctAnswers) >= $numOptions) {
-                        $this->logger->warning('Nombre de réponses correctes invalide', ['index' => $index, 'correctAnswers' => $correctAnswers]);
-                        unset($questions[$index]);
-                        continue;
-                    }
-                    $uniqueCorrectAnswers = array_unique($correctAnswers);
-                    if (count($uniqueCorrectAnswers) !== count($correctAnswers)) {
-                        $this->logger->warning('Doublons dans les réponses correctes', ['index' => $index, 'correctAnswers' => $correctAnswers]);
-                        unset($questions[$index]);
-                        continue;
-                    }
-                    $optionValues = array_column($question['options'], 'value');
-                    foreach ($correctAnswers as $correct) {
-                        if (!in_array($correct, $optionValues)) {
-                            $this->logger->warning('Réponse correcte invalide', ['index' => $index, 'correctAnswer' => $correct]);
-                            unset($questions[$index]);
+                $expectedTypes = $this->extractExpectedQuestionTypes($instructions);
+                if ($expectedTypes) {
+                    $actualTypes = array_count_values(array_column($questions, 'type'));
+                    foreach ($expectedTypes as $type => $count) {
+                        if (($actualTypes[$type] ?? 0) !== $count) {
+                            $this->logger->warning('Types de questions incorrects', [
+                                'type' => $type,
+                                'attendu' => $count,
+                                'reçu' => $actualTypes[$type] ?? 0,
+                                'tentative' => $attempt + 1
+                            ]);
+                            $attempt++;
                             continue 2;
                         }
                     }
-                } elseif ($question['type'] === 'essay' && !isset($question['correctAnswer'])) {
-                    $this->logger->warning('Question ouverte sans réponse correcte', ['index' => $index, 'question' => $question]);
-                    unset($questions[$index]);
-                    continue;
                 }
-            }
 
-            $questions = array_values($questions);
-
-            $totalPoints = array_sum(array_column($questions, 'points'));
-            if (abs($totalPoints - 20.0) > 0.01) { 
-                $this->logger->warning('Total des points incorrect', [
-                    'total' => $totalPoints,
-                    'attendu' => 20.0,
-                    'tentative' => $attempt + 1
-                ]);
-                $questions = $this->adjustPoints($questions);
-            }
-
-            $expectedCount = $this->extractExpectedQuestionCount($instructions);
-            if ($expectedCount && count($questions) !== $expectedCount) {
-                $this->logger->warning('Nombre de questions incorrect', [
-                    'attendu' => $expectedCount,
-                    'reçu' => count($questions),
+                $this->logger->info('Questions validées', ['question_count' => count($questions)]);
+                return $questions;
+            } catch (\Exception $e) {
+                $this->logger->error('Erreur lors de la génération des questions', [
+                    'exception' => $e->getMessage(),
                     'tentative' => $attempt + 1
                 ]);
                 $attempt++;
-                continue;
-            }
-
-            $expectedTypes = $this->extractExpectedQuestionTypes($instructions);
-            if ($expectedTypes) {
-                $actualTypes = array_count_values(array_column($questions, 'type'));
-                foreach ($expectedTypes as $type => $count) {
-                    if (($actualTypes[$type] ?? 0) !== $count) {
-                        $this->logger->warning('Types de questions incorrects', [
-                            'type' => $type,
-                            'attendu' => $count,
-                            'reçu' => $actualTypes[$type] ?? 0,
-                            'tentative' => $attempt + 1
-                        ]);
-                        $attempt++;
-                        continue 2;
-                    }
+                if ($attempt >= $maxRetries) {
+                    throw new \Exception('Erreur lors de la génération des questions après plusieurs tentatives : ' . $e->getMessage());
                 }
             }
-
-            $this->logger->info('Questions validées', ['question_count' => count($questions)]);
-            return $questions;
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la génération des questions', [
-                'exception' => $e->getMessage(),
-                'tentative' => $attempt + 1
-            ]);
-            $attempt++;
-            if ($attempt >= $maxRetries) {
-                throw new \Exception('Erreur lors de la génération des questions après plusieurs tentatives : ' . $e->getMessage());
-            }
         }
-    }
 
-    throw new \Exception('Impossible de générer des questions conformes après ' . $maxRetries . ' tentatives');
-}
+        throw new \Exception('Impossible de générer des questions conformes après ' . $maxRetries . ' tentatives');
+    }
 
     private function adjustPoints(array $questions): array
     {
@@ -339,7 +339,7 @@ Analysez le contenu maintenant et retournez la liste des erreurs.
 EOD;
 
         try {
-            $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' . $this->geminiApiKey, [
+            $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $this->geminiApiKey, [
                 'json' => [
                     'contents' => [
                         [
@@ -402,11 +402,11 @@ EOD;
         return !empty($types) ? $types : null;
     }
 
-public function correctExam(array $answers, array $questions, string $pdfContent): array
-{
-    $this->logger->info('Correction d\'examen avec Gemini', ['answer_count' => count($answers)]);
+    public function correctExam(array $answers, array $questions, string $pdfContent): array
+    {
+        $this->logger->info('Correction d\'examen avec Gemini', ['answer_count' => count($answers)]);
 
-    $prompt = <<<EOD
+        $prompt = <<<EOD
 Vous êtes un correcteur d'examen académique strict mais équitable. Votre tâche est d'évaluer les réponses étudiantes selon ces règles strictes :
 
 **Règles de correction** :
@@ -442,26 +442,26 @@ Vous êtes un correcteur d'examen académique strict mais équitable. Votre tâc
 **Questions et réponses étudiantes** :
 EOD;
 
-    foreach ($questions as $index => $question) {
-        $questionId = $question->getId();
-        $answer = $answers[$questionId] ?? ($question->getType() === 'radio' ? [] : '');
-        $prompt .= "\n**Question " . ($index + 1) . "** (ID: {$questionId}) : " . $question->getTexte();
-        $prompt .= "\nPoints : " . $question->getPoints();
-        if ($question->getType() === 'radio') {
-            $prompt .= "\nOptions : ";
-            foreach ($question->getOptions() as $option) {
-                $prompt .= "\n- " . $option->getTexte() . " (" . $option->getValeur() . ")";
+        foreach ($questions as $index => $question) {
+            $questionId = $question->getId();
+            $answer = $answers[$questionId] ?? ($question->getType() === 'radio' ? [] : '');
+            $prompt .= "\n**Question " . ($index + 1) . "** (ID: {$questionId}) : " . $question->getTexte();
+            $prompt .= "\nPoints : " . $question->getPoints();
+            if ($question->getType() === 'radio') {
+                $prompt .= "\nOptions : ";
+                foreach ($question->getOptions() as $option) {
+                    $prompt .= "\n- " . $option->getTexte() . " (" . $option->getValeur() . ")";
+                }
+                $correctAnswers = json_decode($question->getReponseCorrecte(), true) ?? [];
+                $prompt .= "\nRéponses correctes : " . implode(', ', $correctAnswers);
+                $prompt .= "\nRéponse de l'étudiant : " . json_encode($answer);
+            } elseif ($question->getType() === 'essay') {
+                $prompt .= "\nRéponse correcte : " . ($question->getReponseCorrecte() ?? 'Non fournie');
+                $prompt .= "\nRéponse de l'étudiant : " . json_encode($answer);
             }
-            $correctAnswers = json_decode($question->getReponseCorrecte(), true) ?? [];
-            $prompt .= "\nRéponses correctes : " . implode(', ', $correctAnswers);
-            $prompt .= "\nRéponse de l'étudiant : " . json_encode($answer);
-        } elseif ($question->getType() === 'essay') {
-            $prompt .= "\nRéponse correcte : " . ($question->getReponseCorrecte() ?? 'Non fournie');
-            $prompt .= "\nRéponse de l'étudiant : " . json_encode($answer);
         }
-    }
 
-    $prompt .= <<<EOD
+        $prompt .= <<<EOD
 
 **Consignes finales** :
 1. Analysez chaque réponse avec rigueur mais bienveillance.
@@ -486,50 +486,50 @@ EOD;
 Procédez maintenant à la correction en appliquant strictement ces règles.
 EOD;
 
-    try {
-        $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' . $this->geminiApiKey, [
-            'json' => [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt]
+        try {
+            $response = $this->httpClient->request('POST', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $this->geminiApiKey, [
+                'json' => [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt]
+                            ]
                         ]
                     ]
                 ]
-            ]
-        ]);
+            ]);
 
-        $data = $response->toArray();
-        $generatedContent = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-        $generatedContent = preg_replace('/^```json\n|\n```$/', '', $generatedContent);
-        $correction = json_decode($generatedContent, true);
+            $data = $response->toArray();
+            $generatedContent = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $generatedContent = preg_replace('/^```json\n|\n```$/', '', $generatedContent);
+            $correction = json_decode($generatedContent, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->logger->error('Erreur de parsing JSON pour la correction', ['error' => json_last_error_msg()]);
-            throw new \Exception('Erreur lors du parsing de la correction : ' . json_last_error_msg());
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->logger->error('Erreur de parsing JSON pour la correction', ['error' => json_last_error_msg()]);
+                throw new \Exception('Erreur lors du parsing de la correction : ' . json_last_error_msg());
+            }
+
+            $totalScore = 0;
+            foreach ($questions as $question) {
+                $questionId = $question->getId();
+                $maxPoints = $question->getPoints();
+                $score = $correction['questions'][$questionId]['score'] ?? 0;
+                $correction['questions'][$questionId]['score'] = round(min(max(0, (float)$score), $maxPoints), 2);
+                $correction['questions'][$questionId]['feedback'] = $correction['questions'][$questionId]['feedback'] ?? 'Aucune réponse fournie';
+                $totalScore += $correction['questions'][$questionId]['score'];
+            }
+            $correction['total_score'] = round(min($totalScore, 20.0), 2);
+
+            $this->logger->info('Correction générée', [
+                'total_score' => $correction['total_score'],
+                'question_scores' => array_map(function ($q) use ($correction) {
+                    return $correction['questions'][$q->getId()]['score'];
+                }, $questions)
+            ]);
+            return $correction;
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la correction', ['exception' => $e->getMessage()]);
+            throw new \Exception('Erreur lors de la correction de l\'examen : ' . $e->getMessage());
         }
-
-        $totalScore = 0;
-        foreach ($questions as $question) {
-            $questionId = $question->getId();
-            $maxPoints = $question->getPoints();
-            $score = $correction['questions'][$questionId]['score'] ?? 0;
-            $correction['questions'][$questionId]['score'] = round(min(max(0, (float)$score), $maxPoints), 2);
-            $correction['questions'][$questionId]['feedback'] = $correction['questions'][$questionId]['feedback'] ?? 'Aucune réponse fournie';
-            $totalScore += $correction['questions'][$questionId]['score'];
-        }
-        $correction['total_score'] = round(min($totalScore, 20.0), 2);
-
-        $this->logger->info('Correction générée', [
-            'total_score' => $correction['total_score'],
-            'question_scores' => array_map(function($q) use ($correction) {
-                return $correction['questions'][$q->getId()]['score'];
-            }, $questions)
-        ]);
-        return $correction;
-    } catch (\Exception $e) {
-        $this->logger->error('Erreur lors de la correction', ['exception' => $e->getMessage()]);
-        throw new \Exception('Erreur lors de la correction de l\'examen : ' . $e->getMessage());
     }
-}
 }

@@ -143,7 +143,7 @@ class Examen
     private ?\DateTimeInterface $updatedAt = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Ec::class)
+     * @ORM\ManyToOne(targetEntity=Ec::class, inversedBy="examens")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"examen:read", "examen:write", "correction:read"})
      * @Assert\NotNull
@@ -151,7 +151,7 @@ class Examen
     private ?Ec $ec = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="examensCrees")
      * @ORM\JoinColumn(nullable=false)
      * @Groups({"examen:read"})
      * @Assert\NotNull
@@ -159,7 +159,7 @@ class Examen
     private ?User $auteur = null;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Agenda::class)
+     * @ORM\ManyToOne(targetEntity=Agenda::class, inversedBy="examens")
      * @Groups({"examen:read", "examen:write"})
      */
     private ?Agenda $agenda = null;
