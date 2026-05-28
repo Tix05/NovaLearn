@@ -28,7 +28,7 @@ const DocumentPreview = ({ document, onDownload, onDelete }) => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => onDownload(document)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors flex items-center gap-1"
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors flex items-center gap-1"
                     >
                         Télécharger
                     </button>
@@ -54,9 +54,9 @@ const DocumentPreview = ({ document, onDownload, onDelete }) => {
 
 const renderCertificate = (studentInfo) => (
     <div className="p-8 max-w-full relative">
-        <div className="absolute top-0 left-0 w-full h-16 bg-green-600"></div>
+        <div className="absolute top-0 left-0 w-full h-16 bg-emerald-600"></div>
         <div className="relative pt-12 text-center">
-            <h1 className="text-2xl font-bold text-green-800 mb-6">CERTIFICAT DE SCOLARITÉ</h1>
+            <h1 className="text-2xl font-bold text-emerald-800 mb-6">CERTIFICAT DE SCOLARITÉ</h1>
             <p className="text-lg mb-8">L'Université certifie que</p>
             <p className="text-xl font-semibold mb-6">{studentInfo.firstName} {studentInfo.lastName}</p>
             <p className="mb-6">Numéro d'étudiant: <span className="font-semibold">{studentInfo.studentId}</span></p>
@@ -81,13 +81,13 @@ const renderCertificate = (studentInfo) => (
 
 const renderStudentCard = (studentInfo) => (
     <div className="p-0">
-        <div className="w-full aspect-[85/54] bg-gradient-to-r from-green-600 to-green-700 rounded-lg overflow-hidden relative flex flex-col justify-between p-6 text-white">
+        <div className="w-full aspect-[85/54] bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg overflow-hidden relative flex flex-col justify-between p-6 text-white">
             <div className="flex justify-between items-start">
                 <div>
                     <h2 className="text-xl font-bold mb-1">CARTE ÉTUDIANT</h2>
-                    <p className="text-green-100 text-sm">Université Exemple</p>
+                    <p className="text-emerald-100 text-sm">Université Exemple</p>
                 </div>
-                <div className="bg-white text-green-800 rounded-full h-16 w-16 flex items-center justify-center font-bold">
+                <div className="bg-white text-emerald-800 rounded-full h-16 w-16 flex items-center justify-center font-bold">
                     LOGO
                 </div>
             </div>
@@ -97,18 +97,18 @@ const renderStudentCard = (studentInfo) => (
                     PHOTO
                 </div>
                 <div>
-                    <p className="text-sm text-green-100">Nom & Prénom</p>
+                    <p className="text-sm text-emerald-100">Nom & Prénom</p>
                     <p className="font-semibold mb-2">{studentInfo.firstName} {studentInfo.lastName}</p>
 
-                    <p className="text-sm text-green-100">N° Étudiant</p>
+                    <p className="text-sm text-emerald-100">N° Étudiant</p>
                     <p className="font-semibold mb-2">{studentInfo.studentId}</p>
 
-                    <p className="text-sm text-green-100">Formation</p>
+                    <p className="text-sm text-emerald-100">Formation</p>
                     <p className="font-semibold mb-2">{studentInfo.program}</p>
 
                     {studentInfo.dateOfBirth && (
                         <>
-                            <p className="text-sm text-green-100">Date de naissance</p>
+                            <p className="text-sm text-emerald-100">Date de naissance</p>
                             <p className="font-semibold">{formatDate(studentInfo.dateOfBirth)}</p>
                         </>
                     )}
@@ -117,11 +117,11 @@ const renderStudentCard = (studentInfo) => (
 
             <div className="mt-4 flex justify-between items-end">
                 <div>
-                    <p className="text-sm text-green-100">Année Académique</p>
+                    <p className="text-sm text-emerald-100">Année Académique</p>
                     <p className="font-semibold">{studentInfo.academicYear}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-sm text-green-100">Valide jusqu'au</p>
+                    <p className="text-sm text-emerald-100">Valide jusqu'au</p>
                     <p className="font-semibold">31/08/{studentInfo.academicYear.split('-')[1]}</p>
                 </div>
             </div>
@@ -131,9 +131,9 @@ const renderStudentCard = (studentInfo) => (
 
 const renderAttestation = (studentInfo) => (
     <div className="p-8 max-w-full relative">
-        <div className="absolute top-0 left-0 w-full h-16 bg-green-600"></div>
+        <div className="absolute top-0 left-0 w-full h-16 bg-emerald-600"></div>
         <div className="relative pt-12 text-center">
-            <h1 className="text-2xl font-bold text-green-800 mb-6">ATTESTATION DE RÉUSSITE</h1>
+            <h1 className="text-2xl font-bold text-emerald-800 mb-6">ATTESTATION DE RÉUSSITE</h1>
 
             <p className="text-lg mb-8">
                 L'Université atteste que

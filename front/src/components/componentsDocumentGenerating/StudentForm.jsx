@@ -65,7 +65,7 @@ const StudentForm = ({ documentType, onSubmit }) => {
         onSubmit(formData);
     };
 
-    const inputClassName = "w-full px-3 py-2 border border-green-500 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500";
+    const inputClassName = "w-full px-3 py-2 border border-emerald-600 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-600";
 
     const renderFormFields = () => {
         const commonFields = (

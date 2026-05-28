@@ -148,7 +148,7 @@ const GenerateurDeDocument = () => {
                                 {step !== 'select' && (
                                     <button
                                         onClick={handleBack}
-                                        className="flex text-sm text-white bg-green-700 px-5 rounded-lg py-2 hover:scale-105 duration-300 items-center justify-center"
+                                        className="flex text-sm text-white bg-emerald-700 px-5 rounded-lg py-2 hover:scale-105 duration-300 items-center justify-center"
                                     >
                                         <FaAngleLeft className="mr-2" size={20} />
                                         Retour
@@ -159,7 +159,7 @@ const GenerateurDeDocument = () => {
                             <div className="bg-white p-6 rounded-lg shadow-sm min-h-[400px]">
                                 {isGenerating ? (
                                     <div className="flex flex-col items-center justify-center h-64">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
                                         <p className="text-gray-600">Génération du document en cours...</p>
                                     </div>
                                 ) : (

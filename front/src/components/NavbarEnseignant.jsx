@@ -52,7 +52,7 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
                             </div>
                             <button
                                 type="submit"
-                                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-600 transition-colors"
                             >
                                 Changer le mot de passe
                             </button>
@@ -127,7 +127,7 @@ const ProfileDialog = ({ show, onClose, formData, setFormData, handleSubmit, han
                         <div className="col-span-2 mt-6">
                             <button
                                 type="submit"
-                                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors w-full"
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-600 transition-colors w-full"
                             >
                                 Enregistrer
                             </button>
@@ -311,7 +311,7 @@ const NavbarEnseignant = ({ isMobile, toggleSidebar }) => {
                 {isMobile && (
                     <button
                         onClick={toggleSidebar}
-                        className="mr-2 text-gray-700 hover:text-green-500 transition-colors"
+                        className="mr-2 text-gray-700 hover:text-emerald-600 transition-colors"
                     >
                         <BiMenuAltLeft size={24} />
                     </button>

@@ -47,7 +47,7 @@ const Inscription2 = () => {
                 </div>
                 <form className='flex-col mt-10 items-center flex space-y-7' onSubmit={handleSubmit}>
                     <div className="custom-float-label-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-envelope text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">
@@ -56,7 +56,7 @@ const Inscription2 = () => {
                         </FloatLabel>
                     </div>
                     <div className="custom-password-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-lock text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">
@@ -65,7 +65,7 @@ const Inscription2 = () => {
                         </FloatLabel>
                     </div>
                     <div className="custom-password-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-lock text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">

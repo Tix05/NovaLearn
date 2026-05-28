@@ -42,14 +42,14 @@ const DocumentSelector = ({ selectedType, onSelect }) => {
                         className={`
               flex items-start p-6 rounded-lg border-2 transition-all duration-300 w-[30vw]
               ${selectedType === doc.id
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/50'}
+                                ? 'border-emerald-600 bg-emerald-50'
+                                : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'}
             `}
                     >
                         <div className={`
               flex-shrink-0 p-3 rounded-lg mr-4
               ${selectedType === doc.id
-                                ? 'text-green-600 bg-green-100'
+                                ? 'text-emerald-600 bg-emerald-100'
                                 : 'text-gray-500 bg-gray-100'}
             `}>
                             {doc.icon}
@@ -57,7 +57,7 @@ const DocumentSelector = ({ selectedType, onSelect }) => {
                         <div className="text-left">
                             <h3 className={`
                 font-semibold text-lg mb-1
-                ${selectedType === doc.id ? 'text-green-700' : 'text-gray-800'}
+                ${selectedType === doc.id ? 'text-emerald-700' : 'text-gray-800'}
               `}>
                                 {doc.label}
                             </h3>

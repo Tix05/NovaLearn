@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import bandeau from '../assets/svg/bandeau.svg';
+import bandeau from '../assets/images/logo.png';
 import { ReactTyped } from 'react-typed';
 import { motion } from 'framer-motion';
 
@@ -16,8 +16,13 @@ const Acceuil = () => {
             <motion.div
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 1, delay: 1 }}>
-                <img src={bandeau} alt="bandeau" className='w-[300px]' />
+                transition={{ duration: 1, delay: 1 }}
+                className='bg-white p-10 rounded-b-[130px]'
+                style={{
+                    clipPath: 'polygon(0% 0%, 100% 0%, calc(100% - 50px) 100%, 50px 100%)',
+                }}
+            >
+                <img src={bandeau} alt="bandeau" className='w-[250px]' />
             </motion.div>
             <motion.div
                 className='mt-10 text-white text-center'
@@ -25,11 +30,11 @@ const Acceuil = () => {
                 animate={{ scale: 1 }}
                 transition={{ duration: 1, delay: 0.5 }}
             >
-                <h1 className='text-5xl font-semibold'>Ecole SUpérieure de Management</h1>
-                <div className='text-5xl mt-5 space-y-3 font-[Crimson]'>
-                    <p>Formation à distance</p>
+                <h1 className='text-5xl font-semibold'>Innovation Learning</h1>
+                <div className='text-5xl mt-5 font-[Crimson]'>
+                    <p className='mb-3'>Formation à distance</p>
                     <ReactTyped
-                        strings={["\"La défi de la réussite\""]}
+                        strings={["\"L'ambition de la réussite\""]}
                         typeSpeed={50}
                     />
                 </div>

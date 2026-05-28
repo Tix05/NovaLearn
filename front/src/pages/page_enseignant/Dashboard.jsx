@@ -17,7 +17,7 @@ const Dashboard = () => {
 
     const colors = [
         getComputedStyle(document.documentElement).getPropertyValue('--red-600'),
-        getComputedStyle(document.documentElement).getPropertyValue('--green-500'),
+        getComputedStyle(document.documentElement).getPropertyValue('--emerald-600'),
         getComputedStyle(document.documentElement).getPropertyValue('--blue-500'),
         getComputedStyle(document.documentElement).getPropertyValue('--yellow-500'),
         getComputedStyle(document.documentElement).getPropertyValue('--purple-500'),
@@ -107,14 +107,14 @@ const Dashboard = () => {
                 <h1 className='text-4xl font-semibold mb-10'>Tableau de bord</h1>
                 <div className='grid grid-cols-4 w-full items-center justify-center text-white gap-4 mb-4'>
                     <div className='flex flex-col items-center justify-center'>
-                        <div className='flex items-center justify-center space-x-5 w-full bg-green-500 py-3 px-10 rounded-t-md'>
+                        <div className='flex items-center justify-center space-x-5 w-full bg-emerald-600 py-3 px-10 rounded-t-md'>
                             <div className='flex flex-col space-y-2'>
                                 <p className='text-4xl font-extrabold'>{mentionsCount}</p>
                                 <p className='text-xl font-semibold'>Mes mentions</p>
                             </div>
                             <MdOutlineLibraryBooks size={60} />
                         </div>
-                        <Link className='flex items-center justify-center w-full bg-green-600 p-2 rounded-b-md hover:bg-green-700' to="/enseignant/mention">
+                        <Link className='flex items-center justify-center w-full bg-emerald-600 p-2 rounded-b-md hover:bg-emerald-700' to="/enseignant/mention">
                             <p className='font-semibold'>en savoir plus</p>
                             <FaCircleArrowRight className='ml-2' />
                         </Link>

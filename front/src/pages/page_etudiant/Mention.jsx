@@ -71,7 +71,7 @@ const Mention = () => {
                                     <p>{mention.matricule}</p>
                                     <Link
                                         to={`/etudiant/cours/${mention.id}`}
-                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'
+                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-emerald-600 px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'
                                     >
                                         <FaRegEye />
                                         <p>Voir les cours</p>

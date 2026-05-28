@@ -209,7 +209,7 @@ function MessageEnseignant() {
                                 )}
                                 {conv.type === 'PRIVEE' && (
                                     <Circle
-                                        className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-green-500' : 'text-gray-500'}`}
+                                        className={`h-3 w-3 ${conv.participants.find(p => currentUser && p.id !== currentUser.id)?.onlineStatus === 'ONLINE' ? 'text-emerald-600' : 'text-gray-500'}`}
                                         fill="currentColor"
                                     />
                                 )}
@@ -219,7 +219,7 @@ function MessageEnseignant() {
                 </div>
 
                 <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
-                    <div className="flex items-center justify-between bg-[#4CAF50] p-4 font-semibold space-x-2">
+                    <div className="flex items-center justify-between bg-emerald-600 p-4 font-semibold space-x-2">
                         <span className='text-white text-xl'>
                             {selectedConversation ? getConversationTitle(selectedConversation) : 'Sélectionnez une conversation'}
                         </span>

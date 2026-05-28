@@ -48,10 +48,10 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
                             >
                                 <div className={`
                   p-2 rounded-full items-center justify-center flex
-                  ${doc.type === 'certificate' ? 'bg-green-100 text-green-600' : ''}
-                  ${doc.type === 'card' ? 'bg-green-100 text-green-600' : ''}
-                  ${doc.type === 'attestation' ? 'bg-green-100 text-green-600' : ''}
-                  ${doc.type === 'transcript' ? 'bg-green-100 text-green-600' : ''}
+                  ${doc.type === 'certificate' ? 'bg-emerald-100 text-emerald-600' : ''}
+                  ${doc.type === 'card' ? 'bg-emerald-100 text-emerald-600' : ''}
+                  ${doc.type === 'attestation' ? 'bg-emerald-100 text-emerald-600' : ''}
+                  ${doc.type === 'transcript' ? 'bg-emerald-100 text-emerald-600' : ''}
                 `}>
                                     {getIcon(doc.type)}
                                 </div>
@@ -70,7 +70,7 @@ const DocumentList = ({ documents, onSelect, onDelete, onDownload }) => {
                                         e.stopPropagation();
                                         onDownload(doc);
                                     }}
-                                    className="p-2 text-gray-600 hover:text-green-700 transition-colors"
+                                    className="p-2 text-gray-600 hover:text-emerald-600 transition-colors"
                                     title="Télécharger"
                                 >
                                     <Download className="w-8 h-8" />

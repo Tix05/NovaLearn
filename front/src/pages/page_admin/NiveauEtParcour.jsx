@@ -64,7 +64,7 @@ const NiveauEtParcour = () => {
                                 {niveau.semestres.length > 0 ? (
                                     <Link
                                         to={`/admin/mentions/${mentionId}/niveaux/${niveau.id}/semestres/${niveau.semestres[0].id}/cours`}
-                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'>
+                                        className='flex items-center justify-center space-x-1 text-white text-sm bg-emerald-600 px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]'>
                                         <FaRegEye />
                                         <p>Voir les cours</p>
                                     </Link>
