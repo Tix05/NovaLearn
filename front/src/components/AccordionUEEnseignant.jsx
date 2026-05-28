@@ -32,7 +32,7 @@ const AccordionUEEnseignant = ({ ues, mentionId, semestreId, onCreateExam }) => 
             <div className='flex space-x-2 items-center justify-center'>
                 <Link
                     to={`/enseignant/coursEnseignant/${mentionId}/${semestreId}/${rowData.id}`}
-                    className='bg-[#39B54A] px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-green-600 duration-300'
+                    className='bg-emerald-600 px-2 py-1 rounded-md text-white font-semibold cursor-pointer text-sm hover:bg-emerald-700 duration-300'
                 >
                     Visualiser le cours
                 </Link>

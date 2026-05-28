@@ -66,7 +66,7 @@ const Inscription = () => {
                 </div>
                 <form className='flex-col mt-10 items-center flex space-y-7' onSubmit={handleNext}>
                     <div className="custom-float-label-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-user text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">
@@ -75,7 +75,7 @@ const Inscription = () => {
                         </FloatLabel>
                     </div>
                     <div className="custom-float-label-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-phone text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">
@@ -84,7 +84,7 @@ const Inscription = () => {
                         </FloatLabel>
                     </div>
                     <div className="custom-dropdown-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-map-marker text-white"></i>
                         </span>
                         <Dropdown
@@ -97,7 +97,7 @@ const Inscription = () => {
                         />
                     </div>
                     <div className="custom-float-label-container flex shadow-2xl">
-                        <span className="p-inputgroup-addon bg-green-400">
+                        <span className="p-inputgroup-addon bg-emerald-400">
                             <i className="pi pi-home text-white"></i>
                         </span>
                         <FloatLabel className="custom-float-label">

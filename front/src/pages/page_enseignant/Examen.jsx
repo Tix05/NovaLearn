@@ -628,7 +628,7 @@ function Examen() {
                                     ) : (
                                         <div className="space-y-4">
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                                <p className="text-green-600 font-semibold mb-4">
+                                                <p className="text-emerald-600 font-semibold mb-4">
                                                     Examen généré : {generatedFile.name}
                                                 </p>
                                                 {generatedFileUrl && (

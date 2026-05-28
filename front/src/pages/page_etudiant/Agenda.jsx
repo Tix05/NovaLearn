@@ -934,7 +934,7 @@ const Agenda = () => {
                                 <Link
                                     to="#"
                                     onClick={(e) => { e.preventDefault(); handleExamClick(item); }}
-                                    className="text-green-600 hover:underline"
+                                    className="text-emerald-600 hover:underline"
                                 >
                                     Reprendre l'examen
                                 </Link>
@@ -1168,7 +1168,7 @@ const Agenda = () => {
                 >
                     {examSubmitted ? (
                         <div className="text-center p-5 flex flex-col justify-center h-full">
-                            <i className="pi pi-check-circle text-6xl text-green-500 mb-4"></i>
+                            <i className="pi pi-check-circle text-6xl text-emerald-600 mb-4"></i>
                             <h2 className="text-2xl font-bold mb-2">Examen soumis avec succès!</h2>
                             <p>Votre copie est en cours de correction.</p>
                             <p>Vous recevrez votre note sous peu.</p>

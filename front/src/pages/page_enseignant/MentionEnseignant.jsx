@@ -98,7 +98,7 @@ const MentionEnseignant = () => {
                                 <Divider />
                                 <Link
                                     to={`/enseignant/coursEnseignant/${mention.id}`}
-                                    className="flex mx-16 items-center justify-center text-white text-sm bg-[#39B54A] px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]"
+                                    className="flex mx-16 items-center justify-center text-white text-sm bg-emerald-600 px-2 py-1 rounded-lg hover:scale-105 duration-500 hover:bg-[#257630]"
                                 >
                                     <FaRegEye className="mr-1" />
                                     <p>Voir les cours</p>
