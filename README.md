@@ -1,11 +1,11 @@
-# Apiplateforme
+# NovaLearn
 
 ## Installation
 
 ### 1. Cloner le projet
 
 ```bash
-git clone git@github.com:Tix05/Apiplateforme.git
+git git@github.com:Tix05/NovaLearn.git
 cd Apiplateforme
 ```
 
